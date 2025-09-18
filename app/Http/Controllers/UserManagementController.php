@@ -131,4 +131,79 @@ class UserManagementController extends Controller
             return response()->json(['success' => false, 'message' => '비밀번호 초기화에 실패했습니다.'], 500);
         }
     }
+
+    public function destroy($userId)
+    {
+        try {
+            $user = User::findOrFail($userId);
+            
+            // 자기 자신은 삭제할 수 없음
+            if ($user->id === auth()->id()) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => '자기 자신은 삭제할 수 없습니다.'
+                ], 400);
+            }
+            
+            // 관리자는 삭제할 수 없음
+            if ($user->is_admin) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => '관리자는 삭제할 수 없습니다.'
+                ], 400);
+            }
+
+            Log::info("회원 삭제 시작: {$user->email}");
+
+            // 관련 데이터 삭제 (게시글, 댓글, 첨부파일 등)
+            $this->deleteUserRelatedData($user);
+
+            // 회원 삭제
+            $user->delete();
+
+            Log::info("회원 삭제 완료: {$user->email}");
+
+            return response()->json([
+                'success' => true, 
+                'message' => '회원이 성공적으로 삭제되었습니다.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('회원 삭제 실패: ' . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => '회원 삭제에 실패했습니다: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function deleteUserRelatedData($user)
+    {
+        try {
+            // 게시글 삭제 (첨부파일과 댓글도 함께 삭제됨)
+            $boards = $user->boards;
+            foreach ($boards as $board) {
+                // 첨부파일 삭제
+                foreach ($board->attachments as $attachment) {
+                    \Storage::disk('public')->delete($attachment->file_path);
+                    $attachment->delete();
+                }
+                
+                // 댓글 삭제
+                $board->comments()->delete();
+                
+                // 게시글 삭제
+                $board->delete();
+            }
+
+            // 퍼즐게임 관련 데이터 삭제
+            $user->puzzleGames()->delete();
+            $user->puzzleProfiles()->delete();
+            $user->puzzleGameRecords()->delete();
+
+            Log::info("회원 관련 데이터 삭제 완료: {$user->email}");
+        } catch (\Exception $e) {
+            Log::error('회원 관련 데이터 삭제 실패: ' . $e->getMessage());
+            throw $e;
+        }
+    }
 } 

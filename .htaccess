@@ -1,2 +1,4 @@
 RewriteEngine On
+# Exclude /K-CrossWord/ path from Laravel routing
+RewriteCond %{REQUEST_URI} !^/K-CrossWord/
 RewriteRule ^(.*)$ public/$1 [L] 

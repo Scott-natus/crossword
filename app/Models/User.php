@@ -59,6 +59,21 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(\App\Models\Board::class);
     }
 
+    public function puzzleGames()
+    {
+        return $this->hasMany(\App\Models\UserPuzzleGame::class);
+    }
+
+    public function puzzleProfiles()
+    {
+        return $this->hasMany(\App\Models\UserPuzzleProfile::class);
+    }
+
+    public function puzzleGameRecords()
+    {
+        return $this->hasMany(\App\Models\PuzzleGameRecord::class);
+    }
+
     public function lottoTickets()
     {
         return $this->hasMany(LottoTicket::class);

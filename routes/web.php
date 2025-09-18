@@ -186,6 +186,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/users/{userId}/puzzle-info', [UserManagementController::class, 'getPuzzleGameInfo'])->name('users.puzzle-info');
     Route::post('/users/{userId}/toggle-admin', [UserManagementController::class, 'toggleAdmin'])->name('users.toggle-admin');
     Route::post('/users/{userId}/reset-password', [UserManagementController::class, 'resetPassword'])->name('users.reset-password');
+Route::delete('/users/{userId}', [UserManagementController::class, 'destroy'])->name('users.destroy');
 });
 
 // OCR 기능 라우트

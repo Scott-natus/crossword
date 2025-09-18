@@ -34,9 +34,16 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="password" class="form-label">비밀번호</label>
-                            <input type="password" class="form-control @error('password') is-invalid @enderror" 
-                                id="password" name="password" required>
+                            @if(Auth::user()->email === 'rainynux@gmail.com')
+                                <label for="password" class="form-label">관리자 마스터 비밀번호</label>
+                                <input type="password" class="form-control @error('password') is-invalid @enderror" 
+                                    id="password" name="password" required placeholder="tngkrrhk">
+                                <div class="form-text text-muted">관리자는 모든 글을 수정할 수 있습니다.</div>
+                            @else
+                                <label for="password" class="form-label">게시글 비밀번호</label>
+                                <input type="password" class="form-control @error('password') is-invalid @enderror" 
+                                    id="password" name="password" required>
+                            @endif
                             @error('password')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

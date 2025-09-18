@@ -17,7 +17,7 @@
                 </form>
             </div>
         @endif
-        @if(auth()->user()->email === 'rainynux@gmail.com')
+        @if(auth()->user()->email === 'rainynux@gmail.com' || $comment->user_id == Auth::id())
             <form action="{{ route('board-comments.destroy', $comment->id) }}" method="POST" class="d-inline">
                 @csrf
                 @method('DELETE')

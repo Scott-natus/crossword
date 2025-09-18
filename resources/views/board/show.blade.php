@@ -162,7 +162,7 @@
     {{-- 첨부파일, 투표, 카피, 댓글 등은 추후 구현 --}}
     <a href="{{ route('board.index', ['boardType' => $board->boardType->slug]) }}" class="btn btn-secondary">목록으로</a>
     @auth
-        @if($board->user_id == Auth::id())
+        @if($board->user_id == Auth::id() || (Auth::user()->email === 'rainynux@gmail.com'))
             <a href="{{ route('board.edit', ['boardType' => $board->boardType->slug, 'board' => $board->id]) }}" class="btn btn-primary ms-2">수정</a>
             <!-- 삭제 버튼 및 모달 -->
             <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">삭제</button>
@@ -179,8 +179,14 @@
                     </div>
                     <div class="modal-body">
                       <div class="mb-3">
-                        <label for="deletePassword" class="form-label">비밀번호를 입력하세요</label>
-                        <input type="password" class="form-control" id="deletePassword" name="password" required autocomplete="off">
+                        @if(Auth::user()->email === 'rainynux@gmail.com')
+                          <label for="deletePassword" class="form-label">관리자 마스터 비밀번호를 입력하세요</label>
+                          <input type="password" class="form-control" id="deletePassword" name="password" required autocomplete="off" placeholder="tngkrrhk">
+                          <div class="form-text text-muted">관리자는 모든 글을 삭제할 수 있습니다.</div>
+                        @else
+                          <label for="deletePassword" class="form-label">게시글 비밀번호를 입력하세요</label>
+                          <input type="password" class="form-control" id="deletePassword" name="password" required autocomplete="off">
+                        @endif
                       </div>
                       <div class="text-danger small">삭제 시 복구할 수 없습니다.</div>
                     </div>

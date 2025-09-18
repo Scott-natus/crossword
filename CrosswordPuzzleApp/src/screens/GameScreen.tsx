@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import CrosswordGrid from '../components/CrosswordGrid';
+import { apiService } from '../services/api';
 
 interface GameScreenProps {
   navigation?: any;
@@ -121,35 +122,55 @@ export const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
     try {
       setLoading(true);
       setPuzzleError(null); // 에러 상태 초기화
-      const response = await fetch('http://222.100.103.227:8080/api/puzzle/template', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('퍼즐을 불러올 수 없습니다.');
-      }
-
-      const data = await response.json();
-      console.log('퍼즐 데이터:', data); // 전체 데이터 로그
-      if (data.success && data.data) {
-        setPuzzleData(data.data);
-        setCurrentLevel(data.data.level?.level || 1);
+      
+      // Spring Boot API를 사용하여 퍼즐 생성
+      const response = await apiService.generatePuzzle(currentLevel);
+      console.log('퍼즐 데이터:', response); // 전체 데이터 로그
+      
+      if (response.success && response.data) {
+        // Spring Boot API 응답 형식에 맞게 데이터 변환
+        const puzzleData = {
+          template: {
+            id: 1,
+            template_name: `Level ${currentLevel} Template`,
+            grid_pattern: response.data.grid.grid,
+            grid_width: response.data.grid.width,
+            grid_height: response.data.grid.height,
+            words: response.data.words.map((word: any, index: number) => ({
+              word_id: word.id,
+              position: {
+                id: index + 1, // 배지 번호 (1, 2, 3...)
+                start_x: word.startX || 0,
+                start_y: word.startY || 0,
+                end_x: word.endX || word.startX + word.word.length - 1,
+                end_y: word.endY || word.startY + word.word.length - 1,
+                direction: word.direction === 'horizontal' ? 0 : 1,
+              },
+              hint: word.hint || `힌트 ${index + 1}`,
+            })),
+          },
+          level: {
+            id: currentLevel,
+            level: currentLevel,
+            level_name: `Level ${currentLevel}`,
+          },
+          game: {
+            id: 1,
+            current_level: currentLevel,
+          },
+        };
+        
+        setPuzzleData(puzzleData);
+        setCurrentLevel(currentLevel);
+        
         // template.words를 wordPositions로 변환
-        if (data.data.template.words && data.data.template.words.length > 0) {
-          // data.data.template.words.forEach((w: any) => {
-          //   // w.word_id: pz_words.id (정답/힌트 조회용 키값)
-          //   // w.position.id: puzzle_grid_templates.word_positions의 id (배지 번호)
-          //   console.log('word_id:', w.word_id, 'id:', w.position.id, 'hint:', w.hint, 'hint_id:', w.hint_id);
-          // });
+        if (puzzleData.template.words && puzzleData.template.words.length > 0) {
           setWordPositions(
-            data.data.template.words.map((w: any) => ({
+            puzzleData.template.words.map((w: any) => ({
               id: w.position.id, // 배지 번호 (퍼즐판에 표시되는 1, 2, 3...)
               word_id: w.word_id, // 실제 단어 ID (pz_words.id) - 정답/힌트 조회용
               hint: w.hint,
-              hint_id: w.hint_id, // 기본 힌트 ID
+              hint_id: undefined, // Spring Boot API에서는 기본 힌트 ID가 없음
               start_x: w.position.start_x,
               start_y: w.position.start_y,
               end_x: w.position.end_x,
@@ -219,21 +240,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
       return;
     }
     try {
-      const response = await fetch('http://222.100.103.227:8080/api/puzzle/submit-answer', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          word_id: selectedWord.word_id,
-          answer: answerInput.trim(),
-        }),
-      });
-
-      const result = await response.json();
+      // Spring Boot API를 사용하여 답안 검증
+      // 실제로는 단어 조회 API를 사용하여 정답 확인
+      const wordsResponse = await apiService.getWords({ difficulty: 1, size: 1000 });
+      const words = wordsResponse.data?.data || [];
       
-      if (result.is_correct) {
+      // 선택된 단어의 정답 찾기
+      const correctWord = words.find((word: any) => word.id === selectedWord.word_id);
+      const isCorrect = correctWord && correctWord.word.toLowerCase() === answerInput.trim().toLowerCase();
+      
+      if (isCorrect) {
         const newAnswer = answerInput.trim();
         
         // wordAnswers를 먼저 업데이트
@@ -271,10 +287,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
           return newSet;
         });
         
-        showAnswerStatus('correct', result.message);
+        showAnswerStatus('correct', '정답입니다!');
         setAnswerInput(""); // 정답 시 입력칸 초기화
         
-        // 기존 레벨 완료 체크 로직 제거 (위에서 처리)
       } else {
         const currentWrongCount = wrongAnswers.get(selectedWord.word_id) || 0;
         const newWrongCount = currentWrongCount + 1;
@@ -286,33 +301,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
         
         // 레벨당 누적 오답 횟수 확인
         if (totalWrongCount >= 5) {
-          // 5회 초과 시 모든 정답 표시하고 모달 표시
-          // 모든 단어의 정답을 서버에서 받아와 wordAnswers를 채움
-          (async () => {
-            const allAnswers = new Map(wordAnswers);
-            await Promise.all(wordPositions.map(async (wp) => {
-              if (!allAnswers.has(wp.word_id)) {
-                try {
-                  const res = await fetch(`http://222.100.103.227:8080/api/puzzle/show-answer-wrong-count?word_id=${wp.word_id}`, {
-                    headers: {
-                      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                    },
-                  });
-                  const result = await res.json();
-                  if (result.success && result.answer) {
-                    allAnswers.set(wp.word_id, result.answer);
-                  }
-                } catch (e) {
-                  // 무시
-                }
-              }
-            }));
-            setWordAnswers(allAnswers);
-            setShowAllAnswers(true);
-          })();
-          // setModalType('restart'); // 모달 대신 그리드 하단에 표시
-          // setModalMessage('오답횟수가 초과했습니다. 레벨을 다시 시작합니다.');
-          // setShowModal(true);
+          // 5회 초과 시 모든 정답 표시
+          const allAnswers = new Map(wordAnswers);
+          words.forEach((word: any) => {
+            const wordPosition = wordPositions.find(wp => wp.word_id === word.id);
+            if (wordPosition && !allAnswers.has(word.id)) {
+              allAnswers.set(word.id, word.word);
+            }
+          });
+          setWordAnswers(allAnswers);
+          setShowAllAnswers(true);
         }
       }
     } catch (error) {
@@ -335,47 +333,30 @@ export const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
   const handleShowHint = async () => {
     if (!selectedWord) return;
 
-    // console.log('힌트보기 클릭:', {
-    //   word_id: selectedWord.word_id,
-    //   hint_id: selectedWord.hint_id,
-    //   current_hint: selectedWord.hint
-    // });
-
     try {
-      // 기본 힌트 외 추가 힌트 조회 (기존 힌트 제외)
-      const params = new URLSearchParams({
-        word_id: selectedWord.word_id.toString()
-      });
+      // Spring Boot API를 사용하여 힌트 조회
+      const response = await apiService.getHintsByWordId(selectedWord.word_id);
       
-      // hint_id가 있으면 base_hint_id로 추가
-      if (selectedWord.hint_id) {
-        params.append('base_hint_id', selectedWord.hint_id.toString());
-      }
-      
-      const response = await fetch(`http://222.100.103.227:8080/api/puzzle/hints?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
-
-      // console.log('힌트 API 응답 상태:', response.status);
-      const result = await response.json();
-      // console.log('힌트 API 응답:', result);
-
-      if (result.success) {
+      if (response.success && response.data) {
         // word_id를 기준으로 힌트 표시 상태 추적
         setHintsShown(prev => new Set([...prev, selectedWord.word_id]));
-        setAdditionalHints(prev => new Map(prev).set(selectedWord.word_id, result.hints));
+        
+        // 힌트 데이터를 문자열 배열로 변환
+        const hints = Array.isArray(response.data) 
+          ? response.data.map((hint: any) => hint.hintText || hint.hint || '힌트를 불러올 수 없습니다.')
+          : [response.data.hintText || response.data.hint || '힌트를 불러올 수 없습니다.'];
+        
+        setAdditionalHints(prev => new Map(prev).set(selectedWord.word_id, hints));
         
         console.log('추가 힌트 API 응답 성공:', {
           word_id: selectedWord.word_id,
-          result: result,
-          hints: result.hints,
-          hintsCount: result.hints?.length || 0,
-          message: result.message
+          hints: hints,
+          hintsCount: hints.length,
+          message: response.message
         });
       } else {
-        console.log('힌트 API 실패:', result);
+        console.log('힌트 API 실패:', response);
+        Alert.alert('알림', '추가 힌트를 불러올 수 없습니다.');
       }
     } catch (error) {
       console.error('힌트 로드 오류:', error);
@@ -387,18 +368,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
     if (!selectedWord) return;
 
     try {
-      // word_id를 사용하여 정답 조회 (pz_words.id)
-      const response = await fetch(`http://222.100.103.227:8080/api/puzzle/show-answer?word_id=${selectedWord.word_id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
-
-      const result = await response.json();
-      if (result.success) {
+      // Spring Boot API를 사용하여 단어 조회 (정답 확인)
+      const wordsResponse = await apiService.getWords({ difficulty: 1, size: 1000 });
+      const words = wordsResponse.data?.data || [];
+      
+      // 선택된 단어의 정답 찾기
+      const correctWord = words.find((word: any) => word.id === selectedWord.word_id);
+      
+      if (correctWord) {
         // 정답을 입력칸에 자동 입력 (상태값 사용)
-        setAnswerInput(result.answer);
+        setAnswerInput(correctWord.word);
         Alert.alert('정답', '정답이 입력칸에 입력되었습니다.');
+      } else {
+        Alert.alert('오류', '정답을 찾을 수 없습니다.');
       }
     } catch (error) {
       console.error('정답 보기 오류:', error);
@@ -496,42 +478,26 @@ export const GameScreen: React.FC<GameScreenProps> = ({ navigation }) => {
   const handleGameComplete = async () => {
     console.log('handleGameComplete 호출됨');
     try {
-      const response = await fetch('http://222.100.103.227:8080/api/puzzle/complete-level', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          score: 0, // 기본 점수
-          play_time: 0, // 기본 플레이 시간
-          hints_used: 0, // 기본 힌트 사용 수
-          words_found: answeredWords.size, // 찾은 단어 수
-          total_words: wordPositions.length, // 총 단어 수
-          accuracy: 100 // 기본 정확도
-        }),
-      });
-
-      const result = await response.json();
-      console.log('레벨 완료 API 응답:', result);
+      // Spring Boot API를 사용하여 게임 세션 완료 처리
+      // 실제로는 게임 세션을 생성하고 완료 처리해야 하지만, 
+      // 현재는 단순히 UI 상태만 변경
       
-      if (result.success) {
-        console.log('레벨 완료 성공 - gameComplete 상태를 true로 설정');
-        setGameComplete(true);
-      } else if (result.condition_not_met) {
-        // 클리어 조건을 만족하지 않은 경우
-        Alert.alert('알림', result.message || '레벨 클리어 조건을 만족하지 않습니다.');
-        setGameComplete(false);
-      } else if (result.no_next_level) {
+      console.log('레벨 완료 성공 - gameComplete 상태를 true로 설정');
+      setGameComplete(true);
+      
+      // 다음 레벨이 있는지 확인
+      const levelsResponse = await apiService.getPuzzleLevels();
+      const levels = levelsResponse.data?.data || [];
+      const maxLevel = Math.max(...levels.map((level: any) => level.level || 0));
+      
+      if (currentLevel >= maxLevel) {
         // 다음 레벨이 없는 경우
         Alert.alert('축하합니다!', '모든 레벨을 완료했습니다.');
         if (navigation) {
           navigation.navigate('Main');
         }
-      } else {
-        console.log('레벨 완료 API 실패했지만 gameComplete 상태를 true로 설정');
-        setGameComplete(true); // API 실패해도 UI는 표시
       }
+      
     } catch (error) {
       console.error('레벨 완료 처리 오류:', error);
       console.log('API 오류 발생했지만 gameComplete 상태를 true로 설정');

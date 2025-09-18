@@ -54,6 +54,13 @@
                                                     data-user-name="{{ $user->name }}">
                                                 비밀번호 초기화
                                             </button>
+                                            @if(!$user->is_admin && $user->id != Auth::id())
+                                                <button type="button" class="btn btn-dark btn-sm delete-user-btn" 
+                                                        data-user-id="{{ $user->id }}" 
+                                                        data-user-name="{{ $user->name }}">
+                                                    회원 삭제
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -90,6 +97,39 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 회원 삭제 확인 모달 -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">회원 삭제 확인</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <strong>⚠️ 주의사항</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>회원을 삭제하면 해당 회원의 모든 데이터가 영구적으로 삭제됩니다.</li>
+                        <li>작성한 게시글, 댓글, 첨부파일 등이 모두 사라집니다.</li>
+                        <li>삭제된 데이터는 복구할 수 없습니다.</li>
+                    </ul>
+                </div>
+                <p class="mb-0">
+                    <strong><span id="deleteUserName"></span></strong> 회원을 정말로 삭제하시겠습니까?
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <form id="deleteUserForm" method="POST" style="display: inline;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">회원 삭제</button>
+                </form>
             </div>
         </div>
     </div>
@@ -176,6 +216,62 @@ $(document).ready(function() {
             .fail(function() {
                 alert('서버 오류가 발생했습니다.');
             });
+    });
+
+    // 회원 삭제 버튼 클릭 이벤트
+    $('.delete-user-btn').click(function() {
+        const userId = $(this).data('user-id');
+        const userName = $(this).data('user-name');
+        
+        // 모달에 회원 이름 설정
+        $('#deleteUserName').text(userName);
+        
+        // 폼 액션 URL 설정
+        $('#deleteUserForm').attr('action', `/admin/users/${userId}`);
+        
+        // 모달 표시
+        $('#deleteUserModal').modal('show');
+    });
+
+    // 회원 삭제 폼 제출 이벤트
+    $('#deleteUserForm').submit(function(e) {
+        e.preventDefault();
+        
+        const form = $(this);
+        const submitBtn = form.find('button[type="submit"]');
+        const originalText = submitBtn.text();
+        
+        // 버튼 비활성화 및 로딩 표시
+        submitBtn.prop('disabled', true).text('삭제 중...');
+        
+        $.ajax({
+            url: form.attr('action'),
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        })
+        .done(function(response) {
+            if (response.success) {
+                alert('회원이 성공적으로 삭제되었습니다.');
+                location.reload(); // 페이지 새로고침
+            } else {
+                alert(response.message || '회원 삭제에 실패했습니다.');
+            }
+        })
+        .fail(function(xhr) {
+            let errorMessage = '서버 오류가 발생했습니다.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+            alert(errorMessage);
+        })
+        .always(function() {
+            // 버튼 복원
+            submitBtn.prop('disabled', false).text(originalText);
+            // 모달 닫기
+            $('#deleteUserModal').modal('hide');
+        });
     });
     
     function displayPuzzleGameInfo(data) {

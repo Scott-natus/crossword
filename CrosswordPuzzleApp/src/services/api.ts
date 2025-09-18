@@ -12,7 +12,7 @@ import {
   LoginResponse
 } from '../types';
 
-const API_BASE_URL = 'http://222.100.103.227:8080/api';
+const API_BASE_URL = 'http://222.100.103.227:8081/K-CrossWord/api';
 
 class ApiService {
   private api: AxiosInstance;
@@ -92,7 +92,159 @@ class ApiService {
     }
   }
 
-  // React 앱용 퍼즐게임 API (새로운 API)
+  // Spring Boot API - 퍼즐 생성
+  async generatePuzzle(level: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.post(`/puzzles/generate/${level}`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 퍼즐 레벨 목록 조회
+  async getPuzzleLevels(): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.get('/puzzles/levels');
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 단어 조회
+  async getWords(params?: { page?: number; size?: number; difficulty?: number; category?: string }): Promise<ApiResponse<any>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.size) queryParams.append('size', params.size.toString());
+      if (params?.difficulty) queryParams.append('difficulty', params.difficulty.toString());
+      if (params?.category) queryParams.append('category', params.category);
+      
+      const response: AxiosResponse = await this.api.get(`/words?${queryParams.toString()}`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 힌트 조회
+  async getHintsByWordId(wordId: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.get(`/hints/word/${wordId}`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 게임 세션 생성
+  async createGameSession(userId: number, wordId: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.post('/game/sessions', null, {
+        params: { userId, wordId }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 게임 세션 조회
+  async getGameSession(sessionId: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.get(`/game/sessions/${sessionId}`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 게임 세션 완료
+  async completeGameSession(sessionId: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.put(`/game/sessions/${sessionId}/complete`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 정답 추가
+  async addCorrectAnswer(sessionId: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.put(`/game/sessions/${sessionId}/correct-answer`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 오답 추가
+  async addWrongAnswer(sessionId: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.put(`/game/sessions/${sessionId}/wrong-answer`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 힌트 사용 추가
+  async addHintUsed(sessionId: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.put(`/game/sessions/${sessionId}/hint-used`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 플레이 시간 업데이트
+  async updatePlayTime(sessionId: number, playTimeSeconds: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.put(`/game/sessions/${sessionId}/play-time`, null, {
+        params: { playTimeSeconds }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 사용자 게임 통계
+  async getUserGameStats(userId: number): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.get(`/game/stats/user/${userId}`);
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 힌트 생성
+  async generateHintForWord(wordId: number, hintType: string): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.post(`/hint-generation/word/${wordId}`, null, {
+        params: { hintType }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Spring Boot API - 힌트 생성 상태 확인
+  async getHintGenerationStatus(): Promise<ApiResponse<any>> {
+    try {
+      const response: AxiosResponse = await this.api.get('/hint-generation/status');
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  // React 앱용 퍼즐게임 API (기존 호환성 유지)
   async getPuzzleTemplate(): Promise<ApiResponse<any>> {
     try {
       const response: AxiosResponse = await this.api.get('/puzzle/template');

@@ -906,6 +906,69 @@ cat storage/logs/laravel.log | grep "cleanup"
 
 ---
 
+## 2025-09-19 작업 내역 (Spring Boot 크로스워드 게임 시스템 서비스 재시작 및 포트 관리)
+
+### 문제 상황
+- Spring Boot 크로스워드 게임 시스템(8081 포트)과 게시판 시스템(8080 포트)이 모두 중지된 상태
+- 503 Service Unavailable 에러 발생
+- 사용자가 크로스워드 게임에 접근할 수 없는 상황
+
+### 해결 과정
+
+#### 1. 서비스 상태 확인
+- **크로스워드 게임**: 8081 포트에서 실행되어야 함 (`com.example.crossword.CrosswordApplication`)
+- **게시판 시스템**: 8080 포트에서 실행되어야 함 (`com.example.board.BoardSystemApplication`)
+- 두 시스템 모두 중지된 상태 확인
+
+#### 2. Spring Boot 애플리케이션 재시작
+- **크로스워드 게임 재시작**: `cd /var/www/html/crossword-projects && ./gradlew bootRun`
+- **게시판 시스템 재시작**: `cd /var/www/html/java-projects && ./gradlew bootRun`
+- 두 애플리케이션 모두 백그라운드에서 정상 시작
+
+#### 3. 서비스 상태 확인
+- **크로스워드 게임**: 8081 포트에서 정상 실행 중
+- **게시판 시스템**: 8080 포트에서 정상 실행 중
+- 두 시스템 모두 Tomcat 서버로 정상 시작됨
+
+### 현재 상태
+- ✅ **크로스워드 게임**: 8081 포트에서 정상 실행 중
+- ✅ **게시판 시스템**: 8080 포트에서 정상 실행 중
+- ✅ **503 에러 해결**: 두 시스템 모두 정상 접근 가능
+- ✅ **서비스 안정성**: 백그라운드에서 안정적으로 실행 중
+
+### 포트 구성
+- **8080 포트**: 게시판 시스템 (Spring Boot)
+- **8081 포트**: 크로스워드 게임 (Spring Boot)
+- **80 포트**: Laravel 웹서비스 (Apache)
+- **3001 포트**: React Native 웹앱 (정적 파일 서비스)
+
+### 중요 파일 위치
+- **크로스워드 게임**: `/var/www/html/crossword-projects/`
+- **게시판 시스템**: `/var/www/html/java-projects/`
+- **Laravel 웹서비스**: `/var/www/html/` (루트)
+
+### 서비스 관리 명령어
+```bash
+# 크로스워드 게임 재시작
+cd /var/www/html/crossword-projects && ./gradlew bootRun
+
+# 게시판 시스템 재시작
+cd /var/www/html/java-projects && ./gradlew bootRun
+
+# 실행 중인 Java 프로세스 확인
+ps aux | grep -E "(java|gradle)" | grep -v grep
+
+# 포트 사용 상태 확인
+netstat -tlnp | grep -E ":(8080|8081)"
+```
+
+### 다음 작업 예정
+1. **서비스 자동 시작 설정**: systemd 서비스로 등록하여 서버 재부팅 시 자동 시작
+2. **모니터링 시스템**: 서비스 상태 모니터링 및 자동 재시작 설정
+3. **로그 관리**: 각 서비스별 로그 파일 관리 및 로테이션 설정
+
+---
+
 ## 2025-07-31 작업 내역 (React Native 모바일 앱 AuthContext 토큰 저장 및 API 인증 문제 해결)
 
 ### 문제 상황

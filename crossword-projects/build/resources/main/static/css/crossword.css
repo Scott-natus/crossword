@@ -1,0 +1,294 @@
+.crossword-puzzle {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+.puzzle-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.puzzle-header h2 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.puzzle-header p {
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.progress-info {
+    background: #f8f9fa;
+    padding: 10px 20px;
+    border-radius: 5px;
+    display: inline-block;
+    font-weight: bold;
+    color: #495057;
+}
+
+.puzzle-content {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+.grid-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.clues-container {
+    flex: 1;
+    max-width: 400px;
+}
+
+/* 그리드 스타일 */
+.crossword-grid {
+    display: inline-block;
+    border: 2px solid #333;
+    background: white;
+}
+
+.grid-row {
+    display: flex;
+}
+
+.grid-cell {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    background: white;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.grid-cell.black {
+    background: #333;
+    cursor: default;
+}
+
+.grid-cell.selected {
+    background: #007bff;
+    color: white;
+}
+
+.grid-cell.found {
+    background: #28a745;
+    color: white;
+}
+
+.grid-cell.word-cell {
+    border-color: #333;
+}
+
+.cell-content {
+    user-select: none;
+}
+
+/* 힌트 스타일 */
+.word-clues {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    height: fit-content;
+}
+
+.clues-section {
+    margin-bottom: 25px;
+}
+
+.clues-section h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-size: 18px;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 5px;
+}
+
+.clues-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.clue-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    background: white;
+    border: 1px solid #dee2e6;
+}
+
+.clue-item:hover {
+    background: #e9ecef;
+}
+
+.clue-item.selected {
+    background: #007bff;
+    color: white;
+    border-color: #0056b3;
+}
+
+.clue-item.found {
+    background: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.clue-number {
+    font-weight: bold;
+    margin-right: 8px;
+    min-width: 20px;
+}
+
+.clue-text {
+    flex: 1;
+    font-size: 14px;
+}
+
+.found-indicator {
+    color: #28a745;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.clue-item.found .found-indicator {
+    color: #155724;
+}
+
+.progress-summary {
+    margin-top: 20px;
+    padding: 15px;
+    background: #e9ecef;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    color: #495057;
+}
+
+/* 로딩 스타일 */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.loading-spinner {
+    text-align: center;
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 에러 스타일 */
+.error {
+    text-align: center;
+    padding: 40px;
+}
+
+.error-message {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+    padding: 20px;
+    color: #721c24;
+}
+
+.error-message button {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 15px;
+}
+
+.error-message button:hover {
+    background: #c82333;
+}
+
+/* 완성 모달 스타일 */
+.completion-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    color: #28a745;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+.modal-content button {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 20px;
+}
+
+.modal-content button:hover {
+    background: #0056b3;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .puzzle-content {
+        flex-direction: column;
+    }
+    
+    .clues-container {
+        max-width: none;
+    }
+    
+    .grid-cell {
+        width: 25px;
+        height: 25px;
+        font-size: 12px;
+    }
+}
