@@ -937,15 +937,19 @@ cat storage/logs/laravel.log | grep "cleanup"
 - ✅ **서비스 안정성**: 백그라운드에서 안정적으로 실행 중
 
 ### 포트 구성
+- **80 포트**: Apache (리버스 프록시)
+  - `/api/board/` → 8080 포트 (게시판 시스템)
+  - `/K-CrossWord/` → 8081 포트 (크로스워드 게임)
+  - `/api/puzzle/` → 8081 포트 (크로스워드 게임 API)
 - **8080 포트**: 게시판 시스템 (Spring Boot)
 - **8081 포트**: 크로스워드 게임 (Spring Boot)
-- **80 포트**: Laravel 웹서비스 (Apache)
 - **3001 포트**: React Native 웹앱 (정적 파일 서비스)
 
 ### 중요 파일 위치
 - **크로스워드 게임**: `/var/www/html/crossword-projects/`
 - **게시판 시스템**: `/var/www/html/java-projects/`
-- **Laravel 웹서비스**: `/var/www/html/` (루트)
+- **Apache 설정**: `/etc/apache2/sites-available/000-default.conf`
+- **Laravel 소스**: `/var/www/html/` (현재 미실행)
 
 ### 서비스 관리 명령어
 ```bash
