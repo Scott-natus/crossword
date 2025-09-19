@@ -241,15 +241,25 @@ class PuzzleGameController extends Controller
             
             // 기본 힌트 정보만 추가 (정답 단어는 제외)
             if ($pzWord) {
+                // 먼저 is_primary = true인 힌트를 찾고, 없으면 첫 번째 힌트를 사용
                 $baseHint = DB::table('pz_hints')
                     ->where('word_id', $pzWord->id)
                     ->where('is_primary', true)
                     ->first();
+                
+                // is_primary = true인 힌트가 없으면 첫 번째 힌트를 기본 힌트로 사용
+                if (!$baseHint) {
+                    $baseHint = DB::table('pz_hints')
+                        ->where('word_id', $pzWord->id)
+                        ->orderBy('id', 'asc')
+                        ->first();
+                }
+                
                 $secureWordInfo['hint_id'] = $baseHint ? $baseHint->id : null;
-                $secureWordInfo['hint'] = $baseHint ? $baseHint->hint_text : null;
+                $secureWordInfo['hint'] = $baseHint ? $baseHint->hint_text : '힌트가 없습니다.';
             } else {
                 $secureWordInfo['hint_id'] = null;
-                $secureWordInfo['hint'] = null;
+                $secureWordInfo['hint'] = '힌트가 없습니다.';
             }
             
             $wordsWithIds[] = $secureWordInfo;

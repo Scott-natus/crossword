@@ -1,7 +1,7 @@
-# Laravel Crossword Puzzle Management System - Cursor AI Rules
+# Spring Boot 기반 크로스워드 퍼즐 시스템 - Cursor AI Rules
 
 ## 프로젝트 개요
-- Laravel 기반 크로스워드 퍼즐 관리 시스템
+- Spring Boot 기반 크로스워드 퍼즐 게임 시스템
 - 운영 서버: 222.100.103.227 (SSH 접속)
 - 데이터베이스: PostgreSQL (mydb)
 - 사용자: myuser / 비밀번호: tngkrrhk
@@ -11,9 +11,10 @@
 - **워크스페이스**: /var/www/html
 - **데이터베이스 접속**: PGPASSWORD=tngkrrhk psql -h 127.0.0.1 -U myuser -d mydb
 - **포트 구성**:
-  - Laravel (게시판/관리 페이지): 80 포트
-  - React Native 웹앱: 3001 포트
-  - React API 서버: 8080 포트 (새로 분리)
+  - Apache (리버스 프록시): 80 포트
+  - Spring Boot 게시판 시스템: 8080 포트
+  - Spring Boot 크로스워드 게임: 8081 포트
+  - React Native 웹앱: 3001 포트 (현재 서비스 정지)
 
 ## 중요 작업 원칙
 
@@ -89,14 +90,14 @@
 ## 자주 사용하는 명령어
 - 데이터베이스 백업: pg_dump -h 127.0.0.1 -U myuser mydb > backup.sql
 - 테이블 구조 확인: \d table_name
-- Laravel 설정 확인: php artisan tinker --execute="echo config('database.default');"
-- 환경 설정 확인: cat .env
-- 로그 확인: tail -f storage/logs/laravel.log
-- 설정 캐시 클리어: php artisan config:clear
-- React Native 웹앱 실행: cd CrosswordPuzzleApp && npm run web
-- API 서버 실행: cd public && php -S 0.0.0.0:8080
+- Spring Boot 크로스워드 게임 재시작: cd /var/www/html/crossword-projects && ./gradlew bootRun --args='--server.port=8081' &
+- Spring Boot 게시판 시스템 재시작: cd /var/www/html/java-projects && ./gradlew bootRun --args='--server.port=8080' &
+- 실행 중인 Java 프로세스 확인: ps aux | grep -E "(java|gradle)" | grep -v grep
+- 포트 사용 상태 확인: netstat -tlnp | grep -E ":(8080|8081)"
+- Apache 상태 확인: systemctl status apache2
+- Apache 재시작: sudo systemctl restart apache2
+- React Native 웹앱 실행: cd CrosswordPuzzleApp && npm run web (현재 서비스 정지)
 - React 앱 빌드: cd CrosswordPuzzleApp && npm run build-web
-- 서비스 상태 확인: sudo systemctl status crossword-puzzle-app
 
 ## 주의사항
 - **원격 개발 환경**: SSH로 222.100.103.227에 직접 연결하여 작업
@@ -104,9 +105,10 @@
 - **모든 설명**: 한글로 진행
 - **스키마 변경**: puzzle_db_schema.sql에 반드시 기록
 - **DB 조작**: INSERT/UPDATE/DELETE/TRUNCATE/DROP 시 반드시 대화형 진행 
-- **로그 설정**: config/logging.php 수정 후 반드시 config:clear 실행
-- **React Native 웹앱**: 인증 토큰이 없으면 반드시 로그인 화면으로 이동해야 함
-- **빌드 후 서비스**: 빌드 완료 후 반드시 systemd 서비스 재시작 필요
+- **Spring Boot 서비스**: 백그라운드에서만 실행 (포그라운드 실행 금지)
+- **Apache 리버스 프록시**: 80 포트에서 8080, 8081 포트로 프록시 설정
+- **React Native 웹앱**: 현재 서비스 정지 상태 (3001 포트)
+- **서비스 관리**: systemd 서비스 등 백그라운드에서만 실행
 
 # Cursor AI 프로젝트 작업 규칙
 
@@ -264,4 +266,7 @@
 
 # 작업 규칙(중요)
 - 모든 서버와 서비스는 반드시 서버사이드(systemd 등 백그라운드)에서만 실행한다.
-- 터미널에서 직접 실행(포그라운드)은 금지. 
+- 터미널에서 직접 실행(포그라운드)은 금지.
+- Spring Boot 애플리케이션은 백그라운드에서 실행 (nohup 또는 & 사용)
+- Apache는 리버스 프록시로 80 포트에서 8080, 8081 포트로 프록시
+- React Native 웹앱은 현재 서비스 정지 상태 

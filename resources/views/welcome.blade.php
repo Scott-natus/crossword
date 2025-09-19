@@ -198,16 +198,17 @@
                                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                     <i class="fas fa-sign-out-alt me-1"></i>로그아웃
                                 </a>
+                                <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                                    @csrf
+                                </form>
                             </li>
                     @else
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ route('login') }}">로그인</a>
                             </li>
-                        @if (Route::has('register'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('register') }}">회원가입</a>
-                                </li>
-                        @endif
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ route('register') }}">회원가입</a>
+                            </li>
                     @endauth
                     </ul>
                 </div>
@@ -284,13 +285,14 @@
         </div>
 
         <div class="container text-center mt-4">
-            <div class="row justify-content-center">
+            <div class="d-flex flex-wrap justify-content-center gap-2">
                 @foreach($boardTypes as $type)
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('board.index', ['boardType' => $type->slug]) }}" class="btn btn-primary w-100">
-                            {{ $type->name }} 
-                        </a>
-                    </div>
+                    <a href="{{ route('board.index', ['boardType' => $type->slug]) }}" class="btn btn-primary">
+                        {{ $type->name }}
+                        @if($type->requires_auth)
+                            <i class="fas fa-lock text-warning ms-1" title="로그인 필요"></i>
+                        @endif
+                    </a>
                 @endforeach
             </div>
         </div>
@@ -305,7 +307,7 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         
         <!-- 로그아웃 폼 -->
-        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+        <form id="logout-form" action="#" method="POST" class="d-none">
             @csrf
         </form>
     </body>

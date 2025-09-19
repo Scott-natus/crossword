@@ -24,13 +24,14 @@ use App\Http\Controllers\OcrController;
 |
 */
 
+// 루트 경로 - 인증 없이 접근 가능 (미들웨어 완전 제거)
 Route::get('/', function () {
     $boardTypes = BoardType::where('is_active', true)
         ->orderBy('sort_order')
         ->orderBy('name')
         ->get();
     return view('welcome', compact('boardTypes'));
-});
+})->name('home')->withoutMiddleware(['web']);
 
 Route::get('/main', function () {
     $boardTypes = BoardType::where('is_active', true)
@@ -40,6 +41,7 @@ Route::get('/main', function () {
     return view('welcome', compact('boardTypes'));
 })->name('main');
 
+// 기본 인증 라우트 활성화
 Auth::routes();
 
 // SNS 로그인 라우트

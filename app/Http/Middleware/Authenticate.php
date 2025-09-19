@@ -22,6 +22,11 @@ class Authenticate extends Middleware
             return response()->json([], 200);
         }
 
+        // 루트 경로는 인증 체크 없이 바로 통과
+        if ($request->is('/')) {
+            return $next($request);
+        }
+
         return parent::handle($request, $next, ...$guards);
     }
 

@@ -23,6 +23,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // HTTPS 강제 설정 (프록시 환경에서)
+        if (env('FORCE_HTTPS', false)) {
+            \URL::forceScheme('https');
+        }
+        
         // 페이징 뷰로 Bootstrap 5 사용
         Paginator::useBootstrapFive();
 

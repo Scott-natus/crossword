@@ -224,7 +224,74 @@ expo build:ios      # iOS (macOS 필요)
 
 ---
 
-# Laravel Crossword Puzzle Management System - Workflow
+# Spring Boot 기반 크로스워드 퍼즐 시스템 - Workflow
+
+## 현재 서버 구성 (2025-09-19 업데이트)
+
+### 🏗️ **서버 아키텍처**
+- **운영 서버**: 222.100.103.227 (Ubuntu Linux)
+- **웹 서버**: Apache (80 포트) - 리버스 프록시 역할
+- **백엔드**: Spring Boot 애플리케이션들
+- **데이터베이스**: PostgreSQL
+
+### 📡 **포트 구성**
+- **80 포트**: Apache (리버스 프록시)
+  - `/api/board/` → 8080 포트 (게시판 시스템)
+  - `/K-CrossWord/` → 8081 포트 (크로스워드 게임)
+  - `/api/puzzle/` → 8081 포트 (크로스워드 게임 API)
+- **8080 포트**: Spring Boot 게시판 시스템
+- **8081 포트**: Spring Boot 크로스워드 게임 시스템
+- **3001 포트**: React Native 웹앱 (현재 서비스 정지 상태)
+
+### 🚀 **실행 중인 서비스**
+- ✅ **Apache**: 80 포트에서 리버스 프록시로 실행 중
+- ✅ **Spring Boot 게시판**: 8080 포트에서 실행 중
+- ✅ **Spring Boot 크로스워드**: 8081 포트에서 실행 중
+- ❌ **React Native 웹앱**: 3001 포트 서비스 정지 상태
+
+### 📁 **프로젝트 구조**
+- **크로스워드 게임**: `/var/www/html/crossword-projects/`
+- **게시판 시스템**: `/var/www/html/java-projects/` (추정)
+- **React Native 웹앱**: `/var/www/html/CrosswordPuzzleApp/` (서비스 정지)
+- **문서**: `/var/www/html/docs/`
+
+### 🔧 **서비스 관리 명령어**
+```bash
+# 크로스워드 게임 재시작
+cd /var/www/html/crossword-projects && ./gradlew bootRun --args='--server.port=8081' &
+
+# 게시판 시스템 재시작 (추정)
+cd /var/www/html/java-projects && ./gradlew bootRun --args='--server.port=8080' &
+
+# 실행 중인 Java 프로세스 확인
+ps aux | grep -E "(java|gradle)" | grep -v grep
+
+# 포트 사용 상태 확인
+netstat -tlnp | grep -E ":(8080|8081)"
+```
+
+---
+
+## 2025-09-19 작업 내역 (서버 다운 복구 및 구성 정리)
+
+### 문제 상황
+- Spring Boot 크로스워드 게임 시스템(8081 포트)과 게시판 시스템(8080 포트)이 모두 중지
+- 503 Service Unavailable 에러 발생
+- 사용자가 크로스워드 게임에 접근할 수 없는 상황
+
+### 해결 과정
+1. **서비스 상태 확인**: 두 Spring Boot 애플리케이션 모두 중지 상태 확인
+2. **Spring Boot 애플리케이션 재시작**: 백그라운드에서 정상 시작
+3. **포트 충돌 해결**: 3001 포트 사용 중인 불필요한 프로세스 정리
+4. **systemd 서비스 정리**: React Native 웹앱 관련 서비스 비활성화
+
+### 현재 상태
+- ✅ **크로스워드 게임**: 8081 포트에서 정상 실행 중
+- ✅ **게시판 시스템**: 8080 포트에서 정상 실행 중
+- ✅ **503 에러 해결**: 두 시스템 모두 정상 접근 가능
+- ✅ **Apache 리버스 프록시**: 80 포트에서 정상 작동
+
+---
 
 ## 2025-07-31 작업 내역 (React Native 모바일 앱 localStorage 에러 해결)
 
