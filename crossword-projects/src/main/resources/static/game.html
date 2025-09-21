@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-CrossWord 퍼즐 게임</title>
+    <link rel="icon" type="image/x-icon" href="https://natus250601.viewdns.net/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="https://natus250601.viewdns.net/favicon.ico">
+    <link rel="apple-touch-icon" href="https://natus250601.viewdns.net/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .puzzle-cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ccc;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1px;
+            cursor: pointer;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .puzzle-cell.black {
+            background-color: #000;
+            color: white;
+        }
+
+        .puzzle-cell.answered {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .puzzle-cell:hover {
+            background-color: #e9ecef;
+        }
+
+        .puzzle-cell.black:hover {
+            background-color: #333;
+        }
+
+        .cell-number {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .puzzle-cell.black .cell-number {
+            color: #fff;
+        }
+
+        .puzzle-cell.answered .cell-number {
+            color: #fff;
+        }
+
+        /* 템플릿 관리와 동일한 그리드 스타일 */
+        .grid-cell-number {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .grid-cell-number:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .word-number {
+            background: #ff6b6b;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .grid-container {
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* 자동완성 비활성화 */
+        #answer-input {
+            -webkit-autocomplete: none;
+            -moz-autocomplete: none;
+            -ms-autocomplete: none;
+            autocomplete: none;
+        }
+
+        /* 브라우저별 자동완성 스타일 숨기기 */
+        #answer-input:-webkit-autofill,
+        #answer-input:-webkit-autofill:hover,
+        #answer-input:-webkit-autofill:focus,
+        #answer-input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+            -webkit-text-fill-color: #000 !important;
+        }
+
+        /* 모바일 최적화 스타일 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 10px;
+            }
+            
+            .card-header h3 {
+                font-size: 1.5rem;
+            }
+            
+            .card-header h5 {
+                font-size: 1rem;
+            }
+            
+            .badge {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.5rem;
+            }
+            
+            .puzzle-cell {
+                width: 35px;
+                height: 35px;
+                font-size: 14px;
+            }
+            
+            .cell-number {
+                font-size: 8px;
+            }
+            
+            .word-number {
+                width: 16px;
+                height: 16px;
+                font-size: 8px;
+            }
+            
+            .col-md-4 {
+                margin-top: 1rem;
+            }
+            
+            .btn {
+                padding: 0.375rem 0.75rem;
+                font-size: 0.875rem;
+            }
+            
+            .form-control {
+                font-size: 0.875rem;
+            }
+        }
+
+        /* 매우 작은 모바일 화면 (320px 이하) */
+        @media (max-width: 320px) {
+            .puzzle-cell {
+                width: 30px;
+                height: 30px;
+                font-size: 12px;
+            }
+            
+            .cell-number {
+                font-size: 7px;
+            }
+            
+            .word-number {
+                width: 14px;
+                height: 14px;
+                font-size: 7px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 헤더 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-puzzle-piece me-2"></i>K-CrossWord
+            </a>
+            <div class="navbar-nav ms-auto">
+                <div id="userInfo" class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-1"></i><span id="userName">게스트</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header" id="userTypeHeader">게스트 모드</h6></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()">
+                            <i class="fas fa-sign-out-alt me-2"></i>로그아웃
+                        </a></li>
+                        <li><a class="dropdown-item" href="/">
+                            <i class="fas fa-home me-2"></i>메인으로
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <!-- 게임 그리드 -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-puzzle-piece me-2"></i>크로스워드 퍼즐
+                        </h3>
+                        <h5 class="mb-0 mt-2">
+                            <span class="badge bg-primary" id="levelBadge">레벨 1 (초급)</span>
+                        </h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <!-- 게임 통계 -->
+                        <div class="row mb-3">
+                            <div class="col-4">
+                                <div class="badge bg-success fs-6">정답: <span id="correctCount">0</span></div>
+                            </div>
+                            <div class="col-4">
+                                <div class="badge bg-danger fs-6">오답: <span id="wrongCount">0</span></div>
+                            </div>
+                            <div class="col-4">
+                                <div class="badge bg-warning fs-6">남은시간: <span id="timeLeft">300</span>초</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 클리어 조건 -->
+                        <div class="mb-3">
+                            <strong>클리어 조건/횟수 :</strong> (<span id="clearCount">0</span>/<span id="clearCondition">5</span>)
+                        </div>
+                        
+                        <!-- 퍼즐 그리드 -->
+                        <div id="puzzle-grid" class="mb-3"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 단어 입력 패널 -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-keyboard me-2"></i>단어 입력
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">힌트:</label>
+                            <div id="hintText" class="form-control-plaintext bg-light p-2 rounded">
+                                번호를 클릭하여 단어를 입력하세요.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="answer-input" class="form-label">정답 입력:</label>
+                            <input type="text" class="form-control" id="answer-input" 
+                                   placeholder="정답을 입력하세요" autocomplete="off">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="checkAnswer()">
+                                <i class="fas fa-check me-2"></i>확인
+                            </button>
+                            <button class="btn btn-info" onclick="getAdditionalHint()">
+                                <i class="fas fa-lightbulb me-2"></i>추가힌트
+                            </button>
+                            <button class="btn btn-warning" onclick="showAnswer()">
+                                <i class="fas fa-eye me-2"></i>정답보기
+                            </button>
+                        </div>
+                        
+                        <!-- 추가 힌트 영역 -->
+                        <div id="additionalHints" class="mt-3" style="display: none;">
+                            <h6>추가 힌트:</h6>
+                            <div id="additionalHintsList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 레벨 완료 모달 -->
+    <div class="modal fade" id="levelCompleteModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-trophy me-2"></i>레벨 완료
+                    </h5>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="alert alert-success">
+                        <h4>모든 단어를 맞추셨습니다!</h4>
+                        <p class="mb-0">다음 레벨로 진행하시겠습니까?</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="location.href='/'">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="nextLevel()">다음 레벨</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게임오버 모달 -->
+    <div class="modal fade" id="gameOverModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-skull me-2"></i>게임오버
+                    </h5>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="alert alert-danger">
+                        <h4>시간이 초과되었습니다.</h4>
+                        <p class="mb-0">5분 후 재시도 가능합니다.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="location.href='/'">메인으로</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 오답 초과 모달 -->
+    <div class="modal fade" id="wrongCountExceededModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i>오답 회수 초과
+                    </h5>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="alert alert-danger">
+                        <h4>오답회수가 초과했습니다!</h4>
+                        <p class="mb-0">레벨을 다시 시작합니다.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="location.reload()">레벨 재시작</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 게임 상태 변수
+        let currentWordId = null;
+        let currentHintId = null;
+        let baseHintId = null;
+        let currentTemplateWords = [];
+        let currentTemplate = null;
+        let answeredWords = new Set();
+        let answeredWordsData = new Map();
+        let gameTimer = null;
+        let timeLeft = 300;
+        let currentLevel = 1;
+        let clearCondition = 5;
+        let clearCount = 0;
+        let correctCount = 0;
+        let wrongCount = 0;
+        let userType = 'guest';
+        let userId = null;
+
+        // API 기본 URL
+        const API_BASE_URL = '/K-CrossWord/api/puzzle-game';
+
+        // 페이지 로드 시 초기화
+        $(document).ready(function() {
+            initializeGame();
+        });
+
+        // 게임 초기화
+        function initializeGame() {
+            // 사용자 정보 확인
+            checkUserStatus();
+            
+            // 템플릿 로드
+            loadTemplate();
+            
+            // 타이머 시작
+            if (timeLeft > 0) {
+                startTimer();
+            }
+            
+            // 클리어 조건 업데이트
+            updateClearCondition();
+        }
+
+        // UUID 생성 함수
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // 사용자 상태 확인 (게스트 모드 지원)
+        function checkUserStatus() {
+            const userToken = localStorage.getItem('user_token');
+            const userInfo = localStorage.getItem('user_info');
+            const guestId = localStorage.getItem('guest_id');
+            const userTypeStored = localStorage.getItem('user_type');
+            
+            if (userToken && userInfo) {
+                userType = 'user';
+                userId = JSON.parse(userInfo).id;
+                const userInfoObj = JSON.parse(userInfo);
+                document.getElementById('userName').textContent = userInfoObj.name;
+                document.getElementById('userTypeHeader').textContent = '로그인 사용자';
+            } else if (guestId || userTypeStored === 'guest') {
+                userType = 'guest';
+                
+                // 기존 guest_id가 "guest_" 접두사가 있는 형식이면 UUID로 변환
+                if (guestId && guestId.startsWith('guest_')) {
+                    console.log('기존 guest_id를 UUID로 변환:', guestId);
+                    userId = generateUUID();
+                    localStorage.setItem('guest_id', userId);
+                    localStorage.setItem('user_type', 'guest');
+                    console.log('새로운 UUID 생성:', userId);
+                } else {
+                    userId = guestId || generateUUID();
+                    if (!guestId) {
+                        localStorage.setItem('guest_id', userId);
+                        localStorage.setItem('user_type', 'guest');
+                    }
+                }
+                
+                document.getElementById('userName').textContent = '게스트';
+                document.getElementById('userTypeHeader').textContent = '게스트 모드';
+            } else {
+                // 로그인되지 않은 경우 메인으로 리다이렉트
+                window.location.href = '/';
+            }
+        }
+
+        // 템플릿 로드
+        function loadTemplate() {
+            const params = new URLSearchParams();
+            // 게스트 ID가 있으면 항상 전달 (임시 해결책)
+            if (userId) {
+                params.append('guestId', userId);
+            }
+            
+            fetch(`${API_BASE_URL}/template?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    currentTemplate = data.template;
+                    currentTemplateWords = data.template.words;
+                    currentLevel = data.level ? data.level.level : 1;
+                    clearCondition = data.level ? data.level.clearCondition : 5;
+                    
+                    // 레벨 정보 업데이트
+                    updateLevelInfo(data.level);
+                    
+                    // 그리드 렌더링
+                    renderPuzzleGrid(data.template);
+                    
+                    // 게임 상태 복원
+                    if (data.is_restored && data.game_state) {
+                        console.log('기존 게임 상태 복원:', data.game_state);
+                        restoreGameState(data.game_state, data.answered_words_with_answers);
+                    } else {
+                        console.log('새로운 퍼즐 시작');
+                    }
+                })
+                .catch(error => {
+                    console.error('템플릿 로드 오류:', error);
+                    alert('템플릿을 불러올 수 없습니다.');
+                });
+        }
+
+        // 레벨 정보 업데이트
+        function updateLevelInfo(level) {
+            if (level) {
+                document.getElementById('levelBadge').textContent = `레벨 ${level.level} (${level.levelName})`;
+                document.getElementById('clearCondition').textContent = level.clearCondition;
+                clearCondition = level.clearCondition;
+            }
+        }
+
+        // 게임 상태 복원 (Laravel과 동일한 로직)
+        function restoreGameState(gameState, answeredWordsWithAnswers) {
+            if (!gameState) return;
+            
+            console.log('게임 상태 복원 시작:', gameState);
+            
+            // 정답 단어 복원
+            if (gameState.answered_words && Array.isArray(gameState.answered_words)) {
+                gameState.answered_words.forEach(function(wordId) {
+                    answeredWords.add(wordId);
+                    if (answeredWordsWithAnswers && answeredWordsWithAnswers[wordId]) {
+                        answeredWordsData.set(wordId, answeredWordsWithAnswers[wordId]);
+                    } else {
+                        answeredWordsData.set(wordId, '***');
+                    }
+                });
+                console.log('정답 단어 복원 완료:', answeredWords.size, '개');
+            }
+            
+            // 게임 통계 복원
+            if (gameState.correct_count !== undefined) {
+                correctCount = gameState.correct_count;
+                document.getElementById('correctCount').textContent = correctCount;
+            }
+            
+            if (gameState.wrong_count !== undefined) {
+                wrongCount = gameState.wrong_count;
+                document.getElementById('wrongCount').textContent = wrongCount;
+            }
+            
+            // 클리어 카운트 복원
+            if (gameState.clear_count !== undefined) {
+                clearCount = gameState.clear_count;
+                document.getElementById('clearCount').textContent = clearCount;
+            }
+            
+            // 오답 기록 복원 (선택적)
+            if (gameState.wrong_answers) {
+                console.log('오답 기록 복원:', gameState.wrong_answers);
+            }
+            
+            // 힌트 사용 기록 복원 (선택적)
+            if (gameState.hints_used) {
+                console.log('힌트 사용 기록 복원:', gameState.hints_used);
+            }
+            
+            // 그리드에 정답 상태 표시
+            restoreAnsweredCells();
+            
+            console.log('게임 상태 복원 완료 - 정답:', correctCount, '오답:', wrongCount, '클리어:', clearCount);
+        }
+
+        // 정답된 셀 복원
+        function restoreAnsweredCells() {
+            answeredWords.forEach(function(wordId) {
+                const wordInfo = currentTemplateWords.find(w => w.word_id === wordId);
+                if (wordInfo) {
+                    const answer = answeredWordsData.get(wordId);
+                    if (answer && answer !== '***') {
+                        fillWordInGrid(wordInfo, answer);
+                    }
+                }
+            });
+        }
+
+        // 그리드 렌더링
+        function renderPuzzleGrid(template) {
+            const grid = document.getElementById('puzzle-grid');
+            grid.innerHTML = '';
+            
+            const gridData = template.grid_pattern;
+            const words = template.words;
+            const gridSize = gridData.length;
+            
+            // 동적 셀 크기 계산
+            const cellSize = calculateCellSize(gridSize);
+            
+            let html = `<div class="grid-container" style="display: inline-block; border: 2px solid #333; max-width: 90vw; max-height: 90vh; margin: 0 auto;">`;
+            
+            for (let y = 0; y < gridData.length; y++) {
+                html += '<div class="grid-row" style="display: flex;">';
+                for (let x = 0; x < gridData[y].length; x++) {
+                    const cellValue = gridData[y][x];
+                    const wordInfo = getWordInfoAtPosition(x, y, words);
+                    const hasWords = getWordsAtPosition(x, y, words).length > 0;
+                    
+                    let cellClass = 'puzzle-cell';
+                    let cellContent = '';
+                    let clickEvent = '';
+                    
+                    if (cellValue === 2) { // 검은색칸 (단어가 있는 칸)
+                        cellClass += ' black';
+                        
+                        // 번호는 시작 위치에만 표시 (Laravel 로직과 동일)
+                        if (wordInfo) {
+                            if (wordInfo.isIntersection) {
+                                // 교차점인 경우: 가로 단어는 왼쪽 위, 세로 단어는 오른쪽 아래
+                                const badgeSize = Math.max(16, Math.min(20, cellSize * 0.4));
+                                const fontSize = Math.max(8, Math.min(12, cellSize * 0.25));
+                                cellContent = `
+                                    <div style="position: relative; width: 100%; height: 100%;">
+                                        <span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${wordInfo.horizontalWord.word_id}</span>
+                                        <span class="word-number" style="position: absolute; bottom: 2px; right: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #4ecdc4; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${wordInfo.verticalWord.word_id}</span>
+                                    </div>
+                                `;
+                            } else {
+                                // 단일 단어인 경우: 왼쪽 위에 배치
+                                const badgeSize = Math.max(16, Math.min(20, cellSize * 0.4));
+                                const fontSize = Math.max(8, Math.min(12, cellSize * 0.25));
+                                cellContent = `<span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${wordInfo.word_id}</span>`;
+                            }
+                        }
+                        
+                        // 클릭 이벤트는 모든 검은색 칸에 추가
+                        if (hasWords) {
+                            clickEvent = ` onclick="handleCellClick(${y}, ${x}, ${JSON.stringify(words).replace(/"/g, '&quot;')})" style="cursor: pointer;"`;
+                        }
+                    } else { // 흰색칸 (빈 칸)
+                        cellClass += ' bg-light';
+                        cellContent = '□';
+                    }
+                    
+                    const fontSize = Math.max(8, Math.min(14, cellSize * 0.3));
+                    // data-word-id 속성 추가 (보안을 위해 단어 ID만 저장)
+                    const dataWordId = wordInfo ? (wordInfo.pz_word_id || wordInfo.word_id) : '';
+                    const dataAttr = dataWordId ? ` data-word-id="${dataWordId}"` : '';
+                    html += `<div class="${cellClass}" style="width: ${cellSize}px; height: ${cellSize}px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}px; font-weight: bold; box-sizing: border-box;"${clickEvent}${dataAttr}>${cellContent}</div>`;
+                }
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            grid.innerHTML = html;
+        }
+
+        // 동적 셀 크기 계산
+        function calculateCellSize(gridSize) {
+            const isMobile = window.innerWidth <= 480;
+            const isPortrait = window.innerHeight > window.innerWidth;
+            
+            let availableWidth, availableHeight;
+            
+            if (isMobile && isPortrait) {
+                availableWidth = window.innerWidth * 0.9;
+                availableHeight = window.innerHeight * 0.9;
+            } else if (isMobile) {
+                availableWidth = window.innerWidth * 0.85;
+                availableHeight = window.innerHeight * 0.8;
+            } else {
+                availableWidth = Math.min(600, window.innerWidth * 0.8);
+                availableHeight = Math.min(600, window.innerHeight * 0.8);
+            }
+
+            const borderWidth = 2;
+            const cellBorder = 1;
+            const gap = 0;
+            
+            const totalBorderWidth = borderWidth * 2 + (gridSize - 1) * cellBorder * 2;
+            const totalGapWidth = (gridSize - 1) * gap;
+            
+            const maxCellWidth = (availableWidth - totalBorderWidth - totalGapWidth) / gridSize;
+            const maxCellHeight = (availableHeight - totalBorderWidth - totalGapWidth) / gridSize;
+            
+            const calculatedSize = Math.min(maxCellWidth, maxCellHeight);
+            
+            const minSize = isMobile ? 12 : 20;
+            const maxSize = isMobile ? 35 : 50;
+            
+            const finalSize = Math.max(minSize, Math.min(maxSize, calculatedSize));
+            
+            return finalSize;
+        }
+
+        // 셀 클릭 처리
+        function handleCellClick(y, x, words) {
+            const wordInfo = getWordInfoAtPosition(x, y, words);
+            if (wordInfo) {
+                currentWordId = wordInfo.pz_word_id;
+                currentHintId = wordInfo.hint_id;
+                baseHintId = wordInfo.hint_id;
+                
+                // 힌트 표시
+                document.getElementById('hintText').textContent = wordInfo.hint || '힌트가 없습니다.';
+                
+                // 입력 필드 포커스
+                document.getElementById('answer-input').focus();
+            }
+        }
+
+        // 위치에서 단어 정보 가져오기
+        function getWordInfoAtPosition(x, y, words) {
+            let horizontalWord = null;
+            let verticalWord = null;
+            
+            for (const wordInfo of words) {
+                const word = wordInfo.position;
+                
+                // 가로 방향 단어
+                if (word.direction === 'horizontal') {
+                    if (y === word.start_y && x >= word.start_x && x <= word.end_x) {
+                        // 단어의 시작 위치인지 확인
+                        if (x === word.start_x) {
+                            horizontalWord = wordInfo;
+                        }
+                    }
+                }
+                // 세로 방향 단어
+                else if (word.direction === 'vertical') {
+                    if (x === word.start_x && y >= word.start_y && y <= word.end_y) {
+                        // 단어의 시작 위치인지 확인
+                        if (y === word.start_y) {
+                            verticalWord = wordInfo;
+                        }
+                    }
+                }
+            }
+            
+            // 교차점인 경우: 가로 단어 우선, 세로 단어는 작은 번호로 표시
+            if (horizontalWord && verticalWord) {
+                // 가로 단어를 메인으로 반환하되, 교차점 정보 포함
+                return {
+                    ...horizontalWord,
+                    isIntersection: true,
+                    horizontalWord: horizontalWord,
+                    verticalWord: verticalWord
+                };
+            }
+            
+            // 단일 단어인 경우
+            return horizontalWord || verticalWord;
+        }
+
+        // 위치에서 모든 단어 가져오기
+        function getWordsAtPosition(x, y, words) {
+            const result = [];
+            for (let word of words) {
+                const pos = word.position;
+                if (pos.direction === 'horizontal' && pos.start_y === y && x >= pos.start_x && x <= pos.end_x) {
+                    result.push(word);
+                } else if (pos.direction === 'vertical' && pos.start_x === x && y >= pos.start_y && y <= pos.end_y) {
+                    result.push(word);
+                }
+            }
+            return result;
+        }
+
+        // 정답 확인
+        function checkAnswer() {
+            const answer = document.getElementById('answer-input').value.trim();
+            if (!answer || !currentWordId) {
+                alert('단어를 선택하고 정답을 입력해주세요.');
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            params.append('wordId', currentWordId);
+            params.append('answer', answer);
+            if (userType === 'guest') {
+                params.append('guestId', userId);
+            }
+            
+            fetch(`${API_BASE_URL}/check-answer`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                if (data.is_correct) {
+                    // 정답 처리
+                    correctCount++;
+                    document.getElementById('correctCount').textContent = correctCount;
+                    
+                    // 그리드에 정답 표시
+                    const wordInfo = currentTemplateWords.find(w => w.pz_word_id === currentWordId);
+                    if (wordInfo) {
+                        fillWordInGrid(wordInfo, answer);
+                        answeredWords.add(wordInfo.word_id);
+                        answeredWordsData.set(wordInfo.word_id, answer);
+                    }
+                    
+                    // 입력 필드 초기화
+                    document.getElementById('answer-input').value = '';
+                    document.getElementById('hintText').textContent = '번호를 클릭하여 단어를 입력하세요.';
+                    currentWordId = null;
+                    
+                    // 레벨 완료 체크
+                    checkLevelComplete();
+                    
+                    alert('정답입니다!');
+                } else {
+                    // 오답 처리
+                    wrongCount++;
+                    document.getElementById('wrongCount').textContent = wrongCount;
+                    
+                    if (data.wrong_count_exceeded) {
+                        // 오답 초과 모달 표시
+                        const modal = new bootstrap.Modal(document.getElementById('wrongCountExceededModal'));
+                        modal.show();
+                    } else {
+                        alert(data.message);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('정답 확인 오류:', error);
+                alert('정답 확인 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 그리드에 단어 채우기
+        function fillWordInGrid(wordInfo, answer) {
+            const pos = wordInfo.position;
+            const cells = document.querySelectorAll('.grid-cell-number');
+            const gridSize = currentTemplate.grid_pattern.length;
+            
+            for (let i = 0; i < answer.length; i++) {
+                let x, y;
+                if (pos.direction === 'horizontal') {
+                    x = pos.start_x + i;
+                    y = pos.start_y;
+                } else {
+                    x = pos.start_x;
+                    y = pos.start_y + i;
+                }
+                
+                const cellIndex = y * gridSize + x;
+                if (cells[cellIndex]) {
+                    cells[cellIndex].textContent = answer[i];
+                    cells[cellIndex].classList.add('answered');
+                }
+            }
+        }
+
+        // 추가 힌트 가져오기
+        function getAdditionalHint() {
+            if (!currentWordId) {
+                alert('단어를 선택해주세요.');
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            params.append('wordId', currentWordId);
+            if (currentHintId) {
+                params.append('currentHintId', currentHintId);
+            }
+            if (baseHintId) {
+                params.append('baseHintId', baseHintId);
+            }
+            if (userType === 'guest') {
+                params.append('guestId', userId);
+            }
+            
+            fetch(`${API_BASE_URL}/get-hints?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.hints && data.hints.length > 0) {
+                        const hintDiv = document.getElementById('additionalHints');
+                        const hintsList = document.getElementById('additionalHintsList');
+                        
+                        hintsList.innerHTML += `<div class="alert alert-info">${data.hints[0]}</div>`;
+                        hintDiv.style.display = 'block';
+                        
+                        currentHintId = data.hint_id;
+                    } else {
+                        alert(data.message || '더 이상 사용할 수 있는 힌트가 없습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('힌트 가져오기 오류:', error);
+                    alert('힌트를 가져오는 중 오류가 발생했습니다.');
+                });
+        }
+
+        // 정답보기
+        function showAnswer() {
+            if (!currentWordId) {
+                alert('단어를 선택해주세요.');
+                return;
+            }
+            
+            // 관리자 권한 확인 (임시로 토큰 확인)
+            const userToken = localStorage.getItem('user_token');
+            if (!userToken) {
+                alert('정답보기는 로그인한 사용자만 이용할 수 있습니다.');
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            params.append('wordId', currentWordId);
+            if (userType === 'guest') {
+                params.append('guestId', userId);
+            }
+            
+            fetch(`${API_BASE_URL}/show-answer?${params}`, {
+                headers: {
+                    'Authorization': `Bearer ${userToken}`
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`정답: ${data.answer}`);
+                    } else {
+                        alert(data.error || '정답을 가져올 수 없습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('정답보기 오류:', error);
+                    alert('정답보기 중 오류가 발생했습니다.');
+                });
+        }
+
+        // 레벨 완료 체크 (Laravel과 동일한 로직)
+        function checkLevelComplete() {
+            // 모든 단어가 정답인지 확인
+            if (answeredWords.size >= currentTemplateWords.length) {
+                // 서버에 레벨 완료 요청
+                const params = new URLSearchParams();
+                params.append('score', 0);
+                params.append('playTime', 0);
+                params.append('hintsUsed', 0);
+                params.append('wordsFound', answeredWords.size);
+                params.append('totalWords', currentTemplateWords.length);
+                params.append('accuracy', 100);
+                if (userType === 'guest') {
+                    params.append('guestId', userId);
+                }
+                
+                fetch(`${API_BASE_URL}/complete-level`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: params
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    if (data.condition_met) {
+                        // 클리어 조건 충족: 다음 레벨로 이동
+                        if (data.is_final_level) {
+                            document.getElementById('levelCompleteModal').querySelector('.modal-body').innerHTML = `
+                                <div class="alert alert-success">
+                                    <h4>${data.message}</h4>
+                                    <p class="mb-0">모든 레벨을 완료하셨습니다!</p>
+                                </div>
+                            `;
+                            document.getElementById('levelCompleteModal').querySelector('.modal-footer').innerHTML = `
+                                <button type="button" class="btn btn-primary" onclick="location.href='/'">메인으로</button>
+                            `;
+                        } else {
+                            document.getElementById('levelCompleteModal').querySelector('.modal-body').innerHTML = `
+                                <div class="alert alert-success">
+                                    <h4>${data.message}</h4>
+                                    <p class="mb-0">확인 버튼을 누르면 다음 레벨로 이동합니다.</p>
+                                </div>
+                            `;
+                            document.getElementById('levelCompleteModal').querySelector('.modal-footer').innerHTML = `
+                                <button type="button" class="btn btn-secondary" onclick="location.href='/'">취소</button>
+                                <button type="button" class="btn btn-primary" onclick="nextLevel()">다음 레벨</button>
+                            `;
+                        }
+                    } else {
+                        // 클리어 조건 미달: 새 퍼즐로 재도전
+                        document.getElementById('levelCompleteModal').querySelector('.modal-body').innerHTML = `
+                            <div class="alert alert-warning">
+                                <h4>${data.message}</h4>
+                                <p class="mb-0">확인 버튼을 누르면 새 퍼즐로 재도전합니다.</p>
+                            </div>
+                        `;
+                        document.getElementById('levelCompleteModal').querySelector('.modal-footer').innerHTML = `
+                            <button type="button" class="btn btn-secondary" onclick="location.href='/'">취소</button>
+                            <button type="button" class="btn btn-primary" onclick="restartLevel()">새 퍼즐</button>
+                        `;
+                    }
+                    
+                    // 레벨 완료 모달 표시
+                    const modal = new bootstrap.Modal(document.getElementById('levelCompleteModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('레벨 완료 체크 오류:', error);
+                    alert('레벨 완료 확인 중 오류가 발생했습니다.');
+                });
+            }
+        }
+
+        // 다음 레벨
+        function nextLevel() {
+            currentLevel++;
+            // 새로운 레벨 로드
+            loadTemplate();
+        }
+
+        // 레벨 재시작 (새 퍼즐)
+        function restartLevel() {
+            // 게임 상태 초기화
+            answeredWords.clear();
+            answeredWordsData.clear();
+            correctCount = 0;
+            wrongCount = 0;
+            clearCount = 0;
+            
+            // UI 업데이트
+            document.getElementById('correctCount').textContent = correctCount;
+            document.getElementById('wrongCount').textContent = wrongCount;
+            document.getElementById('clearCount').textContent = clearCount;
+            
+            // 서버에 게임 상태 초기화 요청
+            const params = new URLSearchParams();
+            if (userType === 'guest') {
+                params.append('guestId', userId);
+            }
+            
+            fetch(`${API_BASE_URL}/reset-game-state`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('게임 상태 초기화 완료');
+                }
+            })
+            .catch(error => {
+                console.error('게임 상태 초기화 오류:', error);
+            });
+            
+            // 새로운 퍼즐 로드
+            loadTemplate();
+        }
+
+        // 타이머 시작
+        function startTimer() {
+            gameTimer = setInterval(function() {
+                timeLeft--;
+                document.getElementById('timeLeft').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(gameTimer);
+                    // 게임오버 모달 표시
+                    const modal = new bootstrap.Modal(document.getElementById('gameOverModal'));
+                    modal.show();
+                }
+            }, 1000);
+        }
+
+        // 클리어 조건 업데이트
+        function updateClearCondition() {
+            const params = new URLSearchParams();
+            params.append('level', currentLevel);
+            if (userType === 'guest') {
+                params.append('guestId', userId);
+            }
+            
+            fetch(`${API_BASE_URL}/get-clear-condition?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('clearCondition').textContent = data.clear_condition;
+                        clearCondition = data.clear_condition;
+                    }
+                })
+                .catch(error => {
+                    console.error('클리어 조건 조회 오류:', error);
+                });
+        }
+
+        // 로그아웃 (게스트/로그인 사용자 모두 지원)
+        function logout() {
+            if (userType === 'user') {
+                // 로그인 사용자 로그아웃
+                const userToken = localStorage.getItem('user_token');
+                if (userToken) {
+                    // 서버에 로그아웃 요청 (선택적)
+                    fetch('/api/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${userToken}`,
+                            'Content-Type': 'application/json',
+                        }
+                    }).catch(error => {
+                        console.log('로그아웃 API 호출 실패:', error);
+                    });
+                }
+            }
+            
+            // 모든 로컬 스토리지 데이터 삭제
+            localStorage.removeItem('user_token');
+            localStorage.removeItem('user_info');
+            localStorage.removeItem('guest_id');
+            localStorage.removeItem('user_type');
+            
+            // 메인 페이지로 이동
+            window.location.href = '/';
+        }
+
+        // Enter 키로 정답 확인
+        document.getElementById('answer-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        // 타이머 시작 (Laravel과 동일한 로직)
+        function startTimer() {
+            gameTimer = setInterval(function() {
+                timeLeft--;
+                document.getElementById('timeLeft').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(gameTimer);
+                    gameOver();
+                }
+            }, 1000);
+        }
+
+        // 게임오버 처리 (Laravel과 동일한 로직)
+        function gameOver() {
+            const params = new URLSearchParams();
+            if (userType === 'guest' && userId) {
+                params.append('guestId', userId);
+            }
+            
+            fetch(`${API_BASE_URL}/game-over`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('게임오버 처리 오류:', data.error);
+                    alert('게임오버 처리 중 오류가 발생했습니다.');
+                } else {
+                    // 게임오버 모달 표시
+                    const modal = new bootstrap.Modal(document.getElementById('gameOverModal'));
+                    modal.show();
+                }
+            })
+            .catch(error => {
+                console.error('게임오버 API 호출 오류:', error);
+                alert('게임오버 처리 중 오류가 발생했습니다.');
+            });
+        }
+    </script>
+</body>
+</html>

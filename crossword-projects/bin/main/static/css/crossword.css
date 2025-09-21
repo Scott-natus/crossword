@@ -46,11 +46,105 @@
     max-width: 400px;
 }
 
-/* 그리드 스타일 */
+/* Laravel 버전과 정확히 동일한 그리드 스타일 */
+.puzzle-cell {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #ccc;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    cursor: pointer;
+    font-weight: bold;
+    position: relative;
+    box-sizing: border-box;
+    background: white;
+}
+
+.puzzle-cell.black {
+    background-color: #000;
+    color: white;
+}
+
+.puzzle-cell.answered {
+    background-color: #6c757d;
+    color: white;
+}
+
+.puzzle-cell:hover {
+    background-color: #e9ecef;
+}
+
+.puzzle-cell.black:hover {
+    background-color: #333;
+}
+
+.puzzle-cell.bg-light {
+    background-color: #f8f9fa;
+}
+
+.puzzle-cell.bg-dark {
+    background-color: #000;
+    color: white;
+}
+
+.cell-number {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 10px;
+    color: #666;
+}
+
+.puzzle-cell.black .cell-number {
+    color: #fff;
+}
+
+.puzzle-cell.answered .cell-number {
+    color: #fff;
+}
+
+/* 템플릿 관리와 동일한 그리드 스타일 */
+.grid-cell-number {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.grid-cell-number:hover {
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+.word-number {
+    background: #ff6b6b;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.grid-container {
+    background: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* 그리드 스타일 - Laravel 버전과 동일하게 */
 .crossword-grid {
     display: inline-block;
     border: 2px solid #333;
     background: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .grid-row {
@@ -58,8 +152,8 @@
 }
 
 .grid-cell {
-    width: 30px;
-    height: 30px;
+    width: 40px;
+    height: 40px;
     border: 1px solid #ccc;
     display: flex;
     align-items: center;
@@ -68,21 +162,33 @@
     position: relative;
     background: white;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 18px;
+    transition: all 0.2s ease;
+    margin: 1px;
+}
+
+.grid-cell:hover {
+    background-color: #e9ecef;
 }
 
 .grid-cell.black {
-    background: #333;
+    background-color: #000;
+    color: white;
     cursor: default;
+}
+
+.grid-cell.black:hover {
+    background-color: #333;
 }
 
 .grid-cell.selected {
     background: #007bff;
     color: white;
+    border-color: #0056b3;
 }
 
 .grid-cell.found {
-    background: #28a745;
+    background-color: #6c757d;
     color: white;
 }
 
@@ -92,6 +198,42 @@
 
 .cell-content {
     user-select: none;
+    color: #333;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.grid-cell.found .cell-content {
+    color: white;
+}
+
+/* 셀 번호 스타일 */
+.cell-number {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 10px;
+    color: #666;
+}
+
+.grid-cell.black .cell-number {
+    color: #fff;
+}
+
+.grid-cell.found .cell-number {
+    color: #fff;
+}
+
+/* 그리드 컨테이너 스타일 */
+.grid-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    background: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 20px;
 }
 
 /* 힌트 스타일 */
@@ -276,7 +418,7 @@
     background: #0056b3;
 }
 
-/* 반응형 디자인 */
+/* 반응형 디자인 - Laravel 버전과 정확히 동일하게 */
 @media (max-width: 768px) {
     .puzzle-content {
         flex-direction: column;
@@ -286,9 +428,61 @@
         max-width: none;
     }
     
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .puzzle-cell {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+    }
+    
+    .grid-cell {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+    }
+    
+    .cell-content {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .puzzle-cell {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+    
+    .grid-cell {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+    
+    .cell-content {
+        font-size: 12px;
+    }
+}
+
+/* 매우 작은 모바일 화면 (320px 이하) */
+@media (max-width: 320px) {
+    .puzzle-cell {
+        width: 25px;
+        height: 25px;
+        font-size: 10px;
+    }
+    
     .grid-cell {
         width: 25px;
         height: 25px;
-        font-size: 12px;
+        font-size: 10px;
+    }
+    
+    .cell-content {
+        font-size: 10px;
     }
 }

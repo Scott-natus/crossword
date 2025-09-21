@@ -44,6 +44,20 @@ Route::get('/main', function () {
 // 기본 인증 라우트 활성화
 Auth::routes();
 
+
+// 테스트용 로그인2 라우트
+Route::get('login2', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm2'])->name('login2');
+Route::post('login2', [App\Http\Controllers\Auth\LoginController::class, 'login']);
+
+// 테스트용 로그인3 라우트 (완전히 다른 방식)
+Route::get('login3', function () {
+})->name('login3');
+Route::post('login3', [App\Http\Controllers\Auth\LoginController::class, 'login']);
+
+// 테스트용 - login 키워드 없는 라우트
+Route::get('login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
+Route::post('login', [App\Http\Controllers\Auth\LoginController::class, 'login']);
+
 // SNS 로그인 라우트
 Route::get('auth/google', [SocialLoginController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('auth/google/callback', [SocialLoginController::class, 'handleGoogleCallback']);

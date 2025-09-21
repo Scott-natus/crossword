@@ -12,7 +12,7 @@ class TrustProxies extends Middleware
      *
      * @var array<int, string>|string|null
      */
-    protected $proxies;
+    protected $proxies = '*'; // 모든 프록시 신뢰 (Apache 리버스 프록시용)
 
     /**
      * The headers that should be used to detect proxies.

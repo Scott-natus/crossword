@@ -26,7 +26,19 @@ class AppServiceProvider extends ServiceProvider
         // HTTPS 강제 설정 (프록시 환경에서)
         if (env('FORCE_HTTPS', false)) {
             \URL::forceScheme('https');
+            \URL::forceRootUrl(env('APP_URL'));
         }
+        
+        // HTTPS 강제 설정 (프록시 헤더 확인)
+        if (request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https') {
+            \URL::forceScheme('https');
+        }
+        
+        // 로그인 페이지 특별 처리 제거 (Chrome "위험한 사이트" 문제 해결)
+        // if (request()->is('login') || request()->is('login/*')) {
+        //     \URL::forceScheme('https');
+        //     \URL::forceRootUrl('https://natus250601.viewdns.net:9000');
+        // }
         
         // 페이징 뷰로 Bootstrap 5 사용
         Paginator::useBootstrapFive();

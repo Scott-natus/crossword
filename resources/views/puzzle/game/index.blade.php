@@ -642,9 +642,13 @@ function handleCellClick(row, col, words) {
     // 힌트보기 버튼 재활성화 (새로운 단어 선택 시)
     $('#show-hint-btn').prop('disabled', false).text('힌트보기');
     
-    // 우측 힌트 영역에 기본 힌트만 표시 (카테고리 포함)
+    // 디버깅: selectedWord 객체 확인
+    console.log('selectedWord 객체:', selectedWord);
+    console.log('selectedWord.hint:', selectedWord.hint);
+    
+    // 우측 힌트 영역에 기본 힌트만 표시 (힌트 내용만)
     $('#current-hint').html(`
-        <strong>힌트:</strong> [${selectedWord.category || '일반'}] ${selectedWord.hint || '힌트가 없습니다.'}
+        <strong>힌트:</strong> ${selectedWord.hint || '힌트가 없습니다.'}
     `);
     
     $('#answer-input').val('').focus();

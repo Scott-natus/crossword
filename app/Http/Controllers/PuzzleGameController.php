@@ -129,6 +129,13 @@ class PuzzleGameController extends Controller
             $puzzleData = $game->getCurrentPuzzleData();
             $gameState = $game->getCurrentGameState();
             
+            // 기존 세션 복원 시 힌트 조회 로그 추가
+            \Log::info("기존 세션 복원 - 퍼즐 데이터 확인", [
+                'user_id' => $userId,
+                'puzzleData' => $puzzleData,
+                'has_words' => isset($puzzleData['words']) ? count($puzzleData['words']) : 0
+            ]);
+            
             // 정답 단어 정보 추가 (보안을 위해 맞춘 단어만)
             $answeredWordsWithAnswers = [];
             if (isset($gameState['answered_words']) && is_array($gameState['answered_words'])) {
@@ -241,11 +248,22 @@ class PuzzleGameController extends Controller
             
             // 기본 힌트 정보만 추가 (정답 단어는 제외)
             if ($pzWord) {
-                // 먼저 is_primary = true인 힌트를 찾고, 없으면 첫 번째 힌트를 사용
+                \Log::info("단어 힌트 조회 시작", [
+                    'word_id' => $pzWord->id,
+                    'word' => $pzWord->word
+                ]);
+                
+                // 먼저 is_primary = 't'인 힌트를 찾고, 없으면 첫 번째 힌트를 사용
                 $baseHint = DB::table('pz_hints')
                     ->where('word_id', $pzWord->id)
-                    ->where('is_primary', true)
+                    ->where('is_primary', 't')
+                    ->orderBy('id', 'asc')
                     ->first();
+                
+                \Log::info("is_primary 힌트 조회 결과", [
+                    'word_id' => $pzWord->id,
+                    'baseHint' => $baseHint
+                ]);
                 
                 // is_primary = true인 힌트가 없으면 첫 번째 힌트를 기본 힌트로 사용
                 if (!$baseHint) {
@@ -253,13 +271,25 @@ class PuzzleGameController extends Controller
                         ->where('word_id', $pzWord->id)
                         ->orderBy('id', 'asc')
                         ->first();
+                    
+                    \Log::info("fallback 힌트 조회 결과", [
+                        'word_id' => $pzWord->id,
+                        'fallbackHint' => $baseHint
+                    ]);
                 }
                 
                 $secureWordInfo['hint_id'] = $baseHint ? $baseHint->id : null;
                 $secureWordInfo['hint'] = $baseHint ? $baseHint->hint_text : '힌트가 없습니다.';
+                
+                \Log::info("최종 힌트 정보", [
+                    'word_id' => $pzWord->id,
+                    'hint_id' => $secureWordInfo['hint_id'],
+                    'hint' => $secureWordInfo['hint']
+                ]);
             } else {
                 $secureWordInfo['hint_id'] = null;
                 $secureWordInfo['hint'] = '힌트가 없습니다.';
+                \Log::info("단어를 찾을 수 없음", ['word' => $wordInfo['extracted_word']]);
             }
             
             $wordsWithIds[] = $secureWordInfo;

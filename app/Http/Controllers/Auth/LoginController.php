@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
@@ -27,6 +28,31 @@ class LoginController extends Controller
      * @var string
      */
     protected $redirectTo = '/main';
+    
+    /**
+     * Get the failed login response instance.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Symfony\Component\HttpFoundation\Response
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    protected function sendFailedLoginResponse(Request $request)
+    {
+        throw ValidationException::withMessages([
+            $this->username() => [trans('auth.failed')],
+        ])->redirectTo('/login');
+    }
+    
+    /**
+     * Get the post-login redirect path.
+     *
+     * @return string
+     */
+    public function redirectPath()
+    {
+        return '/main';
+    }
 
     /**
      * Create a new controller instance.
@@ -64,23 +90,18 @@ class LoginController extends Controller
             cookie()->queue(cookie()->forget('remember_me'));
         }
         
-        // 리다이렉션 URL이 있으면 해당 URL로, 없으면 기본 경로로
-        $redirectUrl = $request->get('redirect');
-        
-        // redirect 파라미터가 없거나 현재 로그인 페이지 URL과 같으면 기본 경로로
-        if (!$redirectUrl || $redirectUrl === request()->url()) {
-            $redirectUrl = $this->redirectPath();
-        }
-        
-        // 디버깅 로그 추가
-        \Log::info('Login redirect debug', [
-            'get_redirect' => $request->get('redirect'),
-            'current_url' => request()->url(),
-            'redirectPath' => $this->redirectPath(),
-            'final_redirect' => $redirectUrl
-        ]);
-        
-        return redirect($redirectUrl);
+        // 로그인 성공 시 무조건 /main으로 리다이렉트 (위험한 사이트 문제 해결)
+        return redirect('/main');
+    }
+
+    /**
+     * Show the application's login form (login2).
+     *
+     * @return \Illuminate\View\View
+     */
+    public function showLoginForm2()
+    {
+        return view('auth.login2');
     }
 
     /**

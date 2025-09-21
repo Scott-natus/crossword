@@ -4,364 +4,377 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>K-CrossWord</title>
+    <link rel="icon" type="image/x-icon" href="https://natus250601.viewdns.net/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="https://natus250601.viewdns.net/favicon.ico">
+    <link rel="apple-touch-icon" href="https://natus250601.viewdns.net/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #f8f9fa;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .puzzle-cell {
-            width: 40px;
-            height: 40px;
-            border: 1px solid #ccc;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin: 1px;
-            cursor: pointer;
-            font-weight: bold;
-            position: relative;
-        }
-        .puzzle-cell.black {
-            background-color: #000;
-            color: white;
-        }
-        .puzzle-cell.answered {
-            background-color: #6c757d;
-            color: white;
-        }
-        .puzzle-cell:hover {
-            background-color: #e9ecef;
-        }
-        .puzzle-cell.black:hover {
-            background-color: #333;
-        }
-        .cell-number {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            font-size: 10px;
-            color: #666;
-        }
-        .puzzle-cell.black .cell-number {
-            color: #fff;
-        }
-        .puzzle-cell.answered .cell-number {
-            color: #fff;
-        }
-        .word-number {
-            background: #ff6b6b;
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
+        .main-container {
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            padding: 20px;
         }
-        .word-number.vertical {
-            background: #4ecdc4;
-        }
-        .word-number.horizontal {
-            background: #ff6b6b;
-        }
-        .grid-cell-number {
-            position: relative;
-            transition: all 0.2s ease;
-        }
-        .grid-cell-number:hover {
-            transform: scale(1.05);
-            z-index: 10;
-        }
-        .login-container {
-            max-width: 400px;
-            margin: 100px auto;
-            padding: 30px;
+        .game-card {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 0;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
         }
-        .hidden {
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+            padding: 20px;
+        }
+        .game-title {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0;
+        }
+        .game-subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .btn-custom {
+            padding: 12px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            border: none;
+            min-width: 150px;
+        }
+        .btn-primary-custom {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        .btn-outline-custom {
+            border: 2px solid #667eea;
+            color: #667eea;
+            background: transparent;
+        }
+        .btn-outline-custom:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        .btn-secondary-custom {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary-custom:hover {
+            background: #5a6268;
+            color: white;
+            transform: translateY(-2px);
+        }
+        .icon-large {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+        .feature-list {
+            text-align: left;
+            margin: 30px 0;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            color: #555;
+        }
+        .feature-item i {
+            color: #667eea;
+            margin-right: 10px;
+            width: 20px;
+        }
+        .login-form {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
             display: none;
         }
-        .clue-item {
-            margin-bottom: 10px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            cursor: pointer;
+        .form-control-custom {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
         }
-        .clue-item:hover {
-            background-color: #f8f9fa;
+        .form-control-custom:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
-        .clue-item.selected {
-            background-color: #007bff;
-            color: white;
+        .register-form {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+            display: none;
+        }
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            display: none;
+        }
+        .spinner-border-custom {
+            color: #667eea;
+        }
+        .btn-lg {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .btn-lg:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .fa-3x {
+            color: #6c757d;
+            opacity: 0.7;
+        }
+        .card-body {
+            padding: 30px;
         }
     </style>
 </head>
 <body>
-    <!-- 로그인 화면 -->
-    <div id="login-screen" class="login-container">
-        <h2 class="text-center mb-4">K-CrossWord 로그인</h2>
-        <form id="login-form">
-            <div class="mb-3">
-                <label for="email" class="form-label">이메일</label>
-                <input type="email" class="form-control" id="email" required>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">비밀번호</label>
-                <input type="password" class="form-control" id="password" required>
-            </div>
-            <div id="error-message" class="alert alert-danger hidden"></div>
-            <button type="submit" class="btn btn-primary w-100">로그인</button>
-        </form>
-        </div>
-
-    <!-- 게임 화면 -->
-    <div id="game-screen" class="container hidden">
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header d-flex flex-column align-items-center">
-                        <h3 class="text-center mb-2">K-CrossWord</h3>
-                        <div class="w-100 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                레벨 <span id="currentLevel">1</span>
-                                <span id="levelName" class="ms-2 text-secondary">(초급)</span>
-                            </h5>
-                            <div>
-                                <span class="badge bg-primary me-2">정답: <span id="correctCount">0</span></span>
-                                <span class="badge bg-danger me-2">오답: <span id="wrongCount">0</span></span>
-                                <span class="badge bg-warning" id="timer">남은시간: <span id="timeLeft">300</span>초</span>
-                            </div>
-                        </div>
+    <div class="main-container">
+        <div class="game-card">
+            <!-- 메인 안내 화면 -->
+            <div id="mainScreen">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-puzzle-piece me-2"></i>크로스워드 퍼즐 게임
+                    </h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+                        <h5>로그인이 필요한 게임입니다</h5>
+                        <p class="text-muted">
+                            크로스워드 퍼즐 게임을 즐기려면 로그인이 필요합니다.<br>
+                            계정이 없으시다면 회원가입을, 계정이 있으시다면 로그인을 해주세요.
+                        </p>
                     </div>
-                    <div id="clear-condition-section" class="card-body border-bottom hidden">
-                        <div class="alert alert-info mb-0 text-center">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>클리어 조건/횟수 :</strong> <span id="clear-condition-display">(0/5)</span>
-                        </div>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>다양한 난이도의 퍼즐</span>
                     </div>
-                    <div class="card-body">
-                        <div id="puzzle-grid" class="text-center">
-                            <!-- 퍼즐 그리드가 여기에 렌더링됩니다 -->
-            </div>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>힌트 시스템</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>레벨별 진행</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>게스트 모드 지원</span>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="mb-0">단어 입력</h6>
+                
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-primary btn-lg" onclick="showRegisterForm()">
+                            <i class="fas fa-user-plus me-2"></i>회원가입
+                        </button>
+                        <button class="btn btn-success btn-lg" onclick="showLoginForm()">
+                            <i class="fas fa-sign-in-alt me-2"></i>로그인
+                        </button>
+                        <button class="btn btn-warning btn-lg" onclick="startAsGuest()">
+                            <i class="fas fa-user-secret me-2"></i>게스트로 시작
+                        </button>
                     </div>
-                    <div class="card-body">
-                    <div id="word-input-section">
-                        <div class="mb-3">
-                            <label class="form-label">힌트:</label>
-                            <div id="current-hint" class="alert alert-info">번호를 클릭하여 단어를 입력하세요.</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">정답 입력:</label>
-                            <input type="text" id="answer-input" class="form-control" placeholder="단어를 입력하세요" autocomplete="off">
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" id="check-answer-btn" class="btn btn-primary">확인</button>
-                            <button type="button" id="show-hint-btn" class="btn btn-secondary">추가힌트</button>
-                            <button type="button" id="show-answer-btn" class="btn btn-warning" style="display: none;">정답보기</button>
-                        </div>
-                        <div id="result-message" class="mt-3"></div>
-                        <div id="additional-hints" class="mt-3" style="display: none;">
-                            <h6>추가 힌트:</h6>
-                            <div id="hints-list"></div>
-                        </div>
-                    </div>
+                    
+                    <div class="mt-4">
+                        <button class="btn btn-outline-secondary" onclick="goToMain()">
+                            <i class="fas fa-arrow-left me-2"></i>메인으로 돌아가기
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- 게임 완료 모달 -->
-    <div class="modal fade" id="levelCompleteModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">레벨 완료</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p id="level-complete-message">모든 단어를 맞추셨습니다!</p>
-                    <p id="level-complete-sub-message">다음 레벨로 진행하시겠습니까?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" id="next-level-btn" class="btn btn-primary">다음 레벨</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 게임오버 모달 -->
-    <div class="modal fade" id="gameOverModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">게임오버</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>시간이 초과되었습니다.</p>
-                    <p>5분 후 재시도 가능합니다.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="location.reload()">메인으로</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 오답 초과 모달 -->
-    <div class="modal fade" id="wrongCountExceededModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-exclamation-triangle me-2"></i>오답 회수 초과
-                    </h5>
-                </div>
-                <div class="modal-body text-center">
-                    <div class="alert alert-danger">
-                        <h4>오답회수가 초과했습니다!</h4>
-                        <p class="mb-0">레벨을 다시 시작합니다.</p>
+            
+            <!-- 로그인 폼 -->
+            <div id="loginForm" class="login-form">
+                <h3 class="mb-4">로그인</h3>
+                <div id="loginAlert"></div>
+                <form id="loginFormElement">
+                    <div class="mb-3">
+                        <input type="email" class="form-control form-control-custom" id="loginEmail" 
+                               placeholder="이메일 주소" required>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="location.reload()">레벨 재시작</button>
-                </div>
+                    <div class="mb-3">
+                        <input type="password" class="form-control form-control-custom" id="loginPassword" 
+                               placeholder="비밀번호" required>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="hideLoginForm()">
+                            취소
+                        </button>
+                        <button type="submit" class="btn btn-primary-custom">
+                            <span class="loading spinner-border spinner-border-sm spinner-border-custom" role="status"></span>
+                            로그인
+                        </button>
+                    </div>
+                </form>
             </div>
-        </div>
-    </div>
-
-    <!-- 게임 완료 모달 -->
-    <div class="modal fade" id="levelCompleteModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">레벨 완료</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p id="level-complete-message">모든 단어를 맞추셨습니다!</p>
-                    <p id="level-complete-sub-message">다음 레벨로 진행하시겠습니까?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" id="next-level-btn" class="btn btn-primary">다음 레벨</button>
-                </div>
+            
+            <!-- 회원가입 폼 -->
+            <div id="registerForm" class="register-form">
+                <h3 class="mb-4">회원가입</h3>
+                <div id="registerAlert"></div>
+                <form id="registerFormElement">
+                    <div class="mb-3">
+                        <input type="text" class="form-control form-control-custom" id="registerName" 
+                               placeholder="이름" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="email" class="form-control form-control-custom" id="registerEmail" 
+                               placeholder="이메일 주소" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" class="form-control form-control-custom" id="registerPassword" 
+                               placeholder="비밀번호" required>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="hideRegisterForm()">
+                            취소
+                        </button>
+                        <button type="submit" class="btn btn-primary-custom">
+                            <span class="loading spinner-border spinner-border-sm spinner-border-custom" role="status"></span>
+                            회원가입
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 전역 변수 (Laravel과 동일)
-        let currentPuzzle = null;
-        let currentWordId = null;
-        let currentHintId = null;
-        let baseHintId = null;
-        let currentTemplateWords = [];
-        let currentTemplate = null;
-        let answeredWords = new Set();
-        let answeredWordsData = new Map(); // 정답 데이터 저장 (wordId -> answer) - 암호화된 형태로 저장
-        let gameTimer = null;
-        let correctCount = 0;
-        let wrongCount = 0;
-        let timeLeft = 300;
-
-        // DOM 로드 완료 후 실행
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeEventListeners();
-            checkAuthStatus();
-        });
-
-        // 이벤트 리스너 초기화
-        function initializeEventListeners() {
-            // 로그인 폼
-            document.getElementById('login-form').addEventListener('submit', handleLogin);
-            
-            // 정답 확인 버튼
-            document.getElementById('check-answer-btn').addEventListener('click', checkAnswer);
-            
-            // 추가 힌트 버튼
-            document.getElementById('show-hint-btn').addEventListener('click', showAdditionalHint);
-            
-            // 정답 보기 버튼
-            document.getElementById('show-answer-btn').addEventListener('click', showAnswer);
-            
-            // 다음 레벨 버튼
-            document.getElementById('next-level-btn').addEventListener('click', nextLevel);
-            
-            // 엔터키로 정답 확인 (Laravel과 동일)
-            document.getElementById('answer-input').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    checkAnswer();
-                }
-            });
+        // API 기본 URL
+        const API_BASE_URL = '/K-CrossWord/api';
+        
+        // 로그인 폼 표시
+        function showLoginForm() {
+            document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('loginEmail').focus();
         }
-
-        // 인증 상태 확인
-        function checkAuthStatus() {
-            const token = localStorage.getItem('authToken');
-            const userInfo = localStorage.getItem('userInfo');
+        
+        // 로그인 폼 숨기기
+        function hideLoginForm() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'block';
+            clearAlerts();
+        }
+        
+        // 회원가입 폼 표시
+        function showRegisterForm() {
+            document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('registerName').focus();
+        }
+        
+        // 회원가입 폼 숨기기
+        function hideRegisterForm() {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'block';
+            clearAlerts();
+        }
+        
+        // 게스트로 시작
+        function startAsGuest() {
+            const guestId = 'guest_' + Date.now();
+            localStorage.setItem('guest_id', guestId);
+            localStorage.setItem('user_type', 'guest');
             
-            if (token && userInfo) {
-                // 저장된 사용자 정보로 관리자 버튼 표시/숨김
-                const user = JSON.parse(userInfo);
-                const isAdmin = user.is_admin;
-                const showAnswerBtn = document.getElementById('show-answer-btn');
-                if (isAdmin) {
-                    showAnswerBtn.style.display = 'inline-block';
-                } else {
-                    showAnswerBtn.style.display = 'none';
-                }
-                
-                showGameScreen();
-                loadPuzzle();
+            // 게임 페이지로 이동
+            window.location.href = '/K-CrossWord/game.html?guest_id=' + guestId;
+        }
+        
+        // 메인으로 돌아가기
+        function goToMain() {
+            window.location.href = '/';
+        }
+        
+        // 알림 메시지 표시
+        function showAlert(elementId, message, type = 'danger') {
+            const alertDiv = document.getElementById(elementId);
+            alertDiv.innerHTML = `
+                <div class="alert alert-${type} alert-custom" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                    ${message}
+                </div>
+            `;
+        }
+        
+        // 알림 메시지 지우기
+        function clearAlerts() {
+            document.getElementById('loginAlert').innerHTML = '';
+            document.getElementById('registerAlert').innerHTML = '';
+        }
+        
+        // 로딩 상태 표시/숨기기
+        function setLoading(button, isLoading) {
+            const spinner = button.querySelector('.loading');
+            if (isLoading) {
+                spinner.style.display = 'inline-block';
+                button.disabled = true;
             } else {
-                showLoginScreen();
+                spinner.style.display = 'none';
+                button.disabled = false;
             }
         }
-
-        // 로그인 화면 표시
-        function showLoginScreen() {
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('game-screen').classList.add('hidden');
-        }
-
-        // 게임 화면 표시
-        function showGameScreen() {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-        }
-
+        
         // 로그인 처리
-        async function handleLogin(e) {
+        document.getElementById('loginFormElement').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error-message');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            
+            setLoading(submitButton, true);
+            clearAlerts();
             
             try {
-                const response = await fetch('/api/login', {
+                const response = await fetch(`${API_BASE_URL}/login`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ email, password })
                 });
@@ -369,1037 +382,85 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    localStorage.setItem('authToken', data.data.authorization.token);
-                    localStorage.setItem('userInfo', JSON.stringify(data.data.user));
+                    // 로그인 성공
+                    localStorage.setItem('user_token', data.data.authorization.token);
+                    localStorage.setItem('user_info', JSON.stringify(data.data.user));
+                    localStorage.setItem('user_type', 'user');
                     
-                    // 관리자 여부에 따라 정답보기 버튼 표시/숨김
-                    const isAdmin = data.data.user.is_admin;
-                    const showAnswerBtn = document.getElementById('show-answer-btn');
-                    if (isAdmin) {
-                        showAnswerBtn.style.display = 'inline-block';
-                    } else {
-                        showAnswerBtn.style.display = 'none';
-                    }
+                    showAlert('loginAlert', '로그인 성공! 게임을 시작합니다.', 'success');
                     
-                    showGameScreen();
-                        loadPuzzle();
+                    setTimeout(() => {
+                        window.location.href = '/K-CrossWord/game.html';
+                    }, 1000);
                 } else {
-                    errorDiv.textContent = data.message || '로그인에 실패했습니다.';
-                    errorDiv.classList.remove('hidden');
+                    showAlert('loginAlert', data.message || '로그인에 실패했습니다.', 'danger');
                 }
             } catch (error) {
                 console.error('로그인 오류:', error);
-                errorDiv.textContent = '로그인 중 오류가 발생했습니다.';
-                errorDiv.classList.remove('hidden');
-            }
-        }
-
-        // 퍼즐 로드
-        async function loadPuzzle() {
-            try {
-                console.log('퍼즐 로드 시작');
-                const response = await fetch('/api/puzzle-game/puzzles/generate/1', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const data = await response.json();
-                console.log('퍼즐 데이터:', data);
-                
-                if (data.success) {
-                currentPuzzle = transformPuzzleData(data);
-                    console.log('변환된 퍼즐 데이터:', currentPuzzle);
-                initializePuzzle();
-                } else {
-                    console.error('퍼즐 로드 실패:', data.message);
-                }
-            } catch (error) {
-                console.error('퍼즐 로드 오류:', error);
-            }
-        }
-
-        // 퍼즐 데이터 변환 (Laravel과 동일)
-        function transformPuzzleData(data) {
-            const puzzleData = data.data;
-            currentTemplateWords = puzzleData.template.words; // Laravel과 동일하게 설정
-            currentTemplate = puzzleData.template; // 템플릿 정보 저장
-            
-            // 교차점 정보 디버깅
-            console.log('템플릿 정보:', puzzleData.template);
-            console.log('교차점 개수:', puzzleData.template.intersection_count);
-            console.log('단어 개수:', puzzleData.template.words.length);
-            
-            // 각 단어의 위치 정보 확인
-            puzzleData.template.words.forEach((word, index) => {
-                console.log(`단어 ${index + 1}: ID=${word.pz_word_id || word.word_id}, 방향=${word.position.direction}, 시작=(${word.position.start_x},${word.position.start_y}), 끝=(${word.position.end_x},${word.position.end_y})`);
-            });
-            
-            return {
-                puzzleLevel: puzzleData.puzzleLevel,
-                template: puzzleData.template
-            };
-        }
-
-        // 퍼즐 초기화
-        function initializePuzzle() {
-            if (!currentPuzzle || !currentPuzzle.template) {
-                console.error('퍼즐 데이터가 없습니다.');
-                return;
-            }
-
-            console.log('퍼즐 초기화 시작');
-            
-            // 레벨 정보 업데이트
-            document.getElementById('currentLevel').textContent = currentPuzzle.puzzleLevel.level;
-            document.getElementById('levelName').textContent = `(${currentPuzzle.puzzleLevel.name})`;
-            
-            // 그리드 렌더링
-            renderPuzzleGrid(currentPuzzle.template);
-            
-            // 타이머 시작
-            startTimer();
-        }
-
-        // 그리드 렌더링 (Laravel과 동일한 로직)
-function renderPuzzleGrid(template) {
-    const grid = document.getElementById('puzzle-grid');
-    grid.innerHTML = '';
-    
-    let gridData = template.grid_pattern;
-    const words = template.words;
-    
-    console.log('그리드 데이터:', gridData);
-    console.log('단어 데이터:', words);
-    
-    // 중첩된 배열 구조인 경우 첫 번째 요소 추출
-    if (Array.isArray(gridData) && gridData.length === 1 && Array.isArray(gridData[0])) {
-        console.log('중첩된 배열 구조 감지, 내부 배열 추출');
-        gridData = gridData[0];
-    }
-    
-    // 1차원 배열(25개 요소)을 5x5 2차원 배열로 변환
-    if (Array.isArray(gridData) && gridData.length === 25) {
-        console.log('1차원 배열을 5x5 2차원 배열로 변환');
-        const twoDimensionalArray = [];
-        for (let i = 0; i < 5; i++) {
-            twoDimensionalArray.push(gridData.slice(i * 5, (i + 1) * 5));
-        }
-        gridData = twoDimensionalArray;
-    }
-    
-    const gridSize = gridData.length;
-    console.log('최종 그리드 배열:', gridData);
-    console.log('그리드 크기:', gridSize);
-    
-    // 동적 셀 크기 계산 (Laravel과 동일)
-    const cellSize = calculateCellSize(gridSize);
-    
-    let html = `<div class="grid-container" style="display: inline-block; border: 2px solid #333; max-width: 90vw; max-height: 90vh; margin: 0 auto;">`;
-    
-    for (let y = 0; y < gridData.length; y++) {
-        html += '<div class="grid-row" style="display: flex;">';
-        for (let x = 0; x < gridData[y].length; x++) {
-            const cellValue = gridData[y][x];
-            const wordInfo = getWordInfoAtPosition(x, y, words);
-            const hasWords = getWordsAtPosition(x, y, words).length > 0;
-            
-            let cellClass = 'grid-cell-number';
-            let cellContent = '';
-            let clickEvent = '';
-            
-            if (cellValue === 2) { // 검은색칸 (단어가 있는 칸) - Laravel과 동일
-                cellClass += ' bg-dark text-white';
-                
-                // 번호는 시작 위치에만 표시
-                if (wordInfo) {
-                    if (wordInfo.isIntersection) {
-                        // 교차점인 경우: 가로 단어는 큰 번호, 세로 단어는 작은 번호로 표시 (Laravel과 동일)
-                        const badgeSize = Math.max(8, Math.min(16, cellSize * 0.3));
-                        const fontSize = Math.max(6, Math.min(10, cellSize * 0.2));
-                        cellContent = `
-                            <div style="position: relative; width: 100%; height: 100%;">
-                                <span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 2px; display: flex; align-items: center; justify-content: center;">${wordInfo.horizontalWord.word_id}</span>
-                                <span class="word-number" style="position: absolute; bottom: 2px; right: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #4ecdc4; border-radius: 2px; display: flex; align-items: center; justify-content: center;">${wordInfo.verticalWord.word_id}</span>
-                            </div>
-                        `;
-                        console.log('교차점 배지 렌더링:', {
-                            horizontalWordId: wordInfo.horizontalWord.word_id,
-                            verticalWordId: wordInfo.verticalWord.word_id
-                        });
-                    } else {
-                        // 단일 단어인 경우
-                        cellContent = `<span class="word-number">${wordInfo.word_id}</span>`;
-                    }
-                }
-                
-                // 모든 교차점 위치에서 두 배지 표시 (추가 로직)
-                const allWordsAtPosition = getWordsAtPosition(x, y, words);
-                if (allWordsAtPosition.length >= 2) {
-                    const horizontalWords = allWordsAtPosition.filter(w => w.position.direction === 'horizontal');
-                    const verticalWords = allWordsAtPosition.filter(w => w.position.direction === 'vertical');
-                    
-                    if (horizontalWords.length > 0 && verticalWords.length > 0) {
-                        const badgeSize = Math.max(8, Math.min(16, cellSize * 0.3));
-                        const fontSize = Math.max(6, Math.min(10, cellSize * 0.2));
-                        cellContent = `
-                            <div style="position: relative; width: 100%; height: 100%;">
-                                <span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 2px; display: flex; align-items: center; justify-content: center;">${horizontalWords[0].word_id}</span>
-                                <span class="word-number" style="position: absolute; bottom: 2px; right: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #4ecdc4; border-radius: 2px; display: flex; align-items: center; justify-content: center;">${verticalWords[0].word_id}</span>
-                            </div>
-                        `;
-                        console.log('모든 교차점 배지 렌더링:', {
-                            horizontalWordId: horizontalWords[0].word_id,
-                            verticalWordId: verticalWords[0].word_id,
-                            position: `(${x}, ${y})`
-                        });
-                    }
-                }
-                
-                // 클릭 이벤트는 모든 검은색 칸에 추가
-                if (hasWords) {
-                    clickEvent = ` onclick="handleCellClick(${y}, ${x}, ${JSON.stringify(words).replace(/"/g, '&quot;')})" style="cursor: pointer;"`;
-                }
-            } else { // 흰색칸 (빈 칸) - Laravel과 동일
-                cellClass += ' bg-light';
-                cellContent = '□';
-            }
-            
-            const fontSize = Math.max(8, Math.min(14, cellSize * 0.3));
-            // data-word-id 속성 추가 (보안을 위해 단어 ID만 저장) - Laravel과 동일
-            const dataWordId = wordInfo ? (wordInfo.pz_word_id || wordInfo.word_id) : '';
-            const dataAttr = dataWordId ? ` data-word-id="${dataWordId}"` : '';
-            html += `<div class="${cellClass}" style="width: ${cellSize}px; height: ${cellSize}px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}px; font-weight: bold; box-sizing: border-box;"${clickEvent}${dataAttr}>${cellContent}</div>`;
-        }
-        html += '</div>';
-    }
-    
-    html += '</div>';
-    grid.innerHTML = html;
-    
-    // 그리드 렌더링 후 정답 상태 복원 (Laravel과 동일)
-    restoreAnsweredCells();
-}
-
-// 동적 셀 크기 계산 함수 (Laravel과 동일)
-function calculateCellSize(gridSize) {
-    const isMobile = window.innerWidth <= 480;
-    const isPortrait = window.innerHeight > window.innerWidth;
-    
-    let availableWidth, availableHeight;
-    
-    if (isMobile && isPortrait) {
-        // 모바일 세로 화면: 화면의 90% 사용
-        availableWidth = window.innerWidth * 0.9;
-        availableHeight = window.innerHeight * 0.9;
-    } else if (isMobile) {
-        // 모바일 가로 화면: 화면의 85% 사용
-        availableWidth = window.innerWidth * 0.85;
-        availableHeight = window.innerHeight * 0.8;
-    } else {
-        // 데스크톱/태블릿: 기본 크기 유지
-        availableWidth = Math.min(600, window.innerWidth * 0.8);
-        availableHeight = Math.min(600, window.innerHeight * 0.8);
-    }
-
-    // border와 gap 고려하여 실제 사용 가능한 크기 계산
-    const borderWidth = 2; // 그리드 테두리
-    const cellBorder = 1; // 셀 테두리
-    const gap = 0; // 셀 간격 (현재는 0)
-    
-    const totalBorderWidth = borderWidth * 2 + (gridSize - 1) * cellBorder * 2;
-    const totalGapWidth = (gridSize - 1) * gap;
-    
-    const maxCellWidth = (availableWidth - totalBorderWidth - totalGapWidth) / gridSize;
-    const maxCellHeight = (availableHeight - totalBorderWidth - totalGapWidth) / gridSize;
-    
-    // 더 작은 값으로 통일 (정사각형 유지)
-    const calculatedSize = Math.min(maxCellWidth, maxCellHeight);
-    
-    // 최소/최대 크기 제한
-    const minSize = isMobile ? 12 : 20;
-    const maxSize = isMobile ? 35 : 50;
-    
-    const finalSize = Math.max(minSize, Math.min(maxSize, calculatedSize));
-    
-    console.log('셀 크기 계산:', {
-        gridSize,
-        availableWidth,
-        availableHeight,
-        calculatedSize,
-        finalSize,
-        isMobile,
-        isPortrait
-    });
-    
-    return finalSize;
-}
-
-// 정답 상태 복원 함수 (Laravel과 동일)
-function restoreAnsweredCells() {
-    if (!answeredWords || answeredWords.size === 0) return;
-    
-    // answeredWords에서 정답 정보 복원
-    answeredWords.forEach(function(wordId) {
-        const correctWord = answeredWordsData.get(wordId);
-        if (correctWord) {
-            // 임시로 currentWordId 설정
-            const originalWordId = currentWordId;
-            currentWordId = wordId;
-            
-            // 정답 표시
-            updateGridWithAnswer(correctWord);
-            
-            // currentWordId 복원
-            currentWordId = originalWordId;
-        }
-    });
-}
-
-        // 특정 위치의 단어 정보 찾기 (교차점 우선순위 적용 - 모든 교차점에서 두 배지 표시)
-        function getWordInfoAtPosition(x, y, words) {
-            let horizontalWord = null;
-            let verticalWord = null;
-            
-            console.log(`getWordInfoAtPosition 호출: (${x}, ${y}), words 개수: ${words.length}`);
-            
-            for (const wordInfo of words) {
-                const word = wordInfo.position;
-                console.log(`단어 검사: ID=${wordInfo.pz_word_id || wordInfo.word_id}, 방향=${word.direction}, 시작=(${word.start_x},${word.start_y}), 끝=(${word.end_x},${word.end_y})`);
-                
-                // 가로 방향 단어
-                if (word.direction === 'horizontal') {
-                    if (y === word.start_y && x >= word.start_x && x <= word.end_x) {
-                        // 단어의 시작 위치인지 확인
-                        if (x === word.start_x) {
-                            horizontalWord = wordInfo;
-                            console.log(`가로 단어 발견: ID=${wordInfo.pz_word_id || wordInfo.word_id}`);
-                        }
-                    }
-                }
-                // 세로 방향 단어
-                else if (word.direction === 'vertical') {
-                    if (x === word.start_x && y >= word.start_y && y <= word.end_y) {
-                        // 단어의 시작 위치인지 확인
-                        if (y === word.start_y) {
-                            verticalWord = wordInfo;
-                            console.log(`세로 단어 발견: ID=${wordInfo.pz_word_id || wordInfo.word_id}`);
-                        }
-                    }
-                }
-            }
-            
-            console.log(`교차점 체크: horizontalWord=${horizontalWord ? '있음' : '없음'}, verticalWord=${verticalWord ? '있음' : '없음'}`);
-            
-            // 교차점인 경우: 가로 단어 우선, 세로 단어는 작은 번호로 표시
-            if (horizontalWord && verticalWord) {
-                console.log('교차점 감지됨!');
-                console.log('가로 단어:', horizontalWord);
-                console.log('세로 단어:', verticalWord);
-                // 가로 단어를 메인으로 반환하되, 교차점 정보 포함
-                return {
-                    ...horizontalWord,
-                    isIntersection: true,
-                    horizontalWord: horizontalWord,
-                    verticalWord: verticalWord
-                };
-            }
-            
-            // 단일 단어인 경우
-            return horizontalWord || verticalWord;
-        }
-        
-        // 모든 교차점 위치에서 두 배지 표시를 위한 함수
-        function getWordsAtPosition(x, y, words) {
-            let foundWords = [];
-            
-            for (const wordInfo of words) {
-                const word = wordInfo.position;
-                
-                // 가로 방향 단어
-                if (word.direction === 'horizontal') {
-                    if (y === word.start_y && x >= word.start_x && x <= word.end_x) {
-                        foundWords.push(wordInfo);
-                    }
-                }
-                // 세로 방향 단어
-                else if (word.direction === 'vertical') {
-                    if (x === word.start_x && y >= word.start_y && y <= word.end_y) {
-                        foundWords.push(wordInfo);
-                    }
-                }
-            }
-            
-            return foundWords;
-        }
-
-        // 클릭 처리용 - 해당 위치의 모든 단어 찾기 (교차점 처리) - Laravel과 동일
-        function getWordsAtPosition(x, y, words) {
-            let foundWords = [];
-            
-            for (const wordInfo of words) {
-                const word = wordInfo.position;
-                
-                // 가로 방향 단어
-                if (word.direction === 'horizontal') {
-                    if (y === word.start_y && x >= word.start_x && x <= word.end_x) {
-                        foundWords.push(wordInfo);
-                    }
-                }
-                // 세로 방향 단어
-                else if (word.direction === 'vertical') {
-                    if (x === word.start_x && y >= word.start_y && y <= word.end_y) {
-                        foundWords.push(wordInfo);
-                    }
-                }
-            }
-            
-            return foundWords;
-        }
-
-        // 검은색 칸 클릭 처리 함수 (Laravel과 동일)
-        function handleCellClick(row, col, words) {
-            // 해당 위치의 모든 단어 찾기 (교차점 처리)
-            let foundWords = getWordsAtPosition(col, row, words);
-            
-            if (foundWords.length === 0) {
-                return;
-            }
-            
-            let selectedWord = foundWords[0]; // 기본적으로 첫 번째 단어 선택
-            
-            // 교차점인 경우 (여러 단어가 있는 경우) 배지가 있는 단어 우선 선택
-            if (foundWords.length > 1) {
-                // 현재 클릭한 위치에 배지가 있는지 확인
-                const wordInfo = getWordInfoAtPosition(col, row, words);
-                if (wordInfo) {
-                    // 배지가 있는 단어를 우선 선택
-                    selectedWord = wordInfo;
-                } else {
-                    // 배지가 없으면 첫 번째 단어 선택
-                    selectedWord = foundWords[0];
-                }
-            }
-            
-            // 선택된 단어 처리
-            currentWordId = selectedWord.pz_word_id || selectedWord.word_id;
-            currentWord = selectedWord; // currentWord 객체 설정
-            currentHintId = null; // 새로운 단어 선택 시 힌트 ID 초기화
-            baseHintId = selectedWord.hint_id || null; // 기본 힌트 ID 설정
-            
-            // 힌트 영역 완전 초기화
-            document.getElementById('hints-list').innerHTML = '';
-            document.getElementById('additional-hints').style.display = 'none';
-            
-            // 힌트보기 버튼 재활성화 (새로운 단어 선택 시)
-            const showHintBtn = document.getElementById('show-hint-btn');
-            showHintBtn.disabled = false;
-            showHintBtn.textContent = '추가힌트';
-            
-            // 기본 힌트 로드 및 baseHintId 설정
-            loadBaseHint(selectedWord);
-            
-            document.getElementById('answer-input').value = '';
-            document.getElementById('answer-input').focus();
-            document.getElementById('result-message').innerHTML = '';
-        }
-
-        // 기본 힌트 로드 및 baseHintId 설정
-        async function loadBaseHint(selectedWord) {
-            try {
-                // 기본 힌트 로드 (is_primary=true)
-                const response = await fetch(`/api/puzzle-game/get-hints?wordId=${selectedWord.pz_word_id || selectedWord.word_id}&isPrimary=true`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.hints && data.hints.length > 0) {
-                        // 기본 힌트 표시
-                        document.getElementById('current-hint').innerHTML = `
-                            <strong>힌트:</strong> [${selectedWord.category || '일반'}] ${data.hints[0]}
-                        `;
-                        
-                        // baseHintId 설정 (기본 힌트의 ID)
-                        baseHintId = data.hint_id || null;
-                        console.log('기본 힌트 로드 완료, baseHintId:', baseHintId);
-                    } else {
-                        // 기본 힌트가 없으면 기존 힌트 표시
-                        document.getElementById('current-hint').innerHTML = `
-                            <strong>힌트:</strong> [${selectedWord.category || '일반'}] ${selectedWord.hint || '힌트가 없습니다.'}
-                        `;
-                        baseHintId = null;
-                    }
-                } else {
-                    // API 호출 실패 시 기존 힌트 표시
-                    document.getElementById('current-hint').innerHTML = `
-                        <strong>힌트:</strong> [${selectedWord.category || '일반'}] ${selectedWord.hint || '힌트가 없습니다.'}
-                    `;
-                    baseHintId = null;
-                }
-            } catch (error) {
-                console.error('기본 힌트 로드 오류:', error);
-                // 오류 시 기존 힌트 표시
-                document.getElementById('current-hint').innerHTML = `
-                    <strong>힌트:</strong> [${selectedWord.category || '일반'}] ${selectedWord.hint || '힌트가 없습니다.'}
-                `;
-                baseHintId = null;
-            }
-        }
-
-        // 위치에서 모든 단어 찾기 (교차점 처리)
-        function getWordsAtPosition(col, row, words) {
-            let foundWords = [];
-            
-            for (let word of words) {
-                const position = word.position;
-                if (position.direction === 'horizontal') {
-                    if (position.start_y === row && col >= position.start_x && col <= position.end_x) {
-                        foundWords.push(word);
-                    }
-                } else if (position.direction === 'vertical') {
-                    if (position.start_x === col && row >= position.start_y && row <= position.end_y) {
-                        foundWords.push(word);
-                    }
-                }
-            }
-            return foundWords;
-        }
-
-
-        // 위치에서 단어 찾기
-        function findWordAtPosition(col, row, words) {
-            for (let word of words) {
-                const position = word.position;
-                if (position.direction === 'horizontal') {
-                    if (position.start_y === row && col >= position.start_x && col <= position.end_x) {
-                        return word;
-                    }
-                } else if (position.direction === 'vertical') {
-                    if (position.start_x === col && row >= position.start_y && row <= position.end_y) {
-                        return word;
-                    }
-                }
-            }
-            return null;
-        }
-
-        // 단어 입력 섹션 표시
-        function showWordInput(word) {
-            // 힌트 영역 완전 초기화
-            document.getElementById('hints-list').innerHTML = '';
-            document.getElementById('additional-hints').style.display = 'none';
-            
-            // 힌트보기 버튼 재활성화 (새로운 단어 선택 시)
-            const showHintBtn = document.getElementById('show-hint-btn');
-            showHintBtn.disabled = false;
-            showHintBtn.textContent = '추가힌트';
-            
-            // 우측 힌트 영역에 기본 힌트만 표시 (카테고리 포함)
-            document.getElementById('current-hint').innerHTML = `
-                <strong>힌트:</strong> [${word.category || '일반'}] ${word.hint || '힌트가 없습니다.'}
-            `;
-            
-            document.getElementById('answer-input').value = '';
-            document.getElementById('answer-input').focus();
-            document.getElementById('result-message').innerHTML = '';
-        }
-
-        // 추가 힌트 기능
-        async function showAdditionalHint() {
-            if (!currentWordId) return;
-            
-            // 버튼 비활성화 (한 번만 클릭 가능)
-            const showHintBtn = document.getElementById('show-hint-btn');
-            showHintBtn.disabled = true;
-            showHintBtn.textContent = '힌트 사용됨';
-            
-            try {
-                const response = await fetch(`/api/puzzle-game/get-hints?wordId=${currentWordId}&currentHintId=${currentHintId || ''}&baseHintId=${baseHintId || ''}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.success && data.hints && data.hints.length > 0) {
-                    // 힌트 목록을 초기화하고 새로운 힌트만 표시
-                    const hintsList = document.getElementById('hints-list');
-                    hintsList.innerHTML = '';
-                    hintsList.innerHTML = `<div class="alert alert-info">${data.hints[0]}</div>`;
-                    
-                    document.getElementById('additional-hints').style.display = 'block';
-                } else {
-                    // 더 이상 힌트가 없는 경우
-                    alert(data.message || '더 이상 사용할 수 있는 힌트가 없습니다.');
-                    // 힌트가 없으면 버튼 다시 활성화
-                    showHintBtn.disabled = false;
-                    showHintBtn.textContent = '추가힌트';
-                }
-            } catch (error) {
-                console.error('힌트 조회 오류:', error);
-                alert('힌트를 불러올 수 없습니다.');
-                // 오류 발생 시 버튼 다시 활성화
-                showHintBtn.disabled = false;
-                showHintBtn.textContent = '추가힌트';
-            }
-        }
-
-        // 정답 확인 (Laravel과 동일한 로직)
-        async function checkAnswer() {
-            if (!currentWordId) return;
-            
-            const answer = document.getElementById('answer-input').value.trim();
-            if (!answer) {
-                alert('정답을 입력해주세요.');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/puzzle-game/check-answer', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: `wordId=${currentWordId}&answer=${encodeURIComponent(answer)}`
-                });
-                
-                const data = await response.json();
-                
-                // 실시간 카운트 업데이트
-                if (data.correct_count !== undefined && data.wrong_count !== undefined) {
-                    updateGameCounts(data.correct_count, data.wrong_count);
-                }
-                
-                if (data.is_correct) {
-                    // 정답인 경우
-                    console.log('정답 확인됨');
-                    document.getElementById('result-message').innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                    
-                    // 서버에서 받은 정답을 그리드에 표시
-                    updateGridWithAnswer(data.correct_answer);
-                    
-                    // 입력창은 유지하고 입력값만 초기화
-                    document.getElementById('answer-input').value = '';
-                    
-                    // 정답 메시지 표시 후 2초 뒤 숨기기
-                    setTimeout(function() {
-                        document.getElementById('result-message').innerHTML = '';
-                    }, 2000);
-                    
-                    // 클리어 조건 실시간 업데이트
-                    updateClearCondition();
-                    
-                    // 레벨 완료 체크 (모든 단어를 맞췄는지 확인)
-                    checkLevelCompletion();
-                } else {
-                    // 오답인 경우
-                    if (data.wrong_count_exceeded) {
-                        // 오답 5회 초과 시 메시지 표시
-                        document.getElementById('result-message').innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
-                        // 2초 후 모달 표시 (모달이 있다면)
-                        setTimeout(function() {
-                            console.log('오답 초과 모달 표시 시도');
-                            const modalElement = document.getElementById('wrongCountExceededModal');
-                            if (modalElement) {
-                                // Bootstrap 모달이 있다면 표시
-                                const modal = new bootstrap.Modal(modalElement);
-                                modal.show();
-                                console.log('오답 초과 모달 표시됨');
-                            } else {
-                                console.log('오답 초과 모달이 없음 - 페이지 새로고침으로 대체');
-                                // 모달이 없으면 페이지 새로고침으로 레벨 재시작
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 2000);
-                            }
-                        }, 2000);
-                    } else {
-                        // 일반 오답 시 메시지 표시 (4회일 때는 특별 메시지)
-                        document.getElementById('result-message').innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
-                    }
-                    
-                    // 입력 필드 초기화
-                    document.getElementById('answer-input').value = '';
-                    document.getElementById('answer-input').focus();
-                }
-                
-            } catch (error) {
-                console.error('정답 확인 오류:', error);
-                alert('오류가 발생했습니다.');
-            }
-        }
-
-        // 그리드에 정답 표시 (Laravel과 동일한 로직)
-        function updateGridWithAnswer(correctWord) {
-            console.log('updateGridWithAnswer 호출됨, correctWord:', correctWord);
-            
-            try {
-                // 현재 선택된 단어의 위치 정보를 사용하여 그리드에 정답 표시
-                if (!currentWordId) {
-                    console.log('currentWordId가 없음');
-                    return;
-                }
-                
-                // 현재 선택된 단어 정보 찾기
-                let selectedWord = null;
-                for (let word of currentTemplateWords) {
-                    if ((word.pz_word_id || word.word_id) == currentWordId) {
-                        selectedWord = word;
-                        break;
-                    }
-                }
-                
-                if (!selectedWord) {
-                    console.log('selectedWord를 찾을 수 없음, currentWordId:', currentWordId);
-                    console.log('currentTemplateWords:', currentTemplateWords);
-                    return;
-                }
-                
-                // 정답을 맞춘 단어를 추적에 추가
-                answeredWords.add(currentWordId);
-                // 정답 데이터 저장 (정답일 때만 저장하므로 보안 문제 없음)
-                answeredWordsData.set(currentWordId, correctWord);
-                
-                // Wordle처럼 게임 상태를 서버에 저장 (선택적)
-                // 실제 구현에서는 서버에서 게임 상태를 관리하므로 클라이언트에서는 표시만 담당
-                console.log('정답 단어 추가됨:', currentWordId, correctWord);
-                
-                const position = selectedWord.position;
-                if (!position) {
-                    console.log('position 정보가 없음:', selectedWord);
-                    return;
-                }
-                
-                const direction = position.direction;
-                const startX = position.start_x;
-                const startY = position.start_y;
-                
-                console.log('선택된 단어 위치:', position);
-                console.log('정답 단어 길이:', correctWord.length);
-                
-                // 현재 그리드 크기에 따른 동적 크기 계산
-                console.log('currentTemplate 상태:', currentTemplate);
-                if (!currentTemplate || !currentTemplate.grid_pattern) {
-                    console.log('currentTemplate 정보가 없음 - currentTemplate:', currentTemplate);
-                    console.log('currentTemplate.grid_pattern:', currentTemplate ? currentTemplate.grid_pattern : 'undefined');
-                    return;
-                }
-                
-                const gridSize = currentTemplate.grid_pattern.length;
-                const cellSize = calculateCellSize(gridSize);
-                const answerFontSize = Math.max(10, Math.min(18, cellSize * 0.4));
-                const answerPadding = Math.max(2, Math.min(6, cellSize * 0.1));
-                const badgeSize = Math.max(8, Math.min(16, cellSize * 0.3));
-                const badgeFontSize = Math.max(6, Math.min(10, cellSize * 0.2));
-                
-                // 그리드에서 해당 단어 위치에 정답 표시
-                for (let i = 0; i < correctWord.length; i++) {
-                    let x, y;
-                    
-                    if (direction === 'horizontal') {
-                        x = startX + i;
-                        y = startY;
-                    } else {
-                        x = startX;
-                        y = startY + i;
-                    }
-                    
-                    // Laravel과 동일한 셀 선택 방식
-                    const cell = document.querySelector(`.grid-row:nth-child(${y + 1}) .grid-cell-number:nth-child(${x + 1})`);
-                    if (cell) {
-                        const isStartPosition = (direction === 'horizontal' && i === 0) || (direction === 'vertical' && i === 0);
-                        
-                        if (isStartPosition) {
-                            // 시작 위치: 배지를 정답 뒤로 숨기고 정답만 표시 (Laravel과 동일)
-                            cell.innerHTML = `
-                                <div style="background-color: #6c757d; color: white; padding: ${answerPadding}px ${answerPadding * 2}px; border-radius: 2px; font-size: ${answerFontSize}px; font-weight: bold; z-index: 10;">${correctWord[i]}</div>
-                                <span class="word-number" style="position: absolute; top: 2px; left: 2px; z-index: 5; opacity: 0.3; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${badgeFontSize}px; display: flex; align-items: center; justify-content: center;">${selectedWord.word_id}</span>
-                            `;
-                        } else {
-                            // 중간 위치: 정답 문자만 표시 (Laravel과 동일)
-                            cell.innerHTML = `
-                                <div style="background-color: #6c757d; color: white; padding: ${answerPadding}px ${answerPadding * 2}px; border-radius: 2px; font-size: ${answerFontSize}px; font-weight: bold;">${correctWord[i]}</div>
-                            `;
-                        }
-                        
-                        // 정답 표시 배지 추가 (선택적)
-                        if (i === 0) {
-                            const badge = document.createElement('div');
-                            badge.style.position = 'absolute';
-                            badge.style.top = '2px';
-                            badge.style.right = '2px';
-                            badge.style.backgroundColor = '#28a745';
-                            badge.style.color = 'white';
-                            badge.style.borderRadius = '50%';
-                            badge.style.width = badgeSize + 'px';
-                            badge.style.height = badgeSize + 'px';
-                            badge.style.fontSize = badgeFontSize + 'px';
-                            badge.style.display = 'flex';
-                            badge.style.alignItems = 'center';
-                            badge.style.justifyContent = 'center';
-                            badge.textContent = '✓';
-                            badge.style.zIndex = '10';
-                            
-                            // 기존 배지가 있으면 제거
-                            const existingBadge = cell.querySelector('.answer-badge');
-                            if (existingBadge) {
-                                existingBadge.remove();
-                            }
-                            
-                            badge.className = 'answer-badge';
-                            cell.style.position = 'relative';
-                            cell.appendChild(badge);
-                        }
-                        
-                        console.log(`정답 표시: [${y}][${x}] = ${correctWord[i]}`);
-                    } else {
-                        console.log(`셀을 찾을 수 없음: [${y}][${x}]`);
-                    }
-                }
-                
-                console.log('정답 표시 완료:', correctWord);
-                
-            } catch (error) {
-                console.error('updateGridWithAnswer 에러:', error);
-                console.error('에러 스택:', error.stack);
-            }
-        }
-
-        // 결과 메시지 표시
-        function showResult(message, type) {
-            const resultDiv = document.getElementById('result-message');
-            resultDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-        }
-
-        // 실시간 게임 카운트 업데이트 (Laravel과 동일)
-        function updateGameCounts(correctCount, wrongCount) {
-            // 정답/오답 카운트 업데이트
-            const correctBadge = document.querySelector('.badge.bg-primary');
-            const wrongBadge = document.querySelector('.badge.bg-danger');
-            
-            if (correctBadge) {
-                correctBadge.textContent = '정답: ' + correctCount;
-            }
-            if (wrongBadge) {
-                wrongBadge.textContent = '오답: ' + wrongCount;
-            }
-        }
-
-        // 클리어 조건 실시간 업데이트 (Laravel과 동일)
-        function updateClearCondition() {
-            console.log('클리어 조건 업데이트 시작');
-            fetch('/api/puzzle-game/get-clear-condition')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('클리어 조건 업데이트 성공:', data);
-                    if (data.success && data.clear_condition > 1) {
-                        // 클리어 조건 표시 업데이트
-                        const clearConditionText = `(${data.clear_count}/${data.clear_condition})`;
-                        const clearConditionDisplay = document.getElementById('clear-condition-display');
-                        if (clearConditionDisplay) {
-                            clearConditionDisplay.textContent = clearConditionText;
-                        }
-                        console.log('클리어 조건 표시 업데이트:', clearConditionText);
-                    }
-                })
-                .catch(error => {
-                    console.log('클리어 조건 업데이트 실패:', error);
-                });
-        }
-
-        // 레벨 완료 체크 (Laravel과 동일)
-        function checkLevelCompletion() {
-            // 모든 단어가 정답인지 확인
-            if (answeredWords.size >= currentTemplateWords.length) {
-                // 클리어 조건 미달/충족 여부 확인
-                fetch('/api/puzzle-game/complete-level', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: `score=0&play_time=0&hints_used=0&words_found=${answeredWords.size}&total_words=${currentTemplateWords.length}&accuracy=100`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('레벨 완료 응답:', data);
-                    
-                    if (data.success) {
-                        if (data.no_next_level) {
-                            // 마지막 레벨 완료
-                            document.getElementById('level-complete-message').textContent = '축하합니다! 레벨을 완료했습니다.';
-                            document.getElementById('level-complete-sub-message').textContent = '모든 레벨을 완료하셨습니다!';
-                            document.getElementById('next-level-btn').textContent = '확인';
-                            document.getElementById('next-level-btn').dataset.condition = 'completed';
-                        } else {
-                            // 클리어 조건 충족: 다음 레벨로 이동 안내
-                            document.getElementById('level-complete-message').textContent = '축하드립니다! 다음 레벨로 이동하겠습니다.';
-                            document.getElementById('level-complete-sub-message').textContent = '확인 버튼을 누르면 다음 레벨로 이동합니다.';
-                            document.getElementById('next-level-btn').textContent = '확인';
-                            document.getElementById('next-level-btn').dataset.condition = 'met';
-                        }
-                        
-                        document.getElementById('next-level-btn').disabled = false;
-                        document.getElementById('next-level-btn').style.display = 'block';
-                        
-                        // 모달 표시
-                        const levelCompleteModal = document.getElementById('levelCompleteModal');
-                        if (levelCompleteModal) {
-                            const modal = new bootstrap.Modal(levelCompleteModal);
-                            modal.show();
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('레벨 완료 체크 오류:', error);
-                    
-                    // 오류 시에도 모달 표시
-                    document.getElementById('level-complete-message').textContent = '오류가 발생했습니다.';
-                    document.getElementById('level-complete-sub-message').textContent = '잠시 후 다시 시도해 주세요.';
-                    document.getElementById('next-level-btn').textContent = '확인';
-                    document.getElementById('next-level-btn').disabled = true;
-                    document.getElementById('next-level-btn').dataset.condition = '';
-                    document.getElementById('next-level-btn').style.display = 'block';
-                    
-                    const levelCompleteModal = document.getElementById('levelCompleteModal');
-                    if (levelCompleteModal) {
-                        const modal = new bootstrap.Modal(levelCompleteModal);
-                        modal.show();
-                    }
-                });
-            }
-        }
-
-        // 다음 레벨 버튼 클릭 이벤트 (Laravel과 동일)
-        document.addEventListener('DOMContentLoaded', function() {
-            const nextLevelBtn = document.getElementById('next-level-btn');
-            if (nextLevelBtn) {
-                nextLevelBtn.addEventListener('click', function() {
-                    const condition = this.dataset.condition;
-                    
-                    if (condition === 'completed') {
-                        // 마지막 레벨 완료: 모달 닫기
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('levelCompleteModal'));
-                        if (modal) modal.hide();
-                    } else if (condition === 'met') {
-                        // 클리어 조건 충족: 다음 레벨로 이동 (새로고침)
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('levelCompleteModal'));
-                        if (modal) modal.hide();
-                        setTimeout(function() {
-                            location.reload();
-                        }, 500);
-                    } else {
-                        // 오류 상태: 모달 닫기
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('levelCompleteModal'));
-                        if (modal) modal.hide();
-                    }
-                });
+                showAlert('loginAlert', '로그인 중 오류가 발생했습니다.', 'danger');
+            } finally {
+                setLoading(submitButton, false);
             }
         });
-
-        // 레벨 완료 모달 표시
-        function showLevelCompleteModal() {
-            const modal = new bootstrap.Modal(document.getElementById('levelCompleteModal'));
-            modal.show();
-        }
-
-        // 다음 레벨
-        function nextLevel() {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('levelCompleteModal'));
-            modal.hide();
-            // 다음 레벨 로직 구현
-            loadPuzzle();
-        }
-
-        // 힌트 보기
-        function showHint() {
-            if (currentWord) {
-                showResult(`힌트: ${currentWord.hint}`, 'info');
-            }
-        }
-
-        // 정답 보기 (관리자만)
-        async function showAnswer() {
-            if (!currentWordId) return;
+        
+        // 회원가입 처리
+        document.getElementById('registerFormElement').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            // 관리자 권한 확인
-            const userInfo = localStorage.getItem('userInfo');
-            if (!userInfo) {
-                alert('로그인이 필요합니다.');
-                return;
-            }
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const submitButton = e.target.querySelector('button[type="submit"]');
             
-            const user = JSON.parse(userInfo);
-            if (!user.is_admin) {
-                alert('관리자만 접근 가능합니다.');
-                return;
-            }
+            setLoading(submitButton, true);
+            clearAlerts();
             
             try {
-                const response = await fetch(`/api/puzzle-game/show-answer?wordId=${currentWordId}`, {
-                    method: 'GET',
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                        'Content-Type': 'application/json'
-                    }
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, email, password })
                 });
                 
                 const data = await response.json();
                 
                 if (data.success) {
-                    // 정답을 입력 필드에 자동으로 입력 (Laravel과 동일한 구조)
-                    document.getElementById('answer-input').value = data.answer;
-                    showResult(`정답이 입력되었습니다: ${data.answer}`, 'info');
+                    // 회원가입 성공
+                    localStorage.setItem('user_token', data.data.authorization.token);
+                    localStorage.setItem('user_info', JSON.stringify(data.data.user));
+                    localStorage.setItem('user_type', 'user');
+                    
+                    showAlert('registerAlert', '회원가입 성공! 게임을 시작합니다.', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/K-CrossWord/game.html';
+                    }, 1000);
                 } else {
-                    alert(data.error || '정답을 불러올 수 없습니다.');
+                    showAlert('registerAlert', data.message || '회원가입에 실패했습니다.', 'danger');
                 }
             } catch (error) {
-                console.error('정답 조회 오류:', error);
-                if (error.status === 403) {
-                    alert('관리자만 접근 가능합니다.');
-                } else {
-                    alert('정답을 불러올 수 없습니다.');
-                }
+                console.error('회원가입 오류:', error);
+                showAlert('registerAlert', '회원가입 중 오류가 발생했습니다.', 'danger');
+            } finally {
+                setLoading(submitButton, false);
             }
-        }
-
-        // 타이머 시작
-        function startTimer() {
-            timeLeft = 300; // 5분
-            updateTimerDisplay();
+        });
+        
+        // 페이지 로드 시 이미 로그인된 사용자 확인
+        window.addEventListener('load', function() {
+            const userToken = localStorage.getItem('user_token');
+            const userType = localStorage.getItem('user_type');
             
-            gameTimer = setInterval(() => {
-                timeLeft--;
-                updateTimerDisplay();
-                
-                if (timeLeft <= 0) {
-                    clearInterval(gameTimer);
-                    showGameOverModal();
-                }
-            }, 1000);
-        }
-
-        // 타이머 표시 업데이트
-        function updateTimerDisplay() {
-            document.getElementById('timeLeft').textContent = timeLeft;
-        }
-
-        // 게임오버 모달 표시
-        function showGameOverModal() {
-            const modal = new bootstrap.Modal(document.getElementById('gameOverModal'));
-            modal.show();
-        }
+            if (userToken && userType === 'user') {
+                // 이미 로그인된 사용자는 게임 페이지로 이동
+                window.location.href = '/K-CrossWord/game.html';
+            } else if (userType === 'guest') {
+                // 게스트 사용자는 게임 페이지로 이동
+                window.location.href = '/K-CrossWord/game.html';
+            }
+        });
     </script>
 </body>
 </html>

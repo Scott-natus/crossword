@@ -204,10 +204,10 @@
                             </li>
                     @else
                             <li class="nav-item">
-                                <a class="nav-link" href="{{ route('login') }}">로그인</a>
+                                <a class="nav-link" href="/login">로그인</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{{ route('register') }}">회원가입</a>
+                                <a class="nav-link" href="/login">회원가입</a>
                             </li>
                     @endauth
                     </ul>
@@ -304,7 +304,7 @@
         </footer>
 
         <!-- Bootstrap JS -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="//cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         
         <!-- 로그아웃 폼 -->
         <form id="logout-form" action="#" method="POST" class="d-none">

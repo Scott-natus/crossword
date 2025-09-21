@@ -5,41 +5,10 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card">
-                <div class="card-header">로그인</div>
+                <div class="card-header">로그인 (테스트)</div>
 
                 <div class="card-body">
-                    <!-- SNS 로그인 버튼들 -->
-                    {{-- 
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <div class="text-center mb-3">
-                                <h6 class="text-muted">소셜 계정으로 로그인</h6>
-                            </div>
-                            <div class="d-flex justify-content-center gap-2">
-                                <a href="{{ route('auth.google') }}" class="btn btn-outline-danger">
-                                    <i class="fab fa-google"></i> Google
-                                </a>
-                                <a href="{{ route('auth.kakao') }}" class="btn btn-warning">
-                                    <i class="fas fa-comment"></i> Kakao
-                                </a>
-                                <a href="{{ route('auth.naver') }}" class="btn btn-success">
-                                    <i class="fas fa-n"></i> Naver
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <hr>
-                            <div class="text-center">
-                                <span class="text-muted">또는</span>
-                            </div>
-                        </div>
-                    </div>
-                    --}}
-
-                    <form method="POST" action="{{ route('login') }}">
+                    <form method="POST" action="{{ route('login2') }}">
                         @csrf
                         @if(request()->get('redirect'))
                             <input type="hidden" name="redirect" value="{{ request()->get('redirect') }}">
@@ -104,5 +73,6 @@
         </div>
     </div>
 </div>
-
 @endsection
+
+

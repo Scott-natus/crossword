@@ -7,6 +7,8 @@ import com.example.crossword.service.HintService;
 import com.example.crossword.service.PuzzleGridTemplateService;
 import com.example.crossword.service.PzWordService;
 import com.example.crossword.service.PzHintService;
+import com.example.crossword.service.UserPuzzleGameService;
+import com.example.crossword.entity.UserPuzzleGame;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
 
 /**
  * 퍼즐게임 API 컨트롤러
@@ -34,6 +37,7 @@ public class PuzzleGameController {
     private final PuzzleGridTemplateService templateService;
     private final PzWordService pzWordService;
     private final PzHintService pzHintService;
+    private final UserPuzzleGameService userPuzzleGameService;
     // 메모리 기반 게임 상태 저장소 (Redis 대신 사용)
     private final Map<String, Map<String, Object>> gameStateStore = new ConcurrentHashMap<>();
     
@@ -58,8 +62,31 @@ public class PuzzleGameController {
             
             log.info("getTemplate: 사용자 ID {}", userId);
             
-            // 게임 데이터 조회/생성 (user_id 기준)
-            Map<String, Object> game = getOrCreateGame(userId, guestId);
+            // 게임 데이터 조회/생성 (데이터베이스 기반)
+            // 게스트 ID를 UUID로 변환 (필요한 경우)
+            UUID uuidGuestId = null;
+            Long userIdLong = null;
+            
+            if (userId != null && !userId.isEmpty()) {
+                // userId가 guestId인 경우 (UUID 형식)
+                try {
+                    // UUID 형식인지 확인하고 변환
+                    uuidGuestId = UUID.fromString(userId);
+                    userIdLong = null; // 게스트는 null로 설정
+                } catch (IllegalArgumentException e) {
+                    // UUID가 아닌 경우 로그인 사용자로 처리
+                    try {
+                        userIdLong = Long.parseLong(userId);
+                    } catch (NumberFormatException ex) {
+                        log.error("잘못된 사용자 ID 형식: {}", userId);
+                        Map<String, Object> response = new HashMap<>();
+                        response.put("error", "잘못된 사용자 ID입니다.");
+                        return ResponseEntity.status(400).body(response);
+                    }
+                }
+            }
+            
+            UserPuzzleGame game = userPuzzleGameService.getOrCreateGame(userIdLong, uuidGuestId);
             if (game == null) {
                 Map<String, Object> response = new HashMap<>();
                 response.put("error", "게임을 생성할 수 없습니다.");
@@ -67,7 +94,7 @@ public class PuzzleGameController {
             }
             
             // 현재 레벨 조회
-            Integer currentLevel = (Integer) game.get("current_level");
+            Integer currentLevel = game.getCurrentLevel();
             Optional<PuzzleLevel> levelOpt = puzzleLevelService.getPuzzleLevelByLevel(currentLevel);
             if (levelOpt.isEmpty()) {
                 Map<String, Object> response = new HashMap<>();
@@ -78,35 +105,45 @@ public class PuzzleGameController {
             PuzzleLevel level = levelOpt.get();
             
             // Wordle처럼 현재 활성 퍼즐이 있는지 확인
-            if (hasActivePuzzle(userId)) {
+            if (game.hasActivePuzzle()) {
                 log.info("기존 퍼즐 세션 복원: userId={}, level={}", userId, currentLevel);
                 
-                // 저장된 퍼즐 데이터와 게임 상태 반환
-                Map<String, Object> puzzleData = getCurrentPuzzleData(userId);
-                Map<String, Object> gameState = getCurrentGameState(userId);
+                // 저장된 퍼즐 데이터와 게임 상태 반환 (데이터베이스에서)
+                Map<String, Object> puzzleData = game.getCurrentPuzzleData();
+                Map<String, Object> gameState = game.getCurrentGameState();
                 
-                // 정답 단어 정보 추가 (보안을 위해 맞춘 단어만)
-                Map<String, String> answeredWordsWithAnswers = new HashMap<>();
-                if (gameState != null && gameState.containsKey("answered_words")) {
-                    @SuppressWarnings("unchecked")
-                    List<Integer> answeredWords = (List<Integer>) gameState.get("answered_words");
-                    for (Integer wordId : answeredWords) {
-                        Optional<com.example.crossword.entity.PzWord> wordOpt = pzWordService.getPzWordById(wordId);
-                        if (wordOpt.isPresent()) {
-                            answeredWordsWithAnswers.put(String.valueOf(wordId), wordOpt.get().getWord());
+                if (puzzleData == null || gameState == null) {
+                    log.warn("퍼즐 데이터 또는 게임 상태가 없음, 새 퍼즐 생성: userId={}", userId);
+                    // 기존 데이터가 손상된 경우 새 퍼즐 생성
+                } else {
+                    // 정답 단어 정보 추가 (보안을 위해 맞춘 단어만)
+                    Map<String, String> answeredWordsWithAnswers = new HashMap<>();
+                    if (gameState.containsKey("answered_words")) {
+                        @SuppressWarnings("unchecked")
+                        List<Integer> answeredWords = (List<Integer>) gameState.get("answered_words");
+                        for (Integer wordId : answeredWords) {
+                            Optional<com.example.crossword.entity.PzWord> wordOpt = pzWordService.getPzWordById(wordId);
+                            if (wordOpt.isPresent()) {
+                                answeredWordsWithAnswers.put(String.valueOf(wordId), wordOpt.get().getWord());
+                            }
                         }
                     }
+                    
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("template", puzzleData.get("template"));
+                    response.put("level", level);
+                    response.put("game", game);
+                    response.put("game_state", gameState);
+                    response.put("answered_words_with_answers", answeredWordsWithAnswers);
+                    response.put("is_restored", true);
+                    
+                    log.info("게임 상태 복원 완료: userId={}, answeredWords={}, correctCount={}, wrongCount={}", 
+                            userId, answeredWordsWithAnswers.size(), 
+                            gameState.getOrDefault("correct_count", 0),
+                            gameState.getOrDefault("wrong_count", 0));
+                    
+                    return ResponseEntity.ok(response);
                 }
-                
-                Map<String, Object> response = new HashMap<>();
-                response.put("template", puzzleData.get("template"));
-                response.put("level", level);
-                response.put("game", game);
-                response.put("game_state", gameState);
-                response.put("answered_words_with_answers", answeredWordsWithAnswers);
-                response.put("is_restored", true);
-                
-                return ResponseEntity.ok(response);
             }
             
             // 새로운 퍼즐 생성
@@ -225,8 +262,16 @@ public class PuzzleGameController {
             puzzleData.put("level", level);
             puzzleData.put("game", game);
             
-            // 새로운 퍼즐 세션 시작
-            startNewPuzzle(userId, puzzleData);
+            // 새로운 퍼즐 세션 시작 (데이터베이스에 저장)
+            Map<String, Object> initialGameState = new HashMap<>();
+            initialGameState.put("correct_count", 0);
+            initialGameState.put("wrong_count", 0);
+            initialGameState.put("clear_count", 0);
+            initialGameState.put("answered_words", new ArrayList<Integer>());
+            initialGameState.put("wrong_answers", new HashMap<String, Integer>());
+            initialGameState.put("hints_used", new HashMap<String, Boolean>());
+            
+            userPuzzleGameService.startActivePuzzle(game, puzzleData, initialGameState);
             
             Map<String, Object> response = new HashMap<>();
             response.put("template", templateData);
@@ -314,7 +359,15 @@ public class PuzzleGameController {
                 gameState.put("correct_count", correctCount);
                 message = "정답입니다!";
                 
-                log.info("정답 처리: wordId={}, correctCount={}", wordId, correctCount);
+                // 정답된 단어 ID 저장 (게임 상태 복원용)
+                @SuppressWarnings("unchecked")
+                List<Integer> answeredWords = (List<Integer>) gameState.getOrDefault("answered_words", new ArrayList<>());
+                if (!answeredWords.contains(wordId)) {
+                    answeredWords.add(wordId);
+                    gameState.put("answered_words", answeredWords);
+                }
+                
+                log.info("정답 처리: wordId={}, correctCount={}, answeredWords={}", wordId, correctCount, answeredWords.size());
             } else {
                 // 오답 처리 (Laravel과 동일)
                 wrongCount++;
@@ -337,7 +390,13 @@ public class PuzzleGameController {
                     // 게임 상태 초기화
                     gameState.put("correct_count", 0);
                     gameState.put("wrong_count", 0);
+                    gameState.put("answered_words", new ArrayList<Integer>());
+                    gameState.put("wrong_answers", new HashMap<String, Integer>());
+                    gameState.put("hints_used", new HashMap<String, Boolean>());
                     saveGameState(userId, gameState);
+                    
+                    // 현재 퍼즐 세션 종료 (Laravel의 endCurrentPuzzle()과 동일)
+                    endCurrentPuzzle(userId);
                     
                     Map<String, Object> response = new HashMap<>();
                     response.put("is_correct", false);
@@ -411,6 +470,12 @@ public class PuzzleGameController {
             // 첫 번째 힌트 반환 (Laravel과 동일한 구조)
             com.example.crossword.entity.PzHint hint = hints.get(0);
             
+            // 힌트 사용 기록 저장
+            String userId = getUserIdFromRequest(guestId);
+            if (userId != null) {
+                recordHintUsage(userId, wordId, hint.getId(), hint.getHintText());
+            }
+            
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("hints", Arrays.asList(hint.getHintText())); // Laravel과 동일한 배열 형태
@@ -444,13 +509,77 @@ public class PuzzleGameController {
                  score, playTime, hintsUsed, wordsFound, totalWords, accuracy);
         
         try {
-            // 실제로는 게임 상태를 확인하고 다음 레벨로 진행해야 함
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "축하합니다! 다음 레벨로 진행합니다.");
-            response.put("new_level", 2); // 임시로 레벨 2로 설정
-            response.put("success", true);
+            // 사용자 인증 처리
+            String userId = getUserIdFromRequest(guestId);
+            if (userId == null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("error", "로그인이 필요합니다.");
+                return ResponseEntity.status(401).body(response);
+            }
             
-            return ResponseEntity.ok(response);
+            // 현재 레벨 조회
+            Integer currentLevel = getCurrentLevel(userId);
+            Optional<PuzzleLevel> levelOpt = puzzleLevelService.getPuzzleLevelByLevel(currentLevel);
+            if (levelOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("error", "레벨을 찾을 수 없습니다.");
+                return ResponseEntity.status(404).body(response);
+            }
+            
+            PuzzleLevel level = levelOpt.get();
+            Integer clearCondition = level.getClearCondition();
+            
+            // 클리어 조건 확인 (Laravel과 동일한 로직)
+            if (wordsFound >= clearCondition) {
+                // 클리어 조건 충족: 다음 레벨로 진행
+                Integer nextLevel = currentLevel + 1;
+                
+                // 다음 레벨 존재 여부 확인
+                Optional<PuzzleLevel> nextLevelOpt = puzzleLevelService.getPuzzleLevelByLevel(nextLevel);
+                if (nextLevelOpt.isEmpty()) {
+                    // 다음 레벨이 없으면 현재 레벨 유지
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("message", "축하합니다! 모든 레벨을 완료했습니다!");
+                    response.put("new_level", currentLevel);
+                    response.put("success", true);
+                    response.put("condition_met", true);
+                    response.put("is_final_level", true);
+                    
+                    return ResponseEntity.ok(response);
+                }
+                
+                // 게임 상태 업데이트: 다음 레벨로 진행
+                updateUserLevel(userId, nextLevel);
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "축하합니다! 다음 레벨로 진행합니다.");
+                response.put("new_level", nextLevel);
+                response.put("success", true);
+                response.put("condition_met", true);
+                response.put("is_final_level", false);
+                
+                log.info("레벨 완료: userId={}, currentLevel={}, nextLevel={}, wordsFound={}, clearCondition={}", 
+                        userId, currentLevel, nextLevel, wordsFound, clearCondition);
+                
+                return ResponseEntity.ok(response);
+                
+            } else {
+                // 클리어 조건 미달: 새 퍼즐로 재도전
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", String.format("아직 클리어 조건을 충족하지 못했습니다. (필요: %d개, 현재: %d개)", 
+                        clearCondition, wordsFound));
+                response.put("new_level", currentLevel); // 현재 레벨 유지
+                response.put("success", true);
+                response.put("condition_met", false);
+                response.put("condition_not_met", true);
+                response.put("required_words", clearCondition);
+                response.put("current_words", wordsFound);
+                
+                log.info("클리어 조건 미달: userId={}, level={}, wordsFound={}, clearCondition={}", 
+                        userId, currentLevel, wordsFound, clearCondition);
+                
+                return ResponseEntity.ok(response);
+            }
             
         } catch (Exception e) {
             log.error("레벨 완료 처리 중 오류 발생: {}", e.getMessage());
@@ -504,22 +633,104 @@ public class PuzzleGameController {
     public ResponseEntity<Map<String, Object>> gameOver(
             @RequestParam(required = false) String guestId) {
         
-        log.debug("게임오버 처리: 게스트 ID {}", guestId);
+        log.info("게임오버 처리: guestId={}", guestId);
         
         try {
+            // 사용자 인증 처리 (게스트 ID 또는 로그인 사용자)
+            String userId = getUserIdFromRequest(guestId);
+            if (userId == null) {
+                log.warn("게임오버: 로그인/게스트 ID 모두 없음");
+                Map<String, Object> response = new HashMap<>();
+                response.put("error", "로그인이 필요합니다.");
+                return ResponseEntity.status(401).body(response);
+            }
+            
+            log.info("게임오버: 사용자 ID {}", userId);
+            
+            // 게스트 ID를 UUID로 변환
+            UUID uuidGuestId = null;
+            Long userIdLong = null;
+            
+            try {
+                // UUID 형식인지 확인하고 변환
+                uuidGuestId = UUID.fromString(userId);
+                userIdLong = null; // 게스트는 null로 설정
+            } catch (IllegalArgumentException e) {
+                // UUID가 아닌 경우 로그인 사용자로 처리
+                try {
+                    userIdLong = Long.parseLong(userId);
+                } catch (NumberFormatException ex) {
+                    log.error("잘못된 사용자 ID 형식: {}", userId);
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("error", "잘못된 사용자 ID입니다.");
+                    return ResponseEntity.status(400).body(response);
+                }
+            }
+            
+            // 활성 게임 조회
+            Optional<UserPuzzleGame> gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(userIdLong, uuidGuestId);
+            if (gameOpt.isPresent()) {
+                UserPuzzleGame game = gameOpt.get();
+                
+                // 마지막 플레이 시간 업데이트 (Laravel과 동일)
+                game.updateLastPlayedAt();
+                userPuzzleGameService.save(game);
+                
+                log.info("게임오버 처리 완료: userId={}", userId);
+            } else {
+                log.warn("활성 게임을 찾을 수 없음: userId={}", userId);
+            }
+            
             Map<String, Object> response = new HashMap<>();
             response.put("message", "게임오버! 5분 후 재시도 가능합니다.");
             
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            log.error("게임오버 처리 중 오류 발생: {}", e.getMessage());
+            log.error("게임오버 처리 중 오류 발생: {}", e.getMessage(), e);
             Map<String, Object> response = new HashMap<>();
             response.put("error", "서버 오류: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
         }
     }
     
+    /**
+     * 게임 상태 초기화 (새 퍼즐 시작 시)
+     */
+    @PostMapping("/reset-game-state")
+    public ResponseEntity<Map<String, Object>> resetGameState(
+            @RequestParam(required = false) String guestId) {
+        
+        log.debug("게임 상태 초기화: 게스트 ID {}", guestId);
+        
+        try {
+            // 사용자 인증 처리
+            String userId = getUserIdFromRequest(guestId);
+            if (userId == null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("error", "로그인이 필요합니다.");
+                return ResponseEntity.status(401).body(response);
+            }
+            
+            // 게임 상태 초기화
+            resetGameState(userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "게임 상태가 초기화되었습니다.");
+            
+            log.info("게임 상태 초기화 완료: userId={}", userId);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("게임 상태 초기화 중 오류 발생: {}", e.getMessage());
+            Map<String, Object> response = new HashMap<>();
+            response.put("error", "서버 오류: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
     /**
      * 정답보기 (관리자 전용) - Laravel과 동일한 로직
      */
@@ -887,18 +1098,21 @@ public class PuzzleGameController {
     // ==================== 헬퍼 메서드들 (Laravel과 동일한 로직) ====================
     
     /**
-     * 요청에서 사용자 ID 추출 (게스트 ID 또는 로그인 사용자)
+     * 요청에서 사용자 ID 추출 (게스트 ID 또는 로그인 사용자) - Laravel과 동일한 로직
      */
     private String getUserIdFromRequest(String guestId) {
-        // TODO: 실제 구현에서는 Authorization 헤더에서 토큰을 추출하고 사용자 ID를 가져와야 함
-        // 현재는 간단히 게스트 ID를 사용
+        // 게스트 ID가 있으면 게스트 사용자로 처리 (Laravel과 동일)
         if (guestId != null && !guestId.isEmpty()) {
-            return "guest_" + guestId;
+            // Laravel과 동일한 게스트 계정 생성 로직
+            // 실제로는 User 테이블에 게스트 계정을 생성해야 하지만,
+            // 현재 Spring Boot 버전에서는 UserPuzzleGame 테이블의 guest_id로만 처리
+            log.info("게스트 계정 사용: guestId={}", guestId);
+            return guestId; // UUID 형식 그대로 반환
         }
         
-        // 로그인 사용자의 경우 토큰에서 사용자 ID 추출
-        // TODO: JWT 토큰 파싱 또는 세션에서 사용자 ID 가져오기
-        return "user_1"; // 임시로 고정값 사용
+        // TODO: 실제 구현에서는 Authorization 헤더에서 토큰을 추출하고 사용자 ID를 가져와야 함
+        // 현재는 임시로 게스트 사용자로 처리
+        return null; // 게스트 ID가 없으면 null 반환
     }
     
     /**
@@ -940,17 +1154,6 @@ public class PuzzleGameController {
         }
     }
     
-    /**
-     * 게임 상태 초기화 (레벨 재시작)
-     */
-    private void resetGameState(String userId) {
-        try {
-            gameStateStore.remove(userId);
-            log.info("게임 상태 초기화 완료: userId={}", userId);
-        } catch (Exception e) {
-            log.error("게임 상태 초기화 오류: {}", e.getMessage());
-        }
-    }
     
     /**
      * 현재 레벨 조회
@@ -964,22 +1167,131 @@ public class PuzzleGameController {
     }
     
     /**
-     * 오답 기록 저장
+     * 사용자 레벨 업데이트
+     */
+    private void updateUserLevel(String userId, Integer newLevel) {
+        try {
+            Map<String, Object> gameState = getGameState(userId);
+            if (gameState != null) {
+                gameState.put("current_level", newLevel);
+                saveGameState(userId, gameState);
+                log.info("사용자 레벨 업데이트: userId={}, newLevel={}", userId, newLevel);
+            }
+        } catch (Exception e) {
+            log.error("사용자 레벨 업데이트 오류: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 현재 퍼즐 세션 종료 (Laravel의 endCurrentPuzzle()과 동일)
+     */
+    private void endCurrentPuzzle(String userId) {
+        try {
+            log.info("현재 퍼즐 세션 종료: userId={}", userId);
+            
+            // 게스트 ID를 UUID로 변환
+            UUID uuidGuestId = null;
+            Long userIdLong = null;
+            
+            try {
+                // UUID 형식인지 확인하고 변환
+                uuidGuestId = UUID.fromString(userId);
+                userIdLong = null; // 게스트는 null로 설정
+            } catch (IllegalArgumentException e) {
+                // UUID가 아닌 경우 로그인 사용자로 처리
+                try {
+                    userIdLong = Long.parseLong(userId);
+                } catch (NumberFormatException ex) {
+                    log.error("잘못된 사용자 ID 형식: {}", userId);
+                    return;
+                }
+            }
+            
+            // 활성 게임 조회
+            Optional<UserPuzzleGame> gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(userIdLong, uuidGuestId);
+            if (gameOpt.isPresent()) {
+                UserPuzzleGame game = gameOpt.get();
+                
+                // 현재 퍼즐 세션 종료 (Laravel과 동일)
+                game.setCurrentPuzzleData(null);
+                game.setCurrentGameState(null);
+                game.setCurrentPuzzleStartedAt(null);
+                game.setHasActivePuzzle(false);
+                
+                // 데이터베이스에 저장
+                userPuzzleGameService.save(game);
+                
+                log.info("퍼즐 세션 종료 완료: userId={}", userId);
+            } else {
+                log.warn("활성 게임을 찾을 수 없음: userId={}", userId);
+            }
+            
+        } catch (Exception e) {
+            log.error("퍼즐 세션 종료 오류: userId={}, error={}", userId, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 오답 기록 저장 (Laravel과 동일한 로직)
      */
     private void recordWrongAnswer(String userId, Integer wordId, String userAnswer, 
                                  String correctAnswer, String category, Integer level) {
         try {
-            // TODO: 실제 구현에서는 user_wrong_answers 테이블에 저장
-            // 현재는 로그로만 기록
-            log.info("오답 기록: userId={}, wordId={}, userAnswer={}, correctAnswer={}, category={}, level={}", 
-                    userId, wordId, userAnswer, correctAnswer, category, level);
-            
-            // TODO: 데이터베이스에 오답 히스토리 저장
-            // INSERT INTO user_wrong_answers (user_id, word_id, user_answer, correct_answer, category, level, created_at)
-            // VALUES (?, ?, ?, ?, ?, ?, NOW())
+            // 게임 상태에 오답 기록 추가
+            Map<String, Object> gameState = getGameState(userId);
+            if (gameState != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> wrongAnswers = (Map<String, Object>) gameState.getOrDefault("wrong_answers", new HashMap<>());
+                
+                Map<String, Object> wrongAnswerRecord = new HashMap<>();
+                wrongAnswerRecord.put("wordId", wordId);
+                wrongAnswerRecord.put("userAnswer", userAnswer);
+                wrongAnswerRecord.put("correctAnswer", correctAnswer);
+                wrongAnswerRecord.put("category", category);
+                wrongAnswerRecord.put("level", level);
+                wrongAnswerRecord.put("timestamp", System.currentTimeMillis());
+                
+                wrongAnswers.put(String.valueOf(wordId), wrongAnswerRecord);
+                gameState.put("wrong_answers", wrongAnswers);
+                
+                saveGameState(userId, gameState);
+                
+                log.info("오답 기록 저장: userId={}, wordId={}, userAnswer={}, correctAnswer={}, category={}, level={}", 
+                        userId, wordId, userAnswer, correctAnswer, category, level);
+            }
             
         } catch (Exception e) {
             log.error("오답 기록 저장 오류: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 힌트 사용 기록 저장
+     */
+    private void recordHintUsage(String userId, Integer wordId, Integer hintId, String hintText) {
+        try {
+            // 게임 상태에 힌트 사용 기록 추가
+            Map<String, Object> gameState = getGameState(userId);
+            if (gameState != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> hintsUsed = (Map<String, Object>) gameState.getOrDefault("hints_used", new HashMap<>());
+                
+                Map<String, Object> hintUsageRecord = new HashMap<>();
+                hintUsageRecord.put("wordId", wordId);
+                hintUsageRecord.put("hintId", hintId);
+                hintUsageRecord.put("hintText", hintText);
+                hintUsageRecord.put("timestamp", System.currentTimeMillis());
+                
+                hintsUsed.put(String.valueOf(hintId), hintUsageRecord);
+                gameState.put("hints_used", hintsUsed);
+                
+                saveGameState(userId, gameState);
+                
+                log.info("힌트 사용 기록 저장: userId={}, wordId={}, hintId={}", userId, wordId, hintId);
+            }
+            
+        } catch (Exception e) {
+            log.error("힌트 사용 기록 저장 오류: {}", e.getMessage());
         }
     }
     
