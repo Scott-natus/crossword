@@ -146,4 +146,44 @@ public class WebController {
     public ResponseEntity<byte[]> faviconAlternative() {
         return favicon();
     }
+
+    /**
+     * 관리자 메인 페이지
+     */
+    @GetMapping({"/admin/", "/admin", "/K-CrossWord/admin/", "/K-CrossWord/admin"})
+    public ResponseEntity<String> adminIndex() {
+        try {
+            Resource resource = new ClassPathResource("static/admin/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * 단어 관리 페이지
+     */
+    @GetMapping("/admin/words")
+    public ResponseEntity<String> adminWords() {
+        try {
+            Resource resource = new ClassPathResource("static/admin/words/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }
