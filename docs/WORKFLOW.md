@@ -1236,3 +1236,83 @@ const [showLogs, setShowLogs] = useState(true); // 자동으로 로그 표시
 - **로그 확인**: 앱에서 "로그 보기" 버튼 클릭 또는 자동 표시된 로그 확인
 
 ---
+
+## 2025-09-22 작업 내역 (Spring Boot 인증 시스템 통합 완료)
+
+### 문제 상황
+- 8080 포트 게시판 서비스와 8081 포트 퍼즐 게임 서비스가 별도의 인증 시스템을 사용
+- 8080 포트에서 로그인 후 8081 포트 관리자 페이지 접근 시 로그인 페이지로 리다이렉트
+- 두 서비스 간 세션 공유가 되지 않는 문제
+
+### 해결 과정
+
+#### 1. Redis 세션 네임스페이스 통일
+- **문제**: 8081 포트 서비스가 `crossword:session` 네임스페이스 사용
+- **해결**: `CrosswordApplication.java`에서 하드코딩된 `redisNamespace = "crossword:session"` 제거
+- **결과**: `application.properties`의 `spring.session.redis.namespace=spring:session` 설정 적용
+
+#### 2. 인증 시스템 통합
+- **User 엔티티 복제**: 8081 포트 서비스에 8080 포트와 동일한 User 엔티티 생성
+- **UserRepository 생성**: 공유 users 테이블 접근을 위한 Repository 생성
+- **CustomUserDetailsService 생성**: 8080 포트와 동일한 인증 로직 구현
+- **SecurityConfig 수정**: 8080 포트와 동일한 인증 흐름으로 설정
+
+#### 3. 프론트엔드 링크 업데이트
+- **메인 페이지 링크**: 8080 포트 메인 페이지의 퍼즐 관리 시스템 링크를 HTTPS 도메인으로 업데이트
+- **동적 로그인/로그아웃**: 로그인 상태에 따른 동적 버튼 표시 구현
+- **Mixed Content 해결**: 모든 API 호출을 HTTPS로 변경
+
+#### 4. Redis 세션 초기화 및 테스트
+- **Redis 초기화**: `redis-cli FLUSHALL`로 모든 세션 데이터 삭제
+- **새 세션 생성**: 로그인 후 `spring:session` 네임스페이스로 세션 생성 확인
+- **세션 공유 확인**: 두 서비스가 동일한 세션을 인식하는지 테스트
+
+### 구현된 기능
+- ✅ **세션 공유**: 8080 포트와 8081 포트 서비스가 동일한 Redis 세션 사용
+- ✅ **인증 통합**: 8080 포트에서 로그인 후 8081 포트 관리자 페이지 접근 가능
+- ✅ **동적 UI**: 로그인 상태에 따른 동적 로그인/로그아웃 버튼 표시
+- ✅ **HTTPS 지원**: Mixed Content 오류 해결 및 HTTPS 도메인 사용
+- ✅ **관리자 페이지 접근**: 로그인 후 퍼즐 관리 시스템 정상 접근
+
+### 수정된 파일들
+- **CrosswordApplication.java**: 하드코딩된 Redis 네임스페이스 제거
+- **User.java**: 8081 포트 서비스에 User 엔티티 생성
+- **UserRepository.java**: 공유 users 테이블 접근을 위한 Repository 생성
+- **CustomUserDetailsService.java**: 8080 포트와 동일한 인증 로직 구현
+- **SecurityConfig.java**: 8080 포트와 동일한 인증 흐름으로 설정
+- **index.html**: 8080 포트 메인 페이지 링크 및 동적 버튼 구현
+- **admin/index.html**: HTTPS API 호출로 Mixed Content 오류 해결
+- **admin/words/index.html**: HTTPS API 호출로 Mixed Content 오류 해결
+
+### 현재 상태
+- ✅ **8080 포트 게시판**: 정상 실행 중, 로그인 기능 작동
+- ✅ **8081 포트 퍼즐 게임**: 정상 실행 중, 관리자 페이지 접근 가능
+- ✅ **인증 시스템 통합**: 두 서비스 간 세션 공유 완료
+- ✅ **관리자 페이지**: 로그인 후 정상 접근 가능
+
+### Redis 세션 상태
+```
+spring:session:sessions:2712f37a-9bc2-4a05-bcef-3a9793d81238  ← 8080 포트 로그인 세션
+spring:session:sessions:ff0b41cd-780e-46bd-8b1d-525d4f7e7d77  ← 8081 포트 접근 세션
+spring:session:sessions:a8cbd598-032b-4af6-8795-f2785ccd3634  ← 추가 접근 세션
+```
+
+### 다음 작업 예정
+1. **관리자 기능 구현**: 라라벨 기반 관리자 시스템을 Spring Boot로 구현
+2. **AI 힌트 생성**: AI 힌트 생성 기능 구현
+3. **레벨 관리**: 퍼즐 레벨 관리 기능 구현
+4. **그리드 템플릿 관리**: 그리드 템플릿 관리 기능 구현
+
+### 중요 파일 위치
+- **8080 포트 게시판**: `/var/www/html/java-projects/`
+- **8081 포트 퍼즐 게임**: `/var/www/html/crossword-projects/`
+- **인증 설정**: `crossword-projects/src/main/java/com/example/crossword/config/`
+- **관리자 페이지**: `crossword-projects/src/main/resources/static/admin/`
+
+### 디버깅 명령어
+- **Redis 세션 확인**: `redis-cli keys "*session*"`
+- **서비스 상태 확인**: `ps aux | grep -E "(java|gradle)" | grep -v grep`
+- **포트 사용 확인**: `netstat -tlnp | grep -E ":(8080|8081)"`
+- **Redis 초기화**: `redis-cli FLUSHALL`
+
+---

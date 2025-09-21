@@ -12,7 +12,15 @@
         <div class="container">
             <a class="navbar-brand" href="/">게시판 시스템</a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/login">로그인</a>
+                <a class="nav-link" th:if="${!isAuthenticated}" href="/login">로그인</a>
+                <div class="nav-item dropdown" th:if="${isAuthenticated}">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span th:text="${userName}">사용자</span>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <li><a class="dropdown-item" href="/logout">로그아웃</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>
@@ -59,6 +67,23 @@
                                                 <p class="card-text">다양한 난이도의 크로스워드 퍼즐을 즐겨보세요!</p>
                                                 <small class="text-muted">
                                                     <span class="badge bg-primary">게임</span>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 퍼즐 관리자 모드 링크 -->
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-warning">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <a href="https://natus250601.viewdns.net/K-CrossWord/admin/" class="text-warning">
+                                                        ⚙️ 퍼즐 관리 시스템
+                                                    </a>
+                                                </h5>
+                                                <p class="card-text">단어 관리, AI 힌트 생성, 레벨 관리</p>
+                                                <small class="text-muted">
+                                                    <span class="badge bg-warning">관리자</span>
                                                 </small>
                                             </div>
                                         </div>

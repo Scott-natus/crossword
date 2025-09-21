@@ -15,8 +15,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .csrf(csrf -> csrf.disable()) // CSRF 비활성화 (개발용)
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                .requestMatchers("/", "/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
                 .requestMatchers("/board/**").permitAll() // 게시판은 일단 모두 접근 가능
                 .anyRequest().authenticated()
             )

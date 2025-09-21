@@ -47,8 +47,8 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     
-    // Development Tools
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    // Development Tools (temporarily disabled for session namespace fix)
+    // developmentOnly 'org.springframework.boot:spring-boot-devtools'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     
     // Testing

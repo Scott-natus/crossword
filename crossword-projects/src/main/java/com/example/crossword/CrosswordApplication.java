@@ -15,8 +15,8 @@ import org.springframework.session.data.redis.config.annotation.web.http.EnableR
 @SpringBootApplication
 @EnableJpaRepositories
 @EnableRedisHttpSession(
-    maxInactiveIntervalInSeconds = 1800, // 30분
-    redisNamespace = "crossword:session"
+    maxInactiveIntervalInSeconds = 1800 // 30분
+    // redisNamespace는 application.properties에서 설정
 )
 public class CrosswordApplication {
 

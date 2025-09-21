@@ -7,10 +7,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 웹 페이지 컨트롤러
@@ -170,7 +173,7 @@ public class WebController {
     /**
      * 단어 관리 페이지
      */
-    @GetMapping("/admin/words")
+    @GetMapping({"/admin/words", "/K-CrossWord/admin/words"})
     public ResponseEntity<String> adminWords() {
         try {
             Resource resource = new ClassPathResource("static/admin/words/index.html");
@@ -186,4 +189,26 @@ public class WebController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    /**
+     * 관리자 통계 API
+     */
+    @GetMapping({"/admin/api/stats", "/K-CrossWord/admin/api/stats"})
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getAdminStats() {
+        try {
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalWords", 0);
+            stats.put("activeWords", 0);
+            stats.put("wordsWithHints", 0);
+            stats.put("totalHints", 0);
+            
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "통계 조회 중 오류가 발생했습니다.");
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
 }

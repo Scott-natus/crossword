@@ -7,7 +7,10 @@
     <link rel="icon" type="image/x-icon" href="/K-CrossWord/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
     <style>
         body {
             background-color: #f8f9fa;
@@ -16,51 +19,85 @@
         .admin-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 1.5rem 0;
+            padding: 2rem 0;
             margin-bottom: 2rem;
         }
         .stat-card {
             background: white;
-            border-radius: 10px;
-            padding: 1rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            text-align: center;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
         }
         .stat-number {
-            font-size: 1.8rem;
+            font-size: 2.5rem;
             font-weight: bold;
             color: #667eea;
         }
         .stat-label {
             color: #6c757d;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
         }
-        .filter-card {
+        .admin-nav {
             background: white;
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
         }
-        .table-card {
-            background: white;
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+        .nav-link {
+            color: #495057;
+            text-decoration: none;
+            padding: 0.75rem 1rem;
             border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
         }
-        .btn-custom {
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
+        .nav-link:hover {
+            background-color: #667eea;
+            color: white;
+            transform: translateX(5px);
         }
-        .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .nav-link i {
+            margin-right: 0.75rem;
+            width: 20px;
+        }
+        .nav-link.active {
+            background-color: #667eea;
             color: white;
         }
-        .badge-difficulty-1 { background-color: #28a745; }
-        .badge-difficulty-2 { background-color: #ffc107; color: #000; }
-        .badge-difficulty-3 { background-color: #fd7e14; }
-        .badge-difficulty-4 { background-color: #dc3545; }
-        .badge-difficulty-5 { background-color: #6f42c1; }
+        .hints-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .hint-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .hint-item.primary {
+            border-left: 4px solid #007bff;
+            background-color: #f8f9ff;
+        }
+        .badge-primary {
+            background-color: #007bff;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -69,69 +106,102 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h3 class="mb-0">
-                        <i class="fas fa-list me-2"></i>단어 관리
-                    </h3>
-                    <p class="mb-0 mt-1 opacity-75">크로스워드 퍼즐 단어 관리 시스템</p>
+                    <h1 class="mb-0">
+                        <i class="fas fa-puzzle-piece me-3"></i>퍼즐 관리 시스템
+                    </h1>
+                    <p class="mb-0 mt-2 opacity-75">Spring Boot 기반 크로스워드 퍼즐 관리</p>
                 </div>
                 <div class="col-md-4 text-end">
-                    <a href="/admin/" class="btn btn-light btn-sm me-2">
-                        <i class="fas fa-arrow-left me-1"></i>관리자 홈
+                    <a href="/K-CrossWord/" class="btn btn-light">
+                        <i class="fas fa-gamepad me-2"></i>게임으로 이동
                     </a>
-                    <button class="btn btn-success btn-sm" onclick="showAddWordModal()">
-                        <i class="fas fa-plus me-1"></i>단어 추가
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="container">
-        <!-- 통계 카드 -->
+        <!-- 퍼즐 관리 바로가기 네비게이션 -->
+        <div class="admin-nav">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 text-primary">
+                    <i class="fas fa-puzzle-piece me-2"></i>퍼즐 관리 바로가기
+                </h6>
+                <div class="d-flex gap-2">
+                    <a href="/admin/words" class="btn btn-primary btn-sm active">
+                        <i class="fas fa-list me-1"></i>단어 관리
+                    </a>
+                    <a href="/admin/hint-generator" class="btn btn-info btn-sm">
+                        <i class="fas fa-magic me-1"></i>AI 힌트 생성
+                    </a>
+                    <a href="/admin/levels" class="btn btn-success btn-sm">
+                        <i class="fas fa-layer-group me-1"></i>레벨 관리
+                    </a>
+                    <a href="/admin/grid-templates" class="btn btn-warning btn-sm">
+                        <i class="fas fa-th me-1"></i>그리드 템플릿관리
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 정보 -->
         <div class="row mb-4">
             <div class="col-md-3">
-                <div class="stat-card">
+                <div class="stat-card text-center">
                     <div class="stat-number" id="totalWords">-</div>
                     <div class="stat-label">전체 단어</div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="stat-card">
+                <div class="stat-card text-center">
                     <div class="stat-number" id="activeWords">-</div>
                     <div class="stat-label">활성 단어</div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="stat-card">
+                <div class="stat-card text-center">
                     <div class="stat-number" id="wordsWithHints">-</div>
                     <div class="stat-label">힌트 보유</div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="stat-card">
+                <div class="stat-card text-center">
                     <div class="stat-number" id="totalHints">-</div>
                     <div class="stat-label">전체 힌트</div>
                 </div>
             </div>
         </div>
 
-        <!-- 필터 및 검색 -->
-        <div class="filter-card">
-            <div class="row align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label">검색</label>
-                    <input type="text" class="form-control" id="searchInput" placeholder="단어 검색...">
+        <!-- 단어 관리 카드 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">크로스워드 퍼즐 단어 관리</h4>
+                        <div>
+                            <a href="/admin/hint-generator" class="btn btn-info me-2">
+                                <i class="fas fa-magic"></i> AI 힌트 생성
+                            </a>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addWordModal">
+                                <i class="fas fa-plus"></i> 단어 추가
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- 검색 및 필터 -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="keywordSearch" placeholder="키워드 입력 (카테고리, 단어)">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="performSearch()">
+                                        <i class="fas fa-search"></i> 검색
+                                    </button>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">카테고리</label>
-                    <select class="form-select" id="categoryFilter">
-                        <option value="">전체</option>
-                    </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">난이도</label>
+                            <div class="col-md-3">
                     <select class="form-select" id="difficultyFilter">
-                        <option value="">전체</option>
+                                    <option value="">전체 난이도</option>
                         <option value="1">쉬움</option>
                         <option value="2">보통</option>
                         <option value="3">어려움</option>
@@ -139,70 +209,20 @@
                         <option value="5">극도 어려움</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">사용여부</label>
-                    <select class="form-select" id="statusFilter">
-                        <option value="">전체</option>
-                        <option value="true">활성화</option>
-                        <option value="false">비활성화</option>
-                    </select>
-                </div>
                 <div class="col-md-3">
-                    <button class="btn btn-primary btn-custom me-2" onclick="searchWords()">
-                        <i class="fas fa-search me-1"></i>검색
+                                <button class="btn btn-warning w-100" onclick="showBatchUpdateModal()">
+                                    <i class="fas fa-edit"></i> 일괄변경
                     </button>
-                    <button class="btn btn-secondary btn-custom" onclick="resetFilters()">
-                        <i class="fas fa-undo me-1"></i>초기화
-                    </button>
-                </div>
             </div>
         </div>
 
-        <!-- 일괄 변경 -->
-        <div class="filter-card" id="batchUpdateCard" style="display: none;">
-            <div class="row align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label">선택된 단어: <strong id="selectedCount">0</strong>개</label>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">변경할 항목</label>
-                    <select class="form-select" id="batchUpdateType">
-                        <option value="">선택하세요</option>
-                        <option value="difficulty">난이도 변경</option>
-                        <option value="isActive">사용여부 변경</option>
-                    </select>
-                </div>
-                <div class="col-md-2" id="batchUpdateValueContainer" style="display: none;">
-                    <label class="form-label">변경할 값</label>
-                    <select class="form-select" id="batchUpdateValue">
-                        <!-- 동적으로 채워짐 -->
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <button class="btn btn-warning btn-custom me-2" onclick="executeBatchUpdate()">
-                        <i class="fas fa-edit me-1"></i>변경 실행
-                    </button>
-                    <button class="btn btn-secondary btn-custom" onclick="cancelBatchUpdate()">
-                        <i class="fas fa-times me-1"></i>취소
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 단어 목록 테이블 -->
-        <div class="table-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">단어 목록</h5>
-                <button class="btn btn-outline-primary btn-sm" onclick="toggleBatchMode()">
-                    <i class="fas fa-check-square me-1"></i>일괄 선택
-                </button>
-            </div>
+                        <!-- 단어 목록 -->
             <div class="table-responsive">
-                <table class="table table-hover" id="wordsTable">
+                            <table id="wordsDataTable" class="table table-hover">
                     <thead>
                         <tr>
-                            <th width="50">
-                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" style="display: none;">
+                                        <th>
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
                             </th>
                             <th>카테고리</th>
                             <th>단어</th>
@@ -210,20 +230,19 @@
                             <th>난이도</th>
                             <th>힌트 개수</th>
                             <th>사용여부</th>
+                                        <th>힌트 생성일자</th>
                             <th>입력일자</th>
-                            <th width="120">관리</th>
+                                        <th>관리</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- 동적으로 채워짐 -->
+                                    <!-- Ajax로 데이터 로드 -->
                     </tbody>
                 </table>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <nav aria-label="페이지 네비게이션">
-                <ul class="pagination justify-content-center" id="pagination">
-                    <!-- 동적으로 채워짐 -->
-                </ul>
-            </nav>
         </div>
     </div>
 
@@ -233,26 +252,25 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">단어 추가</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="addWordForm">
                         <div class="mb-3">
-                            <label class="form-label">카테고리</label>
-                            <input type="text" class="form-control" id="addCategory" placeholder="5글자 이하로 입력하세요." maxlength="5" required>
+                            <label for="category" class="form-label">카테고리</label>
+                            <input type="text" class="form-control" id="category" name="category" maxlength="50" placeholder="5글자 이하로 입력하세요.">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">단어</label>
-                            <input type="text" class="form-control" id="addWord" placeholder="5글자 이하로 입력하세요." maxlength="5" required>
+                            <label for="word" class="form-label">단어</label>
+                            <input type="text" class="form-control" id="word" name="word" maxlength="50" placeholder="5글자 이하로 입력하세요.">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">난이도</label>
-                            <select class="form-select" id="addDifficulty" required>
+                            <label for="difficulty" class="form-label">난이도</label>
+                            <select class="form-select" id="difficulty" name="difficulty">
+                                <option value="">난이도 선택</option>
                                 <option value="1">쉬움</option>
                                 <option value="2">보통</option>
                                 <option value="3">어려움</option>
-                                <option value="4">매우 어려움</option>
-                                <option value="5">극도 어려움</option>
                             </select>
                         </div>
                     </form>
@@ -265,28 +283,40 @@
         </div>
     </div>
 
-    <!-- 단어 수정 모달 -->
-    <div class="modal fade" id="editWordModal" tabindex="-1">
+    <!-- 일괄변경 모달 -->
+    <div class="modal fade" id="batchUpdateModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">단어 수정</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title">일괄변경</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="editWordForm">
-                        <input type="hidden" id="editWordId">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        선택된 단어: <strong id="selectedCount">0</strong>개
+                    </div>
+                    
+                    <form id="batchUpdateForm">
                         <div class="mb-3">
-                            <label class="form-label">카테고리</label>
-                            <input type="text" class="form-control" id="editCategory" maxlength="5" required>
+                            <label class="form-label">변경할 항목</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="updateDifficulty" name="update_difficulty">
+                                <label class="form-check-label" for="updateDifficulty">
+                                    난이도 변경
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="updateActive" name="update_active">
+                                <label class="form-check-label" for="updateActive">
+                                    사용여부 변경
+                                </label>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">단어</label>
-                            <input type="text" class="form-control" id="editWord" maxlength="5" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">난이도</label>
-                            <select class="form-select" id="editDifficulty" required>
+                        
+                        <div class="mb-3" id="difficultySection" style="display: none;">
+                            <label for="batchDifficulty" class="form-label">난이도</label>
+                            <select class="form-select" id="batchDifficulty" name="difficulty">
                                 <option value="1">쉬움</option>
                                 <option value="2">보통</option>
                                 <option value="3">어려움</option>
@@ -294,18 +324,29 @@
                                 <option value="5">극도 어려움</option>
                             </select>
                         </div>
-                        <div class="mb-3">
+                        
+                        <div class="mb-3" id="activeSection" style="display: none;">
                             <label class="form-label">사용여부</label>
-                            <select class="form-select" id="editIsActive" required>
-                                <option value="true">활성화</option>
-                                <option value="false">비활성화</option>
-                            </select>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" id="activeTrue" name="is_active" value="1">
+                                <label class="form-check-label" for="activeTrue">
+                                    활성화
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" id="activeFalse" name="is_active" value="0">
+                                <label class="form-check-label" for="activeFalse">
+                                    비활성화
+                                </label>
+                            </div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-primary" onclick="updateWord()">수정</button>
+                    <button type="button" class="btn btn-warning" onclick="executeBatchUpdate()">
+                        <i class="fas fa-save"></i> 변경 실행
+                    </button>
                 </div>
             </div>
         </div>
@@ -313,32 +354,124 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- DataTables JavaScript -->
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-    <script>
-        let currentPage = 0;
-        let currentFilters = {};
-        let selectedWords = new Set();
-        let batchMode = false;
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 
-        // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', function() {
+    <script>
+        let wordsTable;
+
+        $(document).ready(function() {
+            // 통계 데이터 로드
             loadStats();
-            loadCategories();
-            loadWords();
             
-            // 일괄 변경 타입 변경 이벤트
-            document.getElementById('batchUpdateType').addEventListener('change', function() {
-                updateBatchValueOptions();
+            // DataTables 초기화
+            wordsTable = $('#wordsDataTable').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: '/admin/api/words/data',
+                    type: 'GET',
+                    data: function(d) {
+                        d.difficulty_filter = $('#difficultyFilter').val();
+                    }
+                },
+                columns: [
+                    { 
+                        data: null,
+                        name: 'checkbox',
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row) {
+                            return '<input type="checkbox" class="word-checkbox" value="' + row.id + '">';
+                        }
+                    },
+                    { data: 'category', name: 'category' },
+                    { data: 'word', name: 'word' },
+                    { data: 'length', name: 'length' },
+                    { 
+                        data: 'difficulty', 
+                        name: 'difficulty',
+                        render: function(data, type, row) {
+                            var badgeColor = 'success';
+                            if (data === 2) badgeColor = 'warning';
+                            else if (data === 3) badgeColor = 'danger';
+                            else if (data === 4) badgeColor = 'dark';
+                            else if (data === 5) badgeColor = 'secondary';
+                            
+                            var difficultyText = '';
+                            switch(data) {
+                                case 1: difficultyText = '쉬움'; break;
+                                case 2: difficultyText = '보통'; break;
+                                case 3: difficultyText = '어려움'; break;
+                                case 4: difficultyText = '매우 어려움'; break;
+                                case 5: difficultyText = '극도 어려움'; break;
+                            }
+                            
+                            return '<span class="badge bg-' + badgeColor + '">' + difficultyText + '</span>';
+                        }
+                    },
+                    { data: 'hints_count', name: 'hints_count' },
+                    { 
+                        data: 'is_active', 
+                        name: 'is_active',
+                        render: function(data, type, row) {
+                            var checked = data ? 'checked' : '';
+                            return '<div class="form-check form-switch">' +
+                                   '<input class="form-check-input" type="checkbox" ' + checked + 
+                                   ' onchange="toggleActive(' + row.id + ')">' +
+                                   '</div>';
+                        }
+                    },
+                    { 
+                        data: 'latest_hint_date', 
+                        name: 'latest_hint_date',
+                        render: function(data, type, row) {
+                            return data ? data : '';
+                        }
+                    },
+                    { 
+                        data: 'created_at', 
+                        name: 'created_at' 
+                    },
+                    { 
+                        data: null,
+                        name: 'actions',
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row) {
+                            return '<button type="button" class="btn btn-sm btn-outline-primary" ' +
+                                   'onclick="toggleHints(' + row.id + ')">' +
+                                   '<i class="fas fa-eye"></i> 힌트</button>';
+                        }
+                    }
+                ],
+                pageLength: 25,
+                order: [[8, 'desc']], // 입력일자 내림차순
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/ko.json'
+                },
+                responsive: true
+            });
+
+            // 테이블 그리기 후 이벤트 설정
+            wordsTable.on('draw', function() {
+                $('#selectAll').prop('indeterminate', false).prop('checked', false);
+                updateSelectedCount();
             });
         });
 
         // 통계 데이터 로드
         async function loadStats() {
             try {
-                const response = await fetch('/admin/api/stats');
+                const response = await fetch('https://natus250601.viewdns.net/K-CrossWord/admin/api/stats');
                 if (response.ok) {
                     const stats = await response.json();
+                    
                     document.getElementById('totalWords').textContent = stats.totalWords?.toLocaleString() || '0';
                     document.getElementById('activeWords').textContent = stats.activeWords?.toLocaleString() || '0';
                     document.getElementById('wordsWithHints').textContent = stats.wordsWithHints?.toLocaleString() || '0';
@@ -349,412 +482,222 @@
             }
         }
 
-        // 카테고리 목록 로드
-        async function loadCategories() {
-            try {
-                const response = await fetch('/admin/api/words/categories');
-                if (response.ok) {
-                    const categories = await response.json();
-                    const select = document.getElementById('categoryFilter');
-                    select.innerHTML = '<option value="">전체</option>';
-                    categories.forEach(category => {
-                        const option = document.createElement('option');
-                        option.value = category;
-                        option.textContent = category;
-                        select.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error('카테고리 로드 오류:', error);
-            }
-        }
-
-        // 단어 목록 로드
-        async function loadWords(page = 0) {
-            try {
-                const params = new URLSearchParams({
-                    page: page,
-                    size: 20,
-                    ...currentFilters
-                });
-
-                const response = await fetch(`/admin/api/words?${params}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    renderWordsTable(data.words);
-                    renderPagination(data);
-                    currentPage = page;
-                }
-            } catch (error) {
-                console.error('단어 목록 로드 오류:', error);
-            }
-        }
-
-        // 단어 테이블 렌더링
-        function renderWordsTable(words) {
-            const tbody = document.querySelector('#wordsTable tbody');
-            tbody.innerHTML = '';
-
-            words.forEach(word => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>
-                        <input type="checkbox" class="word-checkbox" value="${word.id}" 
-                               onchange="toggleWordSelection(${word.id})" 
-                               style="display: ${batchMode ? 'block' : 'none'};">
-                    </td>
-                    <td>${word.category}</td>
-                    <td><strong>${word.word}</strong></td>
-                    <td>${word.length}</td>
-                    <td><span class="badge badge-difficulty-${word.difficulty}">${getDifficultyText(word.difficulty)}</span></td>
-                    <td>${word.hintCount || 0}</td>
-                    <td><span class="badge ${word.isActive ? 'bg-success' : 'bg-secondary'}">${word.isActive ? '활성화' : '비활성화'}</span></td>
-                    <td>${new Date(word.createdAt).toLocaleDateString()}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editWord(${word.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteWord(${word.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // 페이지네이션 렌더링
-        function renderPagination(data) {
-            const pagination = document.getElementById('pagination');
-            pagination.innerHTML = '';
-
-            const totalPages = data.totalPages;
-            const currentPage = data.currentPage;
-
-            // 이전 페이지
-            if (currentPage > 0) {
-                const prevLi = document.createElement('li');
-                prevLi.className = 'page-item';
-                prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadWords(${currentPage - 1})">이전</a>`;
-                pagination.appendChild(prevLi);
-            }
-
-            // 페이지 번호들
-            for (let i = Math.max(0, currentPage - 2); i <= Math.min(totalPages - 1, currentPage + 2); i++) {
-                const li = document.createElement('li');
-                li.className = `page-item ${i === currentPage ? 'active' : ''}`;
-                li.innerHTML = `<a class="page-link" href="#" onclick="loadWords(${i})">${i + 1}</a>`;
-                pagination.appendChild(li);
-            }
-
-            // 다음 페이지
-            if (currentPage < totalPages - 1) {
-                const nextLi = document.createElement('li');
-                nextLi.className = 'page-item';
-                nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadWords(${currentPage + 1})">다음</a>`;
-                pagination.appendChild(nextLi);
-            }
-        }
-
-        // 난이도 텍스트 변환
-        function getDifficultyText(difficulty) {
-            const difficultyMap = {
-                1: '쉬움',
-                2: '보통',
-                3: '어려움',
-                4: '매우 어려움',
-                5: '극도 어려움'
-            };
-            return difficultyMap[difficulty] || '알 수 없음';
-        }
-
-        // 검색
-        function searchWords() {
-            currentFilters = {
-                search: document.getElementById('searchInput').value,
-                category: document.getElementById('categoryFilter').value,
-                difficulty: document.getElementById('difficultyFilter').value,
-                isActive: document.getElementById('statusFilter').value
-            };
-            loadWords(0);
-        }
-
-        // 필터 초기화
-        function resetFilters() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('categoryFilter').value = '';
-            document.getElementById('difficultyFilter').value = '';
-            document.getElementById('statusFilter').value = '';
-            currentFilters = {};
-            loadWords(0);
-        }
-
-        // 단어 추가 모달 표시
-        function showAddWordModal() {
-            document.getElementById('addWordForm').reset();
-            new bootstrap.Modal(document.getElementById('addWordModal')).show();
-        }
-
         // 단어 추가
-        async function addWord() {
-            const category = document.getElementById('addCategory').value.trim();
-            const word = document.getElementById('addWord').value.trim();
-            const difficulty = parseInt(document.getElementById('addDifficulty').value);
+        function addWord() {
+            const formData = {
+                category: document.getElementById('category').value,
+                word: document.getElementById('word').value,
+                difficulty: document.getElementById('difficulty').value
+            };
 
-            if (!category || !word) {
-                alert('카테고리와 단어를 입력해주세요.');
+            if (!formData.category || !formData.word || !formData.difficulty) {
+                showAlert('warning', '모든 필드를 입력해주세요.');
                 return;
             }
 
-            try {
-                const response = await fetch('/admin/api/words', {
+            fetch('https://natus250601.viewdns.net/K-CrossWord/admin/api/words', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        category: category,
-                        word: word,
-                        difficulty: difficulty,
-                        isActive: true
-                    })
-                });
-
-                const result = await response.json();
-                if (response.ok) {
-                    alert('단어가 성공적으로 추가되었습니다.');
-                    bootstrap.Modal.getInstance(document.getElementById('addWordModal')).hide();
-                    loadWords(currentPage);
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', data.message);
+                    $('#addWordModal').modal('hide');
+                    $('#addWordForm')[0].reset();
+                    wordsTable.ajax.reload();
                     loadStats();
                 } else {
-                    alert(result.error || '단어 추가에 실패했습니다.');
+                    showAlert('danger', data.message);
                 }
-            } catch (error) {
-                console.error('단어 추가 오류:', error);
-                alert('단어 추가 중 오류가 발생했습니다.');
-            }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('danger', '단어 추가 중 오류가 발생했습니다.');
+            });
         }
 
-        // 단어 수정
-        async function editWord(id) {
-            try {
-                const response = await fetch(`/admin/api/words/${id}`);
-                if (response.ok) {
-                    const word = await response.json();
-                    document.getElementById('editWordId').value = word.id;
-                    document.getElementById('editCategory').value = word.category;
-                    document.getElementById('editWord').value = word.word;
-                    document.getElementById('editDifficulty').value = word.difficulty;
-                    document.getElementById('editIsActive').value = word.isActive.toString();
-                    new bootstrap.Modal(document.getElementById('editWordModal')).show();
-                }
-            } catch (error) {
-                console.error('단어 조회 오류:', error);
-            }
-        }
-
-        // 단어 업데이트
-        async function updateWord() {
-            const id = document.getElementById('editWordId').value;
-            const category = document.getElementById('editCategory').value.trim();
-            const word = document.getElementById('editWord').value.trim();
-            const difficulty = parseInt(document.getElementById('editDifficulty').value);
-            const isActive = document.getElementById('editIsActive').value === 'true';
-
-            try {
-                const response = await fetch(`/admin/api/words/${id}`, {
+        // 단어 활성화/비활성화 토글
+        function toggleActive(wordId) {
+            fetch(`https://natus250601.viewdns.net/K-CrossWord/admin/api/words/${wordId}/toggle-active`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        category: category,
-                        word: word,
-                        difficulty: difficulty,
-                        isActive: isActive
-                    })
-                });
-
-                const result = await response.json();
-                if (response.ok) {
-                    alert('단어가 성공적으로 수정되었습니다.');
-                    bootstrap.Modal.getInstance(document.getElementById('editWordModal')).hide();
-                    loadWords(currentPage);
-                } else {
-                    alert(result.error || '단어 수정에 실패했습니다.');
                 }
-            } catch (error) {
-                console.error('단어 수정 오류:', error);
-                alert('단어 수정 중 오류가 발생했습니다.');
-            }
-        }
-
-        // 단어 삭제
-        async function deleteWord(id) {
-            if (!confirm('정말로 이 단어를 삭제하시겠습니까?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/admin/api/words/${id}`, {
-                    method: 'DELETE'
-                });
-
-                const result = await response.json();
-                if (response.ok) {
-                    alert('단어가 성공적으로 삭제되었습니다.');
-                    loadWords(currentPage);
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', data.message);
+                    wordsTable.ajax.reload();
                     loadStats();
                 } else {
-                    alert(result.error || '단어 삭제에 실패했습니다.');
+                    showAlert('danger', data.message);
                 }
-            } catch (error) {
-                console.error('단어 삭제 오류:', error);
-                alert('단어 삭제 중 오류가 발생했습니다.');
-            }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('danger', '상태 변경 중 오류가 발생했습니다.');
+            });
         }
 
-        // 일괄 선택 모드 토글
-        function toggleBatchMode() {
-            batchMode = !batchMode;
-            const checkboxes = document.querySelectorAll('.word-checkbox');
-            const selectAllCheckbox = document.getElementById('selectAll');
+        // 검색 실행
+        function performSearch() {
+            const keyword = document.getElementById('keywordSearch').value;
+            const difficulty = document.getElementById('difficultyFilter').value;
             
-            checkboxes.forEach(checkbox => {
-                checkbox.style.display = batchMode ? 'block' : 'none';
-            });
+            if (keyword) {
+                wordsTable.search(keyword).draw();
+            } else {
+                wordsTable.search('').draw();
+            }
             
-            selectAllCheckbox.style.display = batchMode ? 'block' : 'none';
-            
-            if (!batchMode) {
-                selectedWords.clear();
-                updateBatchUpdateCard();
+            if (difficulty !== '') {
+                wordsTable.ajax.reload();
             }
         }
 
         // 전체 선택/해제
         function toggleSelectAll() {
-            const selectAll = document.getElementById('selectAll');
-            const checkboxes = document.querySelectorAll('.word-checkbox');
-            
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = selectAll.checked;
-                if (selectAll.checked) {
-                    selectedWords.add(parseInt(checkbox.value));
-                } else {
-                    selectedWords.delete(parseInt(checkbox.value));
-                }
+            const isChecked = document.getElementById('selectAll').checked;
+            document.querySelectorAll('.word-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
             });
-            
-            updateBatchUpdateCard();
+            updateSelectedCount();
         }
 
-        // 단어 선택 토글
-        function toggleWordSelection(id) {
-            if (selectedWords.has(id)) {
-                selectedWords.delete(id);
-            } else {
-                selectedWords.add(id);
-            }
-            updateBatchUpdateCard();
+        // 선택된 개수 업데이트
+        function updateSelectedCount() {
+            const selectedCount = document.querySelectorAll('.word-checkbox:checked').length;
+            document.getElementById('selectedCount').textContent = selectedCount;
         }
 
-        // 일괄 변경 카드 업데이트
-        function updateBatchUpdateCard() {
-            const card = document.getElementById('batchUpdateCard');
-            const count = document.getElementById('selectedCount');
-            
-            count.textContent = selectedWords.size;
-            card.style.display = selectedWords.size > 0 ? 'block' : 'none';
-        }
-
-        // 일괄 변경 값 옵션 업데이트
-        function updateBatchValueOptions() {
-            const type = document.getElementById('batchUpdateType').value;
-            const container = document.getElementById('batchUpdateValueContainer');
-            const select = document.getElementById('batchUpdateValue');
-            
-            container.style.display = type ? 'block' : 'none';
-            select.innerHTML = '';
-            
-            if (type === 'difficulty') {
-                const options = [
-                    { value: 1, text: '쉬움' },
-                    { value: 2, text: '보통' },
-                    { value: 3, text: '어려움' },
-                    { value: 4, text: '매우 어려움' },
-                    { value: 5, text: '극도 어려움' }
-                ];
-                options.forEach(option => {
-                    const optionElement = document.createElement('option');
-                    optionElement.value = option.value;
-                    optionElement.textContent = option.text;
-                    select.appendChild(optionElement);
-                });
-            } else if (type === 'isActive') {
-                const options = [
-                    { value: true, text: '활성화' },
-                    { value: false, text: '비활성화' }
-                ];
-                options.forEach(option => {
-                    const optionElement = document.createElement('option');
-                    optionElement.value = option.value;
-                    optionElement.textContent = option.text;
-                    select.appendChild(optionElement);
-                });
-            }
-        }
-
-        // 일괄 변경 실행
-        async function executeBatchUpdate() {
-            const type = document.getElementById('batchUpdateType').value;
-            const value = document.getElementById('batchUpdateValue').value;
-            
-            if (!type || !value) {
-                alert('변경할 항목과 값을 선택해주세요.');
+        // 일괄변경 모달 표시
+        function showBatchUpdateModal() {
+            const selectedIds = getSelectedWordIds();
+            if (selectedIds.length === 0) {
+                showAlert('warning', '변경할 단어를 선택해주세요.');
                 return;
             }
             
-            if (selectedWords.size === 0) {
-                alert('선택된 단어가 없습니다.');
+            document.getElementById('selectedCount').textContent = selectedIds.length;
+            $('#batchUpdateModal').modal('show');
+        }
+
+        // 선택된 단어 ID 목록 가져오기
+        function getSelectedWordIds() {
+            const selectedIds = [];
+            document.querySelectorAll('.word-checkbox:checked').forEach(checkbox => {
+                selectedIds.push(checkbox.value);
+            });
+            return selectedIds;
+        }
+
+        // 일괄변경 실행
+        function executeBatchUpdate() {
+            const selectedIds = getSelectedWordIds();
+            if (selectedIds.length === 0) {
+                showAlert('warning', '변경할 단어를 선택해주세요.');
                 return;
             }
             
-            try {
-                const response = await fetch('/admin/api/words/batch-update', {
+            const updateData = {
+                word_ids: selectedIds
+            };
+            
+            if (document.getElementById('updateDifficulty').checked) {
+                updateData.update_difficulty = true;
+                updateData.difficulty = document.getElementById('batchDifficulty').value;
+            }
+            
+            if (document.getElementById('updateActive').checked) {
+                updateData.update_active = true;
+                updateData.is_active = document.querySelector('input[name="is_active"]:checked').value;
+            }
+            
+            if (!updateData.update_difficulty && !updateData.update_active) {
+                showAlert('warning', '변경할 항목을 선택해주세요.');
+                return;
+            }
+            
+            const message = selectedIds.length + '개의 단어를 변경하시겠습니까?';
+            if (!confirm(message)) {
+                return;
+            }
+            
+            fetch('/admin/api/words/batch-update', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        wordIds: Array.from(selectedWords),
-                        updateType: type,
-                        updateValue: type === 'isActive' ? value === 'true' : parseInt(value)
-                    })
-                });
-
-                const result = await response.json();
-                if (response.ok) {
-                    alert(result.message);
-                    selectedWords.clear();
-                    updateBatchUpdateCard();
-                    loadWords(currentPage);
+                body: JSON.stringify(updateData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', data.message);
+                    $('#batchUpdateModal').modal('hide');
+                    document.getElementById('batchUpdateForm').reset();
+                    document.getElementById('difficultySection').style.display = 'none';
+                    document.getElementById('activeSection').style.display = 'none';
+                    wordsTable.ajax.reload();
+                    loadStats();
+                    document.getElementById('selectAll').checked = false;
+                    updateSelectedCount();
                 } else {
-                    alert(result.error || '일괄 변경에 실패했습니다.');
+                    showAlert('danger', data.message);
                 }
-            } catch (error) {
-                console.error('일괄 변경 오류:', error);
-                alert('일괄 변경 중 오류가 발생했습니다.');
-            }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('danger', '일괄변경 중 오류가 발생했습니다.');
+            });
         }
 
-        // 일괄 변경 취소
-        function cancelBatchUpdate() {
-            selectedWords.clear();
-            document.getElementById('batchUpdateType').value = '';
-            document.getElementById('batchUpdateValueContainer').style.display = 'none';
-            updateBatchUpdateCard();
+        // 알림 표시
+        function showAlert(type, message) {
+            const alertHtml = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+            
+            // 기존 알림 제거
+            document.querySelectorAll('.alert').forEach(alert => alert.remove());
+            
+            // 새 알림 추가
+            document.querySelector('.card-body').insertAdjacentHTML('afterbegin', alertHtml);
+            
+            // 3초 후 자동 제거
+            setTimeout(() => {
+                document.querySelectorAll('.alert').forEach(alert => alert.remove());
+            }, 3000);
         }
+
+        // 체크박스 변경 이벤트
+        document.addEventListener('change', '#updateDifficulty', function() {
+            const section = document.getElementById('difficultySection');
+            section.style.display = this.checked ? 'block' : 'none';
+        });
+
+        document.addEventListener('change', '#updateActive', function() {
+            const section = document.getElementById('activeSection');
+            section.style.display = this.checked ? 'block' : 'none';
+        });
+
+        // 엔터키로 검색
+        document.getElementById('keywordSearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // 난이도 필터 변경 시 자동 검색
+        document.getElementById('difficultyFilter').addEventListener('change', function() {
+            performSearch();
+        });
     </script>
 </body>
 </html>
