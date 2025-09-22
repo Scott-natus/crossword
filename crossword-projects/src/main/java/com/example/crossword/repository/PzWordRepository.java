@@ -179,4 +179,5 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
      */
     @Query("SELECT w FROM PzWord w WHERE LOWER(w.word) LIKE LOWER(:search) AND w.category = :category AND w.isActive = :isActive")
     org.springframework.data.domain.Page<PzWord> findByWordContainingIgnoreCaseAndCategoryAndIsActive(@Param("search") String search, @Param("category") String category, @Param("isActive") Boolean isActive, org.springframework.data.domain.Pageable pageable);
+    
 }

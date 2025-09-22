@@ -492,4 +492,29 @@ public class WordController {
                 .body(Map.of("success", false, "message", "단어 존재 여부 확인 중 오류가 발생했습니다."));
         }
     }
+    
+    /**
+     * 모든 카테고리 목록 조회
+     */
+    @GetMapping("/categories")
+    public ResponseEntity<Map<String, Object>> getAllCategories() {
+        log.debug("모든 카테고리 목록 조회");
+        
+        try {
+            List<String> categories = wordService.getAllCategories();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", categories);
+            response.put("count", categories.size());
+            response.put("message", "카테고리 목록을 성공적으로 조회했습니다.");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("카테고리 목록 조회 중 오류 발생: {}", e.getMessage());
+            return ResponseEntity.internalServerError()
+                .body(Map.of("success", false, "message", "카테고리 목록 조회 중 오류가 발생했습니다."));
+        }
+    }
 }

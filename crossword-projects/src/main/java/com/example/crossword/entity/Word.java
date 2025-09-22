@@ -62,6 +62,10 @@ public class Word {
     @JsonIgnore
     private List<GameSession> gameSessions;
     
+    // 힌트 개수 (조회 시 계산)
+    @Transient
+    private Integer hintCount;
+    
     /**
      * 단어의 난이도 레벨을 반환
      * @return 난이도 레벨 (1-5)

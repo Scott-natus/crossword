@@ -14,6 +14,10 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 정적 리소스 핸들러 등록
+        registry.addResourceHandler("/admin/**")
+                .addResourceLocations("classpath:/static/admin/")
+                .setCachePeriod(0); // 개발 환경에서는 캐시 비활성화
+        
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
                 .setCachePeriod(0); // 개발 환경에서는 캐시 비활성화

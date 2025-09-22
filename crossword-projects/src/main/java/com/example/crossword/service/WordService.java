@@ -29,7 +29,10 @@ public class WordService {
      */
     public List<Word> getAllActiveWords() {
         log.debug("모든 활성 단어 조회");
-        return wordRepository.findByIsActiveTrue();
+        List<Word> words = wordRepository.findByIsActiveTrue();
+        // 힌트 개수 설정
+        words.forEach(this::setHintCount);
+        return words;
     }
     
     /**
@@ -328,5 +331,40 @@ public class WordService {
             word.setCategory(category);
             wordRepository.save(word);
         });
+    }
+    
+    /**
+     * 모든 카테고리 목록 조회
+     */
+    public List<String> getAllCategories() {
+        log.debug("모든 카테고리 목록 조회");
+        return wordRepository.findDistinctCategories();
+    }
+    
+    /**
+     * 힌트가 있는 단어 개수 조회
+     */
+    public long getWordsWithHintsCount() {
+        log.debug("힌트가 있는 단어 개수 조회");
+        return wordRepository.countWordsWithHints();
+    }
+    
+    /**
+     * 힌트가 없는 단어 개수 조회
+     */
+    public long getWordsWithoutHintsCount() {
+        log.debug("힌트가 없는 단어 개수 조회");
+        return wordRepository.countWordsWithoutHints();
+    }
+    
+    /**
+     * 단어의 힌트 개수 설정
+     */
+    private void setHintCount(Word word) {
+        if (word.getHints() != null) {
+            word.setHintCount(word.getHints().size());
+        } else {
+            word.setHintCount(0);
+        }
     }
 }

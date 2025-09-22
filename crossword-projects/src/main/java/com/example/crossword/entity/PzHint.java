@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * 퍼즐 힌트 엔티티
@@ -22,6 +23,7 @@ public class PzHint {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "word_id", nullable = false)
+    @JsonIgnore
     private PzWord word;
     
     @Column(name = "hint_text", nullable = false, columnDefinition = "TEXT")

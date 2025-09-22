@@ -22,13 +22,14 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // CSRF 비활성화 (개발용)
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
-                .requestMatchers("/admin/**", "/K-CrossWord/admin/**").authenticated() // 관리자 페이지는 인증 필요
-                .requestMatchers("/api/**", "/K-CrossWord/api/**").permitAll() // API는 허용
+                .requestMatchers("/api/**").permitAll() // API는 허용
+                .requestMatchers("/K-CrossWord/admin/api/**").permitAll() // 관리자 API는 허용
+                .requestMatchers("/K-CrossWord/admin/**").authenticated() // 관리자 페이지는 인증 필요
                 .anyRequest().permitAll() // 나머지는 허용
             )
             .formLogin(form -> form
                 .loginPage("https://natus250601.viewdns.net/login") // 8080 포트 로그인 페이지로 리다이렉트
-                .defaultSuccessUrl("https://natus250601.viewdns.net/K-CrossWord/admin/", true)
+                .defaultSuccessUrl("https://natus250601.viewdns.net/K-CrossWord/admin/hint-generator", true)
                 .permitAll()
             )
             .logout(logout -> logout

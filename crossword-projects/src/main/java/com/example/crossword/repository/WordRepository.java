@@ -174,4 +174,22 @@ public interface WordRepository extends JpaRepository<Word, Integer> {
      * 특정 길이의 활성 단어 개수 조회
      */
     long countByLengthAndIsActiveTrue(Integer length);
+    
+    /**
+     * 모든 카테고리 목록 조회
+     */
+    @Query("SELECT DISTINCT w.category FROM Word w WHERE w.isActive = true AND w.category IS NOT NULL ORDER BY w.category")
+    List<String> findDistinctCategories();
+    
+    /**
+     * 힌트가 있는 단어 개수 조회
+     */
+    @Query("SELECT COUNT(DISTINCT w.id) FROM Word w WHERE w.isActive = true AND EXISTS (SELECT 1 FROM Hint h WHERE h.word = w)")
+    long countWordsWithHints();
+    
+    /**
+     * 힌트가 없는 단어 개수 조회
+     */
+    @Query("SELECT COUNT(DISTINCT w.id) FROM Word w WHERE w.isActive = true AND NOT EXISTS (SELECT 1 FROM Hint h WHERE h.word = w)")
+    long countWordsWithoutHints();
 }

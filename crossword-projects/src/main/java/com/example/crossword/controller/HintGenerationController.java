@@ -271,6 +271,11 @@ public class HintGenerationController {
         try {
             Map<String, Object> stats = hintGenerationService.getHintGenerationStats();
             
+            // 추가 통계 정보
+            stats.put("totalWords", wordService.getTotalActiveWordCount());
+            stats.put("wordsWithHints", wordService.getWordsWithHintsCount());
+            stats.put("wordsWithoutHints", wordService.getWordsWithoutHintsCount());
+            
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", stats);

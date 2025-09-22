@@ -9,9 +9,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -153,7 +155,7 @@ public class WebController {
     /**
      * 관리자 메인 페이지
      */
-    @GetMapping({"/admin/", "/admin", "/K-CrossWord/admin/", "/K-CrossWord/admin"})
+    @GetMapping({"/K-CrossWord/admin/", "/K-CrossWord/admin"})
     public ResponseEntity<String> adminIndex() {
         try {
             Resource resource = new ClassPathResource("static/admin/index.html");
@@ -173,7 +175,7 @@ public class WebController {
     /**
      * 단어 관리 페이지
      */
-    @GetMapping({"/admin/words", "/K-CrossWord/admin/words"})
+    @GetMapping({"/K-CrossWord/admin/words"})
     public ResponseEntity<String> adminWords() {
         try {
             Resource resource = new ClassPathResource("static/admin/words/index.html");
@@ -190,24 +192,67 @@ public class WebController {
         }
     }
 
+    // 관리자 통계 API는 WordManagementController로 이동됨
+
+    // 단어 데이터 API는 WordManagementController로 이동됨
+
     /**
-     * 관리자 통계 API
+     * AI 힌트 생성 페이지
      */
-    @GetMapping({"/admin/api/stats", "/K-CrossWord/admin/api/stats"})
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> getAdminStats() {
+    @GetMapping({"/K-CrossWord/admin/hint-generator"})
+    public ResponseEntity<String> adminHintGenerator() {
         try {
-            Map<String, Object> stats = new HashMap<>();
-            stats.put("totalWords", 0);
-            stats.put("activeWords", 0);
-            stats.put("wordsWithHints", 0);
-            stats.put("totalHints", 0);
+            Resource resource = new ClassPathResource("static/admin/hint-generator/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             
-            return ResponseEntity.ok(stats);
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "통계 조회 중 오류가 발생했습니다.");
-            return ResponseEntity.internalServerError().body(error);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * 레벨 관리 페이지
+     */
+    @GetMapping({"/K-CrossWord/admin/levels"})
+    public ResponseEntity<String> adminLevels() {
+        try {
+            Resource resource = new ClassPathResource("static/admin/levels/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * 그리드 템플릿 관리 페이지
+     */
+    @GetMapping({"/K-CrossWord/admin/grid-templates"})
+    public ResponseEntity<String> adminGridTemplates() {
+        try {
+            Resource resource = new ClassPathResource("static/admin/grid-templates/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 

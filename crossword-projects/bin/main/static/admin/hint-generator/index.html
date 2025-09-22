@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 힌트 생성 - 퍼즐 관리 시스템</title>
+    <link rel="icon" type="image/x-icon" href="/K-CrossWord/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+        }
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+        }
+        .nav-link {
+            color: #6c757d;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+        .nav-link:hover {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+        .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-left: 4px solid #667eea;
+        }
+        .table-hover tbody tr:hover {
+            background-color: rgba(102, 126, 234, 0.1);
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+        .loading {
+            display: none;
+        }
+        .loading.show {
+            display: block;
+        }
+        .progress {
+            height: 8px;
+            border-radius: 10px;
+        }
+        .progress-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 헤더 -->
+    <div class="admin-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-0">
+                        <i class="fas fa-magic me-3"></i>AI 힌트 생성 관리
+                    </h1>
+                    <p class="mb-0 mt-2">Gemini AI를 활용한 자동 힌트 생성 시스템</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="/K-CrossWord/admin/" class="btn btn-outline-light">
+                            <i class="fas fa-home"></i> 관리자 홈
+                        </a>
+                        <a href="/K-CrossWord/admin/words" class="btn btn-outline-light">
+                            <i class="fas fa-list"></i> 단어 관리
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 네비게이션 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-primary">
+                        <i class="fas fa-puzzle-piece me-2"></i>퍼즐 관리 바로가기
+                    </h6>
+                    <div class="d-flex gap-2">
+                        <a href="/K-CrossWord/admin/words" class="btn btn-primary btn-sm">
+                            <i class="fas fa-list me-1"></i>단어 관리
+                        </a>
+                        <a href="/K-CrossWord/admin/hint-generator" class="btn btn-info btn-sm active">
+                            <i class="fas fa-magic me-1"></i>AI 힌트 생성
+                        </a>
+                        <a href="/K-CrossWord/admin/levels" class="btn btn-success btn-sm">
+                            <i class="fas fa-layer-group me-1"></i>레벨 관리
+                        </a>
+                        <a href="/K-CrossWord/admin/grid-templates" class="btn btn-warning btn-sm">
+                            <i class="fas fa-th me-1"></i>그리드 템플릿관리
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <h3 class="text-primary mb-1" id="totalWords">-</h3>
+                        <p class="text-muted mb-0">전체 단어</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <h3 class="text-success mb-1" id="totalHints">-</h3>
+                        <p class="text-muted mb-0">힌트 보유</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <h3 class="text-warning mb-1" id="noHints">-</h3>
+                        <p class="text-muted mb-0">힌트 없음</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body text-center">
+                        <h3 class="text-info mb-1" id="totalHintsCount">-</h3>
+                        <p class="text-muted mb-0">전체 힌트</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 힌트 생성 메인 컨텐츠 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-robot me-2"></i>AI 힌트 생성 관리
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <!-- API 연결 테스트 -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <button class="btn btn-info w-100" onclick="testApiConnection()">
+                                    <i class="fas fa-plug me-2"></i>API 연결 테스트
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-warning w-100" onclick="showHintCorrectionModal()">
+                                    <i class="fas fa-edit me-2"></i>힌트 보정
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-success w-100" onclick="showBatchGenerationModal()">
+                                    <i class="fas fa-bolt me-2"></i>일괄 힌트 생성
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 필터 및 검색 -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <select class="form-select" id="categoryFilter" onchange="filterWords()">
+                                    <option value="">카테고리를 선택하세요</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="difficultyFilter" onchange="filterWords()">
+                                    <option value="">난이도 선택</option>
+                                    <option value="1">1 (쉬움)</option>
+                                    <option value="2">2 (보통)</option>
+                                    <option value="3">3 (어려움)</option>
+                                    <option value="4">4 (매우 어려움)</option>
+                                    <option value="5">5 (극도 어려움)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="hintStatusFilter" onchange="filterWords()">
+                                    <option value="">힌트 상태</option>
+                                    <option value="has_hints">힌트 보유</option>
+                                    <option value="no_hints">힌트 없음</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="loadWords()">
+                                    <i class="fas fa-search me-2"></i>조회
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 단어 목록 테이블 -->
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="wordsTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                        </th>
+                                        <th>카테고리</th>
+                                        <th>단어</th>
+                                        <th>글자수</th>
+                                        <th>난이도</th>
+                                        <th>힌트 개수</th>
+                                        <th>관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="wordsTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center">
+                                            <div class="loading">
+                                                <i class="fas fa-spinner fa-spin me-2"></i>로딩 중...
+                                            </div>
+                                            <div class="no-data" style="display: none;">
+                                                데이터가 없습니다.
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 선택된 단어 정보 -->
+                        <div class="mt-3">
+                            <div class="alert alert-info">
+                                <strong>선택된 단어:</strong> <span id="selectedCount">0</span>개
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 일괄 힌트 생성 모달 -->
+    <div class="modal fade" id="batchGenerationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-bolt me-2"></i>일괄 힌트 생성
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">생성 방식</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="generationType" id="selectedWords" value="selected" checked>
+                            <label class="form-check-label" for="selectedWords">
+                                선택된 단어들
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="generationType" id="categoryWords" value="category">
+                            <label class="form-check-label" for="categoryWords">
+                                카테고리별
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="selectedWordsInfo">
+                        <div class="alert alert-info">
+                            <strong>선택된 단어:</strong> <span id="selectedWordsCount">0</span>개
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="categorySelection" style="display: none;">
+                        <label class="form-label">카테고리 선택</label>
+                        <select class="form-select" id="batchCategorySelect">
+                            <option value="">카테고리를 선택하세요</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="overwriteExisting">
+                            <label class="form-check-label" for="overwriteExisting">
+                                기존 힌트 덮어쓰기
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-success" onclick="startBatchGeneration()">
+                        <i class="fas fa-magic me-2"></i>힌트 생성 시작
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 힌트 보정 모달 -->
+    <div class="modal fade" id="hintCorrectionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit me-2"></i>힌트 보정 결과
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="hintsTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAllHints" onchange="toggleSelectAllHints()">
+                                    </th>
+                                    <th>단어</th>
+                                    <th>카테고리</th>
+                                    <th>난이도</th>
+                                    <th>현재 힌트</th>
+                                    <th>보정 상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hintsTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center">
+                                        <div class="loading">
+                                            <i class="fas fa-spinner fa-spin me-2"></i>로딩 중...
+                                        </div>
+                                        <div class="no-data" style="display: none;">
+                                            데이터가 없습니다.
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="me-auto">
+                        <strong>선택된 힌트:</strong> <span id="selectedHintsCount">0</span>개
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-warning" onclick="correctSelectedHints()">
+                        <i class="fas fa-edit me-2"></i>선택된 힌트 보정
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 힌트 생성 완료 모달 -->
+    <div class="modal fade" id="generationCompleteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-check-circle me-2"></i>힌트 생성 완료
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>성공적으로 힌트가 생성되었습니다!</strong><br>
+                        아래에서 생성된 힌트들을 확인하세요.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>대상 정보</h6>
+                        <p><strong>카테고리:</strong> <span id="generatedCategory">-</span></p>
+                        <p><strong>단어:</strong> <span id="generatedWord">-</span></p>
+                        <p><strong>사용빈도:</strong> <span id="generatedFrequency">-</span></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>생성된 힌트</h6>
+                        <div id="generatedHintsList">
+                            <!-- 생성된 힌트들이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 힌트 보기 모달 -->
+    <div class="modal fade" id="hintViewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-eye me-2"></i>힌트 보기
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <h6>단어 정보</h6>
+                        <p><strong>카테고리:</strong> <span id="viewCategory">-</span></p>
+                        <p><strong>단어:</strong> <span id="viewWord">-</span></p>
+                        <p><strong>글자수:</strong> <span id="viewLength">-</span></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>등록된 힌트</h6>
+                        <div id="viewHintsList">
+                            <!-- 등록된 힌트들이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 전역 변수
+        let allWords = [];
+        let filteredWords = [];
+        let selectedWords = new Set();
+        let allHints = [];
+        let selectedHints = new Set();
+        let categories = [];
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            loadCategories();
+            loadWords();
+        });
+
+        // 통계 로드
+        async function loadStats() {
+            try {
+                const response = await fetch('/K-CrossWord/admin/api/hint-generation/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.data;
+                    document.getElementById('totalWords').textContent = stats.totalWords || 0;
+                    document.getElementById('totalHints').textContent = stats.wordsWithHints || 0;
+                    document.getElementById('noHints').textContent = stats.wordsWithoutHints || 0;
+                    document.getElementById('totalHintsCount').textContent = stats.totalHints || 0;
+                }
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+            }
+        }
+
+        // 카테고리 로드
+        async function loadCategories() {
+            try {
+                const response = await fetch('/K-CrossWord/admin/api/words/categories');
+                const data = await response.json();
+                
+                if (data.success) {
+                    categories = data.data;
+                    const categorySelect = document.getElementById('categoryFilter');
+                    const batchCategorySelect = document.getElementById('batchCategorySelect');
+                    
+                    // 기존 옵션 제거 (첫 번째 옵션 제외)
+                    categorySelect.innerHTML = '<option value="">카테고리를 선택하세요</option>';
+                    batchCategorySelect.innerHTML = '<option value="">카테고리를 선택하세요</option>';
+                    
+                    // 카테고리 옵션 추가
+                    categories.forEach(category => {
+                        const option1 = new Option(category, category);
+                        const option2 = new Option(category, category);
+                        categorySelect.add(option1);
+                        batchCategorySelect.add(option2);
+                    });
+                }
+            } catch (error) {
+                console.error('카테고리 로드 실패:', error);
+            }
+        }
+
+        // 단어 목록 로드
+        async function loadWords() {
+            const tableBody = document.getElementById('wordsTableBody');
+            const loading = tableBody.querySelector('.loading');
+            const noData = tableBody.querySelector('.no-data');
+            
+            loading.style.display = 'block';
+            noData.style.display = 'none';
+            
+            try {
+                const response = await fetch('/K-CrossWord/admin/api/words');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allWords = data.data;
+                    filterWords();
+                } else {
+                    throw new Error(data.message || '단어 로드 실패');
+                }
+            } catch (error) {
+                console.error('단어 로드 실패:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>데이터 로드 실패
+                        </td>
+                    </tr>
+                `;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // 단어 필터링
+        function filterWords() {
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const difficultyFilter = document.getElementById('difficultyFilter').value;
+            const hintStatusFilter = document.getElementById('hintStatusFilter').value;
+            
+            filteredWords = allWords.filter(word => {
+                let matches = true;
+                
+                if (categoryFilter && word.category !== categoryFilter) {
+                    matches = false;
+                }
+                
+                if (difficultyFilter && word.difficulty !== parseInt(difficultyFilter)) {
+                    matches = false;
+                }
+                
+                if (hintStatusFilter === 'has_hints' && word.hintCount === 0) {
+                    matches = false;
+                }
+                
+                if (hintStatusFilter === 'no_hints' && word.hintCount > 0) {
+                    matches = false;
+                }
+                
+                return matches;
+            });
+            
+            renderWordsTable();
+        }
+
+        // 단어 테이블 렌더링
+        function renderWordsTable() {
+            const tableBody = document.getElementById('wordsTableBody');
+            
+            if (filteredWords.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            <div class="no-data">데이터가 없습니다.</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tableBody.innerHTML = filteredWords.map(word => `
+                <tr>
+                    <td>
+                        <input type="checkbox" class="word-checkbox" value="${word.id}" 
+                               onchange="toggleWordSelection(${word.id})" 
+                               ${selectedWords.has(word.id) ? 'checked' : ''}>
+                    </td>
+                    <td>${word.category || '-'}</td>
+                    <td>${word.word}</td>
+                    <td>${word.length}</td>
+                    <td>
+                        <span class="badge bg-${getDifficultyColor(word.difficulty)}">
+                            ${word.difficulty}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${word.hintCount > 0 ? 'success' : 'warning'}">
+                            ${word.hintCount}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-primary" onclick="generateHintForWord(${word.id})" title="힌트 생성">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                            <button class="btn btn-info" onclick="viewHintsForWord(${word.id})" title="힌트 보기">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 난이도별 색상 반환
+        function getDifficultyColor(difficulty) {
+            switch(difficulty) {
+                case 1: return 'success';
+                case 2: return 'info';
+                case 3: return 'warning';
+                case 4: return 'danger';
+                case 5: return 'dark';
+                default: return 'secondary';
+            }
+        }
+
+        // 전체 선택/해제
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.word-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+                if (selectAll.checked) {
+                    selectedWords.add(parseInt(checkbox.value));
+                } else {
+                    selectedWords.delete(parseInt(checkbox.value));
+                }
+            });
+            
+            updateSelectedCount();
+        }
+
+        // 단어 선택 토글
+        function toggleWordSelection(wordId) {
+            if (selectedWords.has(wordId)) {
+                selectedWords.delete(wordId);
+            } else {
+                selectedWords.add(wordId);
+            }
+            
+            updateSelectedCount();
+            updateSelectAllCheckbox();
+        }
+
+        // 선택된 개수 업데이트
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = selectedWords.size;
+            document.getElementById('selectedWordsCount').textContent = selectedWords.size;
+        }
+
+        // 전체 선택 체크박스 업데이트
+        function updateSelectAllCheckbox() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.word-checkbox');
+            
+            if (selectedWords.size === 0) {
+                selectAll.indeterminate = false;
+                selectAll.checked = false;
+            } else if (selectedWords.size === checkboxes.length) {
+                selectAll.indeterminate = false;
+                selectAll.checked = true;
+            } else {
+                selectAll.indeterminate = true;
+            }
+        }
+
+        // API 연결 테스트
+        async function testApiConnection() {
+            try {
+                const response = await fetch('/K-CrossWord/admin/api/hint-generation/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ API 연결 성공!\n\n' + JSON.stringify(data.data, null, 2));
+                } else {
+                    alert('❌ API 연결 실패: ' + data.message);
+                }
+            } catch (error) {
+                alert('❌ API 연결 실패: ' + error.message);
+            }
+        }
+
+        // 일괄 힌트 생성 모달 표시
+        function showBatchGenerationModal() {
+            const modal = new bootstrap.Modal(document.getElementById('batchGenerationModal'));
+            modal.show();
+        }
+
+        // 힌트 보정 모달 표시
+        function showHintCorrectionModal() {
+            const modal = new bootstrap.Modal(document.getElementById('hintCorrectionModal'));
+            loadHintsForCorrection();
+            modal.show();
+        }
+
+        // 힌트 보정용 힌트 목록 로드
+        async function loadHintsForCorrection() {
+            const tableBody = document.getElementById('hintsTableBody');
+            const loading = tableBody.querySelector('.loading');
+            const noData = tableBody.querySelector('.no-data');
+            
+            loading.style.display = 'block';
+            noData.style.display = 'none';
+            
+            try {
+                const response = await fetch('/K-CrossWord/admin/api/hints');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allHints = data.data;
+                    renderHintsTable();
+                } else {
+                    throw new Error(data.message || '힌트 로드 실패');
+                }
+            } catch (error) {
+                console.error('힌트 로드 실패:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>데이터 로드 실패
+                        </td>
+                    </tr>
+                `;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // 힌트 테이블 렌더링
+        function renderHintsTable() {
+            const tableBody = document.getElementById('hintsTableBody');
+            
+            if (allHints.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            <div class="no-data">데이터가 없습니다.</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tableBody.innerHTML = allHints.map(hint => `
+                <tr>
+                    <td>
+                        <input type="checkbox" class="hint-checkbox" value="${hint.id}" 
+                               onchange="toggleHintSelection(${hint.id})" 
+                               ${selectedHints.has(hint.id) ? 'checked' : ''}>
+                    </td>
+                    <td>${hint.word ? hint.word.word : '-'}</td>
+                    <td>${hint.word ? hint.word.category : '-'}</td>
+                    <td>
+                        <span class="badge bg-${getDifficultyColor(hint.difficulty)}">
+                            ${hint.difficulty}
+                        </span>
+                    </td>
+                    <td>${hint.hintText}</td>
+                    <td>
+                        <span class="badge bg-${hint.correctionStatus === 'y' ? 'success' : 'warning'}">
+                            ${hint.correctionStatus === 'y' ? '보정됨' : '미보정'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 힌트 선택 토글
+        function toggleHintSelection(hintId) {
+            if (selectedHints.has(hintId)) {
+                selectedHints.delete(hintId);
+            } else {
+                selectedHints.add(hintId);
+            }
+            
+            document.getElementById('selectedHintsCount').textContent = selectedHints.size;
+        }
+
+        // 전체 힌트 선택/해제
+        function toggleSelectAllHints() {
+            const selectAll = document.getElementById('selectAllHints');
+            const checkboxes = document.querySelectorAll('.hint-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+                if (selectAll.checked) {
+                    selectedHints.add(parseInt(checkbox.value));
+                } else {
+                    selectedHints.delete(parseInt(checkbox.value));
+                }
+            });
+            
+            document.getElementById('selectedHintsCount').textContent = selectedHints.size;
+        }
+
+        // 일괄 힌트 생성 시작
+        async function startBatchGeneration() {
+            const generationType = document.querySelector('input[name="generationType"]:checked').value;
+            const overwriteExisting = document.getElementById('overwriteExisting').checked;
+            
+            let wordIds = [];
+            
+            if (generationType === 'selected') {
+                if (selectedWords.size === 0) {
+                    alert('선택된 단어가 없습니다.');
+                    return;
+                }
+                wordIds = Array.from(selectedWords);
+            } else if (generationType === 'category') {
+                const category = document.getElementById('batchCategorySelect').value;
+                if (!category) {
+                    alert('카테고리를 선택해주세요.');
+                    return;
+                }
+                // 카테고리별 단어 필터링
+                const categoryWords = allWords.filter(word => word.category === category);
+                wordIds = categoryWords.map(word => word.id);
+            }
+            
+            if (wordIds.length === 0) {
+                alert('생성할 단어가 없습니다.');
+                return;
+            }
+            
+            // 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('batchGenerationModal'));
+            modal.hide();
+            
+            // 진행 상황 표시
+            showProgressModal(wordIds.length);
+            
+            try {
+                const response = await fetch('/K-CrossWord/admin/api/hint-generation/words/batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(wordIds)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showGenerationCompleteModal(data.data);
+                    loadWords(); // 단어 목록 새로고침
+                    loadStats(); // 통계 새로고침
+                } else {
+                    alert('힌트 생성 실패: ' + data.message);
+                }
+            } catch (error) {
+                console.error('일괄 힌트 생성 실패:', error);
+                alert('힌트 생성 실패: ' + error.message);
+            }
+        }
+
+        // 개별 단어 힌트 생성
+        async function generateHintForWord(wordId) {
+            try {
+                const response = await fetch(`/K-CrossWord/admin/api/hint-generation/word/${wordId}/all`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`힌트 생성 완료!\n생성된 힌트: ${data.count}개`);
+                    loadWords(); // 단어 목록 새로고침
+                    loadStats(); // 통계 새로고침
+                } else {
+                    alert('힌트 생성 실패: ' + data.message);
+                }
+            } catch (error) {
+                console.error('힌트 생성 실패:', error);
+                alert('힌트 생성 실패: ' + error.message);
+            }
+        }
+
+        // 단어의 힌트 보기
+        async function viewHintsForWord(wordId) {
+            try {
+                const response = await fetch(`/K-CrossWord/admin/api/hints/word/${wordId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const word = allWords.find(w => w.id === wordId);
+                    showHintViewModal(word, data.data);
+                } else {
+                    alert('힌트 조회 실패: ' + data.message);
+                }
+            } catch (error) {
+                console.error('힌트 조회 실패:', error);
+                alert('힌트 조회 실패: ' + error.message);
+            }
+        }
+
+        // 힌트 보기 모달 표시
+        function showHintViewModal(word, hints) {
+            document.getElementById('viewCategory').textContent = word.category || '-';
+            document.getElementById('viewWord').textContent = word.word;
+            document.getElementById('viewLength').textContent = word.length;
+            
+            const hintsList = document.getElementById('viewHintsList');
+            if (hints.length === 0) {
+                hintsList.innerHTML = '<p class="text-muted">등록된 힌트가 없습니다.</p>';
+            } else {
+                hintsList.innerHTML = hints.map(hint => `
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title">${hint.hintType}</h6>
+                                    <p class="card-text">${hint.hintText}</p>
+                                </div>
+                                <div>
+                                    <span class="badge bg-${getDifficultyColor(hint.difficulty)}">
+                                        난이도 ${hint.difficulty}
+                                    </span>
+                                    ${hint.isPrimary ? '<span class="badge bg-primary ms-1">주 힌트</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('hintViewModal'));
+            modal.show();
+        }
+
+        // 힌트 생성 완료 모달 표시
+        function showGenerationCompleteModal(data) {
+            // 모달 내용 업데이트
+            const modal = new bootstrap.Modal(document.getElementById('generationCompleteModal'));
+            modal.show();
+        }
+
+        // 진행 상황 모달 표시
+        function showProgressModal(totalCount) {
+            // 진행 상황 모달 구현 (간단한 버전)
+            alert(`힌트 생성 중... (${totalCount}개 단어)`);
+        }
+
+        // 선택된 힌트 보정
+        async function correctSelectedHints() {
+            if (selectedHints.size === 0) {
+                alert('보정할 힌트를 선택해주세요.');
+                return;
+            }
+            
+            try {
+                // 선택된 힌트들에 대해 보정 요청
+                for (const hintId of selectedHints) {
+                    await fetch(`/K-CrossWord/admin/api/hint-generation/evaluate/${hintId}`, {
+                        method: 'POST'
+                    });
+                }
+                
+                alert('선택된 힌트 보정이 완료되었습니다.');
+                loadHintsForCorrection(); // 힌트 목록 새로고침
+            } catch (error) {
+                console.error('힌트 보정 실패:', error);
+                alert('힌트 보정 실패: ' + error.message);
+            }
+        }
+
+        // 생성 방식 변경 시 UI 업데이트
+        document.addEventListener('change', function(e) {
+            if (e.target.name === 'generationType') {
+                const selectedWordsInfo = document.getElementById('selectedWordsInfo');
+                const categorySelection = document.getElementById('categorySelection');
+                
+                if (e.target.value === 'selected') {
+                    selectedWordsInfo.style.display = 'block';
+                    categorySelection.style.display = 'none';
+                } else if (e.target.value === 'category') {
+                    selectedWordsInfo.style.display = 'none';
+                    categorySelection.style.display = 'block';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

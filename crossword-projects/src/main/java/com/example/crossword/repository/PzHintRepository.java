@@ -43,4 +43,5 @@ public interface PzHintRepository extends JpaRepository<PzHint, Integer> {
      */
     @Query("SELECT h FROM PzHint h WHERE h.word.id = :wordId AND h.id != :excludeHintId ORDER BY h.difficulty ASC")
     List<PzHint> findByWordIdAndIdNotOrderByDifficulty(@Param("wordId") Integer wordId, @Param("excludeHintId") Integer excludeHintId);
+    
 }
