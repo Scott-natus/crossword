@@ -180,4 +180,46 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     @Query("SELECT w FROM PzWord w WHERE LOWER(w.word) LIKE LOWER(:search) AND w.category = :category AND w.isActive = :isActive")
     org.springframework.data.domain.Page<PzWord> findByWordContainingIgnoreCaseAndCategoryAndIsActive(@Param("search") String search, @Param("category") String category, @Param("isActive") Boolean isActive, org.springframework.data.domain.Pageable pageable);
     
+    /**
+     * 활성화된 단어 조회 (페이징) - 힌트 개수 포함
+     */
+    @Query("SELECT w, COUNT(h) FROM PzWord w LEFT JOIN w.hints h WHERE w.isActive = true GROUP BY w.id ORDER BY COUNT(h) DESC, w.id DESC")
+    org.springframework.data.domain.Page<Object[]> findActiveWordsWithHintCount(org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 활성화된 단어 검색 (페이징) - 힌트 개수 포함
+     */
+    @Query("SELECT w, COUNT(h) FROM PzWord w LEFT JOIN w.hints h WHERE w.isActive = true AND (LOWER(w.word) LIKE LOWER(:search) OR LOWER(w.category) LIKE LOWER(:search)) GROUP BY w.id ORDER BY COUNT(h) DESC, w.id DESC")
+    org.springframework.data.domain.Page<Object[]> findActiveWordsWithSearchAndHintCount(@Param("search") String search, org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 활성화된 단어 수 조회 (힌트 개수 포함) - 페이징용
+     */
+    @Query("SELECT COUNT(DISTINCT w.id) FROM PzWord w LEFT JOIN w.hints h WHERE w.isActive = true")
+    long countActiveWordsWithHintCount();
+    
+    /**
+     * 활성화된 단어 검색 수 조회 (힌트 개수 포함) - 페이징용
+     */
+    @Query("SELECT COUNT(DISTINCT w.id) FROM PzWord w LEFT JOIN w.hints h WHERE w.isActive = true AND (LOWER(w.word) LIKE LOWER(:search) OR LOWER(w.category) LIKE LOWER(:search))")
+    long countActiveWordsWithSearchAndHintCount(@Param("search") String search);
+    
+    /**
+     * 활성화된 단어 조회 (페이징) - 기존 방식 (호환성 유지)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.isActive = true")
+    org.springframework.data.domain.Page<PzWord> findActiveWords(org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 활성화된 단어 검색 (페이징) - 기존 방식 (호환성 유지)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.isActive = true AND (LOWER(w.word) LIKE LOWER(:search) OR LOWER(w.category) LIKE LOWER(:search))")
+    org.springframework.data.domain.Page<PzWord> findActiveWordsWithSearch(@Param("search") String search, org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 카테고리별 통계 조회
+     */
+    @Query("SELECT w.category, COUNT(w) FROM PzWord w WHERE w.isActive = true GROUP BY w.category ORDER BY COUNT(w) DESC")
+    List<Object[]> getCategoryStats();
+    
 }

@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 퍼즐 단어 엔티티
@@ -48,6 +50,10 @@ public class PzWord {
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    // 힌트 관계 (OneToMany)
+    @OneToMany(mappedBy = "word", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PzHint> hints = new ArrayList<>();
     
     // JPA 생명주기 콜백 (라라벨의 boot 메서드와 동일)
     @PrePersist

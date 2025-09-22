@@ -44,4 +44,25 @@ public interface PzHintRepository extends JpaRepository<PzHint, Integer> {
     @Query("SELECT h FROM PzHint h WHERE h.word.id = :wordId AND h.id != :excludeHintId ORDER BY h.difficulty ASC")
     List<PzHint> findByWordIdAndIdNotOrderByDifficulty(@Param("wordId") Integer wordId, @Param("excludeHintId") Integer excludeHintId);
     
+    /**
+     * 단어 ID로 힌트 조회 (간단한 버전)
+     */
+    List<PzHint> findByWordId(Integer wordId);
+    
+    /**
+     * 단어 ID로 힌트 개수 조회
+     */
+    long countByWordId(Integer wordId);
+    
+    /**
+     * 단어 ID로 힌트 삭제
+     */
+    void deleteByWordId(Integer wordId);
+    
+    /**
+     * 여러 단어의 힌트 개수를 한 번에 조회 (N+1 쿼리 방지)
+     */
+    @Query("SELECT h.word.id, COUNT(h) FROM PzHint h WHERE h.word.id IN :wordIds GROUP BY h.word.id")
+    List<Object[]> countHintsByWordIds(@Param("wordIds") List<Integer> wordIds);
+    
 }
