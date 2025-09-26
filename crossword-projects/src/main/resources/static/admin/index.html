@@ -12,6 +12,10 @@
             background-color: #f8f9fa;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
         .admin-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -94,20 +98,20 @@
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="stat-card text-center">
-                    <div class="stat-number" id="totalWords">-</div>
-                    <div class="stat-label">전체 단어</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card text-center">
                     <div class="stat-number" id="activeWords">-</div>
                     <div class="stat-label">활성 단어</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card text-center">
-                    <div class="stat-number" id="wordsWithHints">-</div>
-                    <div class="stat-label">힌트 보유</div>
+                    <div class="stat-number" id="refinedWords">-</div>
+                    <div class="stat-label">정제완료</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number" id="wordsWithoutHints">-</div>
+                    <div class="stat-label">힌트미보유</div>
                 </div>
             </div>
             <div class="col-md-3">
@@ -196,28 +200,31 @@
             try {
                 const response = await fetch('/K-CrossWord/admin/api/words/stats');
                 if (response.ok) {
-                    const stats = await response.json();
+                    const data = await response.json();
                     
-                    document.getElementById('totalWords').textContent = stats.totalWords?.toLocaleString() || '0';
-                    document.getElementById('activeWords').textContent = stats.activeWords?.toLocaleString() || '0';
-                    document.getElementById('wordsWithHints').textContent = stats.wordsWithHints?.toLocaleString() || '0';
-                    document.getElementById('totalHints').textContent = stats.totalHints?.toLocaleString() || '0';
-                    
-                    document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+                    if (data.success && data.data) {
+                        const stats = data.data;
+                        document.getElementById('activeWords').textContent = stats.totalActiveWords?.toLocaleString() || '0';
+                        document.getElementById('refinedWords').textContent = stats.refinedWords?.toLocaleString() || '0';
+                        document.getElementById('wordsWithoutHints').textContent = stats.wordsWithoutHints?.toLocaleString() || '0';
+                        document.getElementById('totalHints').textContent = stats.totalHints?.toLocaleString() || '0';
+                        
+                        document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+                    }
                 } else {
                     console.error('통계 데이터 로드 실패:', response.status);
                     // 오류 시 기본값 표시
-                    document.getElementById('totalWords').textContent = '0';
                     document.getElementById('activeWords').textContent = '0';
-                    document.getElementById('wordsWithHints').textContent = '0';
+                    document.getElementById('refinedWords').textContent = '0';
+                    document.getElementById('wordsWithoutHints').textContent = '0';
                     document.getElementById('totalHints').textContent = '0';
                 }
             } catch (error) {
                 console.error('통계 데이터 로드 오류:', error);
                 // 오류 시 기본값 표시
-                document.getElementById('totalWords').textContent = '0';
                 document.getElementById('activeWords').textContent = '0';
-                document.getElementById('wordsWithHints').textContent = '0';
+                document.getElementById('refinedWords').textContent = '0';
+                document.getElementById('wordsWithoutHints').textContent = '0';
                 document.getElementById('totalHints').textContent = '0';
             }
         }

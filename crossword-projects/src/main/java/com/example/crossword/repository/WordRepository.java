@@ -188,6 +188,17 @@ public interface WordRepository extends JpaRepository<Word, Integer> {
     long countWordsWithHints();
     
     /**
+     * 정제완료된 단어 개수 조회
+     */
+    long countByConfYn(String confYn);
+    
+    /**
+     * 힌트가 없는 활성 단어 개수 조회
+     */
+    @Query("SELECT COUNT(w) FROM Word w WHERE w.isActive = true AND NOT EXISTS (SELECT 1 FROM Hint h WHERE h.word = w)")
+    long countActiveWordsWithoutHints();
+    
+    /**
      * 힌트가 없는 단어 개수 조회
      */
     @Query("SELECT COUNT(DISTINCT w.id) FROM Word w WHERE w.isActive = true AND NOT EXISTS (SELECT 1 FROM Hint h WHERE h.word = w)")

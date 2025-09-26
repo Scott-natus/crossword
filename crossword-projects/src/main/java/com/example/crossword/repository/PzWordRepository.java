@@ -221,5 +221,35 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
      */
     @Query("SELECT w.category, COUNT(w) FROM PzWord w WHERE w.isActive = true GROUP BY w.category ORDER BY COUNT(w) DESC")
     List<Object[]> getCategoryStats();
+
+    /**
+     * 길이와 난이도 리스트로 단어 조회 (단어 추출용)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.length = :length AND w.difficulty IN :difficulties AND w.isActive = true")
+    List<PzWord> findByLengthAndDifficultyInAndIsActiveTrue(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties);
+
+    /**
+     * 정제상태별 단어 조회 (페이징)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.confYn = :confYn")
+    org.springframework.data.domain.Page<PzWord> findByConfYn(@Param("confYn") String confYn, org.springframework.data.domain.Pageable pageable);
     
+    /**
+     * 단어 검색 (대소문자 무시, 정제상태 포함)
+     */
+    @Query("SELECT w FROM PzWord w WHERE LOWER(w.word) LIKE LOWER(:search) AND w.confYn = :confYn")
+    org.springframework.data.domain.Page<PzWord> findByWordContainingIgnoreCaseAndConfYn(@Param("search") String search, @Param("confYn") String confYn, org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 난이도와 정제상태별 단어 조회 (페이징)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.difficulty = :difficulty AND w.confYn = :confYn")
+    org.springframework.data.domain.Page<PzWord> findByDifficultyAndConfYn(@Param("difficulty") Integer difficulty, @Param("confYn") String confYn, org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 단어 검색 (대소문자 무시, 난이도, 정제상태 포함)
+     */
+    @Query("SELECT w FROM PzWord w WHERE LOWER(w.word) LIKE LOWER(:search) AND w.difficulty = :difficulty AND w.confYn = :confYn")
+    org.springframework.data.domain.Page<PzWord> findByWordContainingIgnoreCaseAndDifficultyAndConfYn(@Param("search") String search, @Param("difficulty") Integer difficulty, @Param("confYn") String confYn, org.springframework.data.domain.Pageable pageable);
+
 }

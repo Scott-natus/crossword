@@ -45,6 +45,9 @@ public class PzWord {
     @Column(name = "is_active")
     private Boolean isActive = true;
     
+    @Column(name = "conf_yn", length = 1)
+    private String confYn = "N";
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     

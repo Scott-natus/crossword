@@ -13,6 +13,14 @@
     <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     
     <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
         .admin-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -158,28 +166,46 @@
                     <p class="mb-0 mt-2">Gemini AI를 활용한 자동 힌트 생성 시스템</p>
                 </div>
                 <div class="col-md-6 text-end">
-                    <a href="/K-CrossWord/admin/words" class="btn btn-light me-2">
-                        <i class="fas fa-arrow-left me-1"></i> 단어 관리
-                    </a>
-                    <a href="https://natus250601.viewdns.net/" class="btn btn-outline-light">
-                        <i class="fas fa-home me-1"></i> 메인으로
-                    </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="container-fluid">
+    <!-- 퍼즐 관리 네비게이션 -->
+    <div class="container mb-4">
+        <div class="card">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-primary">
+                        <i class="fas fa-puzzle-piece me-2"></i>퍼즐 관리 바로가기
+                    </h6>
+                    <div class="d-flex gap-2">
+                        <a href="/K-CrossWord/admin/" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-home me-1"></i>퍼즐관리
+                        </a>
+                        <a href="/K-CrossWord/admin/words" class="btn btn-primary btn-sm">
+                            <i class="fas fa-list me-1"></i>단어관리
+                        </a>
+                        <a href="/K-CrossWord/admin/hint-generator" class="btn btn-info btn-sm">
+                            <i class="fas fa-magic me-1"></i>AI 힌트관리
+                        </a>
+                        <a href="/K-CrossWord/admin/levels" class="btn btn-success btn-sm">
+                            <i class="fas fa-layer-group me-1"></i>레벨관리
+                        </a>
+                        <a href="/K-CrossWord/admin/grid-templates" class="btn btn-warning btn-sm">
+                            <i class="fas fa-th me-1"></i>그리드 템플릿관리
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
         <!-- 메인 콘텐츠 -->
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        <h4 class="mb-0">
-                            <i class="fas fa-robot me-2"></i>
-                            AI 힌트 생성 관리
-                        </h4>
-                    </div>
                     <div class="card-body">
                         <!-- 통계 카드들 -->
                         <div class="row mb-4">

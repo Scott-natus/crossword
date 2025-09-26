@@ -21,7 +21,7 @@ import java.util.Optional;
  * 단어 조회, 검색, 통계 등의 REST API를 제공
  */
 @RestController
-@RequestMapping("/api/words")
+@RequestMapping("/admin/api/words")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 @Slf4j
@@ -442,8 +442,17 @@ public class WordController {
         try {
             Map<String, Object> stats = new HashMap<>();
             
-            // 전체 활성 단어 개수
+            // 활성 단어 개수
             stats.put("totalActiveWords", wordService.getTotalActiveWordCount());
+            
+            // 정제완료된 단어 개수
+            stats.put("refinedWords", wordService.getRefinedWordsCount());
+            
+            // 힌트가 없는 활성 단어 개수
+            stats.put("wordsWithoutHints", wordService.getActiveWordsWithoutHintsCount());
+            
+            // 전체 힌트 개수
+            stats.put("totalHints", wordService.getTotalHintsCount());
             
             // 난이도별 단어 개수
             stats.put("wordsByDifficulty", wordService.getWordCountByDifficulty());
@@ -515,6 +524,81 @@ public class WordController {
             log.error("카테고리 목록 조회 중 오류 발생: {}", e.getMessage());
             return ResponseEntity.internalServerError()
                 .body(Map.of("success", false, "message", "카테고리 목록 조회 중 오류가 발생했습니다."));
+        }
+    }
+    
+    /**
+     * 단어 정제 - 단어 난이도 및 힌트 정보 업데이트
+     */
+    @PostMapping("/refine")
+    public ResponseEntity<Map<String, Object>> refineWord(@RequestBody Map<String, Object> refinementData) {
+        log.debug("단어 정제 요청: {}", refinementData);
+        
+        try {
+            Integer wordId = (Integer) refinementData.get("wordId");
+            Integer difficulty = (Integer) refinementData.get("difficulty");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hints = (List<Map<String, Object>>) refinementData.get("hints");
+            
+            if (wordId == null || difficulty == null) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "필수 파라미터가 누락되었습니다."));
+            }
+            
+            boolean success = wordService.refineWord(wordId, difficulty, hints);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", success);
+            response.put("message", success ? "정제가 완료되었습니다." : "정제 중 오류가 발생했습니다.");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("단어 정제 중 오류 발생: {}", e.getMessage());
+            return ResponseEntity.internalServerError()
+                .body(Map.of("success", false, "message", "정제 중 오류가 발생했습니다."));
+        }
+    }
+    
+    /**
+     * 단어 상세 정보 조회 (정제용)
+     */
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<Map<String, Object>> getWordForRefinement(@PathVariable Integer id) {
+        log.debug("단어 상세 정보 조회: {}", id);
+        
+        try {
+            Optional<Word> wordOpt = wordService.getWordById(id);
+            
+            if (wordOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Word word = wordOpt.get();
+            
+            Map<String, Object> wordData = new HashMap<>();
+            wordData.put("id", word.getId());
+            wordData.put("word", word.getWord());
+            wordData.put("difficulty", word.getDifficulty());
+            wordData.put("category", word.getCategory());
+            wordData.put("created_at", word.getCreatedAt());
+            wordData.put("confirmed_at", word.getUpdatedAt()); // 임시로 updated_at 사용
+            
+            // 힌트 정보 조회
+            List<Map<String, Object>> hints = wordService.getHintsForWord(id);
+            wordData.put("hints", hints);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", wordData);
+            response.put("message", "단어 정보를 성공적으로 조회했습니다.");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("단어 상세 정보 조회 중 오류 발생: {}", e.getMessage());
+            return ResponseEntity.internalServerError()
+                .body(Map.of("success", false, "message", "단어 정보 조회 중 오류가 발생했습니다."));
         }
     }
 }

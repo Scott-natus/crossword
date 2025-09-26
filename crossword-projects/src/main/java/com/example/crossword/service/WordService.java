@@ -1,7 +1,9 @@
 package com.example.crossword.service;
 
 import com.example.crossword.entity.Word;
+import com.example.crossword.entity.Hint;
 import com.example.crossword.repository.WordRepository;
+import com.example.crossword.repository.HintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -10,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 /**
  * 단어 관리 서비스
@@ -23,6 +28,7 @@ import java.util.Optional;
 public class WordService {
     
     private final WordRepository wordRepository;
+    private final HintRepository hintRepository;
     
     /**
      * 모든 활성 단어 조회
@@ -228,6 +234,14 @@ public class WordService {
     }
     
     /**
+     * 전체 단어 개수 조회 (활성 + 비활성)
+     */
+    public long getTotalWordCount() {
+        log.debug("전체 단어 개수 조회");
+        return wordRepository.count();
+    }
+    
+    /**
      * 전체 활성 단어 개수 조회
      */
     public long getTotalActiveWordCount() {
@@ -366,5 +380,137 @@ public class WordService {
         } else {
             word.setHintCount(0);
         }
+    }
+    
+    /**
+     * 단어 정제 - 단어 난이도 및 힌트 정보 업데이트
+     */
+    @Transactional
+    public boolean refineWord(Integer wordId, Integer difficulty, List<Map<String, Object>> hints) {
+        log.debug("단어 정제 시작: wordId={}, difficulty={}, hints={}", wordId, difficulty, hints);
+        
+        try {
+            Optional<Word> wordOpt = wordRepository.findById(wordId);
+            if (wordOpt.isEmpty()) {
+                log.error("단어를 찾을 수 없습니다: {}", wordId);
+                return false;
+            }
+            
+            Word word = wordOpt.get();
+            
+            // 단어 난이도 업데이트
+            word.setDifficulty(difficulty);
+            
+            // 정제 완료 상태로 변경
+            word.setConfYn("Y");
+            
+            // 단어 저장
+            wordRepository.save(word);
+            
+            // 힌트 정보 업데이트
+            updateHintsForWord(wordId, hints);
+            
+            log.info("단어 정제 완료: wordId={}", wordId);
+            return true;
+            
+        } catch (Exception e) {
+            log.error("단어 정제 중 오류 발생: wordId={}, error={}", wordId, e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 단어에 연결된 힌트 목록 조회
+     */
+    public List<Map<String, Object>> getHintsForWord(Integer wordId) {
+        log.debug("단어 힌트 조회: wordId={}", wordId);
+        
+        try {
+            List<Hint> hints = hintRepository.findByWordId(wordId);
+            
+            return hints.stream()
+                .map(hint -> {
+                    Map<String, Object> hintData = new HashMap<>();
+                    hintData.put("id", hint.getId());
+                    hintData.put("hint_text", hint.getHintText());
+                    hintData.put("difficulty", hint.getDifficulty());
+                    hintData.put("is_primary", hint.getIsPrimary());
+                    hintData.put("hint_type", hint.getHintType());
+                    hintData.put("created_at", hint.getCreatedAt());
+                    return hintData;
+                })
+                .collect(java.util.stream.Collectors.toList());
+                
+        } catch (Exception e) {
+            log.error("단어 힌트 조회 중 오류 발생: wordId={}, error={}", wordId, e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 단어의 힌트 정보 업데이트
+     */
+    @Transactional
+    private void updateHintsForWord(Integer wordId, List<Map<String, Object>> hints) {
+        log.debug("힌트 업데이트 시작: wordId={}, hints={}", wordId, hints);
+        
+        try {
+            // 기존 힌트 조회
+            List<Hint> existingHints = hintRepository.findByWordId(wordId);
+            
+            // 기존 힌트 삭제
+            if (!existingHints.isEmpty()) {
+                hintRepository.deleteAll(existingHints);
+                log.debug("기존 힌트 삭제 완료: {}개", existingHints.size());
+            }
+            
+            // 새 힌트 추가
+            if (hints != null && !hints.isEmpty()) {
+                Word word = wordRepository.findById(wordId).orElse(null);
+                if (word != null) {
+                    for (Map<String, Object> hintData : hints) {
+                        Hint hint = Hint.builder()
+                            .word(word)
+                            .hintText((String) hintData.get("hint_text"))
+                            .difficulty((Integer) hintData.get("difficulty"))
+                            .isPrimary((Boolean) hintData.get("is_primary"))
+                            .hintType("TEXT")
+                            .correctionStatus("n")
+                            .build();
+                        
+                        hintRepository.save(hint);
+                    }
+                    log.debug("새 힌트 추가 완료: {}개", hints.size());
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("힌트 업데이트 중 오류 발생: wordId={}, error={}", wordId, e.getMessage());
+            throw e;
+        }
+    }
+    
+    /**
+     * 전체 힌트 개수 조회
+     */
+    public long getTotalHintsCount() {
+        log.debug("전체 힌트 개수 조회");
+        return hintRepository.count();
+    }
+    
+    /**
+     * 정제완료된 단어 개수 조회
+     */
+    public long getRefinedWordsCount() {
+        log.debug("정제완료된 단어 개수 조회");
+        return wordRepository.countByConfYn("Y");
+    }
+    
+    /**
+     * 힌트가 없는 활성 단어 개수 조회
+     */
+    public long getActiveWordsWithoutHintsCount() {
+        log.debug("힌트가 없는 활성 단어 개수 조회");
+        return wordRepository.countActiveWordsWithoutHints();
     }
 }

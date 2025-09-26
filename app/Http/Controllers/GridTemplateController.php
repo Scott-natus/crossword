@@ -145,12 +145,24 @@ class GridTemplateController extends Controller
                 }
             }
 
-            // 템플릿 이름 자동 생성
-            $templateCount = DB::table('puzzle_grid_templates')
+            // 템플릿 이름 자동 생성 - 같은 레벨 내에서 가장 큰 번호 + 1
+            $existingTemplates = DB::table('puzzle_grid_templates')
                 ->where('level_id', $request->level_id)
-                ->count();
+                ->where('template_name', 'LIKE', "레벨 {$level->level} 템플릿 #%")
+                ->get();
             
-            $templateName = "레벨 {$level->level} 템플릿 #" . ($templateCount + 1);
+            $maxNumber = 0;
+            foreach ($existingTemplates as $template) {
+                // "레벨 n 템플릿 #숫자" 패턴에서 숫자 추출
+                if (preg_match('/레벨 \d+ 템플릿 #(\d+)/', $template->template_name, $matches)) {
+                    $number = (int)$matches[1];
+                    if ($number > $maxNumber) {
+                        $maxNumber = $number;
+                    }
+                }
+            }
+            
+            $templateName = "레벨 {$level->level} 템플릿 #" . ($maxNumber + 1);
 
             // word_positions의 id 값을 사용자가 선택한 번호로 업데이트
             $wordPositions = $request->word_positions;

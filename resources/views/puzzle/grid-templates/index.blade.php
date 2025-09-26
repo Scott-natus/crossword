@@ -285,7 +285,6 @@ function loadLevels() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         alert('레벨 목록 로드 중 오류가 발생했습니다.');
     });
 }
@@ -379,7 +378,6 @@ function viewLevelSamples(levelId) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         alert('샘플 템플릿 로드 중 오류가 발생했습니다.');
     });
 }
@@ -408,7 +406,7 @@ function displayModalSampleTemplates(level, samples) {
                 <div class="card-body">
                     <p class="card-text small">${sample.description}</p>
                     <div class="sample-grid-container mb-2">
-                        ${generateSampleGridHTML(sample.grid)}
+                        ${generateSampleGridHTML(sample)}
                     </div>
                     <div class="text-center">
                         <span class="badge bg-success">샘플 ${index + 1}</span>
@@ -424,20 +422,46 @@ function displayModalSampleTemplates(level, samples) {
     goToCreateBtn.href = `/puzzle/grid-templates/create?level_id=${level.id}`;
 }
 
-// 샘플 그리드 HTML 생성
-function generateSampleGridHTML(grid) {
-    const size = grid.length;
-    let html = `<div class="sample-grid" style="display: inline-grid; grid-template-columns: repeat(${size}, 1fr); gap: 1px; background: #ccc; padding: 2px; border-radius: 4px;">`;
+// 공통 그리드 렌더링 함수 (상세보기와 동일)
+function renderGridFromAPI(template, container, cellSize = 20, showNumbers = true) {
+    const gridContainer = $(container);
+    gridContainer.empty();
     
-    for (let i = 0; i < size; i++) {
-        for (let j = 0; j < size; j++) {
-            const cellClass = grid[i][j] === 1 ? 'bg-dark' : 'bg-light';
-            html += `<div class="sample-cell ${cellClass}" style="width: 20px; height: 20px; border-radius: 2px;"></div>`;
+    // 로딩 표시
+    gridContainer.html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> 그리드 로딩 중...</div>');
+    
+    $.ajax({
+        url: 'http://222.100.103.227:8081/K-CrossWord/admin/api/grid-template-management/render-grid',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            gridPattern: JSON.stringify(template.grid),
+            wordPositions: JSON.stringify(template.word_positions),
+            cellSize: cellSize,
+            showNumbers: showNumbers
+        }),
+        success: function(response) {
+            if (response.success) {
+                gridContainer.html(response.html);
+            } else {
+                gridContainer.html('<p class="text-danger">그리드 렌더링 실패: ' + response.error + '</p>');
+            }
+        },
+        error: function(xhr, status, error) {
+            gridContainer.html('<p class="text-danger">그리드 렌더링 중 오류가 발생했습니다.</p>');
         }
-    }
+    });
+}
+
+// 샘플 그리드 HTML 생성 (공통 API 사용)
+function generateSampleGridHTML(sample) {
+    // 임시 컨테이너 생성
+    const tempContainer = $('<div class="sample-grid-container"></div>');
     
-    html += '</div>';
-    return html;
+    // 공통 그리드 렌더링 함수 사용 (20px 셀 크기, 번호 표시)
+    renderGridFromAPI(sample, tempContainer, 20, true);
+    
+    return tempContainer[0].outerHTML;
 }
 
 function deleteTemplate(id, name) {
@@ -489,7 +513,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 alert('삭제 중 오류가 발생했습니다.');
             })
             .finally(() => {

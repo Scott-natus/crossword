@@ -45,6 +45,10 @@ public class Word {
     @Builder.Default
     private Boolean isActive = true;
     
+    @Column(name = "conf_yn", length = 1)
+    @Builder.Default
+    private String confYn = "N";
+    
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;

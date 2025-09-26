@@ -18,25 +18,21 @@ import java.util.Optional;
  * 라라벨 퍼즐 관리 시스템과 동일한 API 제공
  */
 @RestController
-@RequestMapping("/K-CrossWord/admin/api/words")
+@RequestMapping("/admin/api/words")
 public class WordManagementController {
 
     @Autowired
     private WordManagementService wordManagementService;
 
     /**
-     * 통계 정보 조회
+     * 테스트 엔드포인트
      */
-    @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStatistics() {
-        try {
-            Map<String, Object> stats = wordManagementService.getStatistics();
-            return ResponseEntity.ok(stats);
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "통계 조회 중 오류가 발생했습니다: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(error);
-        }
+    @GetMapping("/test")
+    public ResponseEntity<Map<String, Object>> test() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "WordManagementController is working!");
+        response.put("timestamp", System.currentTimeMillis());
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -48,11 +44,12 @@ public class WordManagementController {
             @RequestParam(defaultValue = "0") int start,
             @RequestParam(defaultValue = "25") int length,
             @RequestParam(defaultValue = "") String search,
-            @RequestParam(defaultValue = "") String difficulty_filter) {
+            @RequestParam(defaultValue = "") String difficulty_filter,
+            @RequestParam(defaultValue = "") String refinement) {
         
         try {
             Map<String, Object> data = wordManagementService.getWordsData(
-                draw, start, length, search, difficulty_filter);
+                draw, start, length, search, difficulty_filter, refinement);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
@@ -189,7 +186,7 @@ public class WordManagementController {
     /**
      * 단어 상세 조회
      */
-    @GetMapping("/{id}")
+    @GetMapping("/{id}/view")
     public ResponseEntity<Map<String, Object>> getWord(@PathVariable Integer id) {
         try {
             Optional<PzWord> wordOpt = wordManagementService.getWordById(id);
@@ -216,7 +213,7 @@ public class WordManagementController {
     /**
      * 카테고리 목록 조회
      */
-    @GetMapping("/categories")
+    @GetMapping("/categories-list")
     public ResponseEntity<Map<String, Object>> getCategories() {
         try {
             List<String> categories = wordManagementService.getCategories();
@@ -230,6 +227,23 @@ public class WordManagementController {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("error", e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+
+
+    /**
+     * 관리자 페이지 통계 조회
+     */
+    @GetMapping("/admin-stats")
+    public ResponseEntity<Map<String, Object>> getAdminStats() {
+        try {
+            Map<String, Object> stats = wordManagementService.getAdminStats();
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "통계 조회 실패: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);
         }
     }

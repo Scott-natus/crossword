@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그리드 템플릿 상세보기 - 크로스워드 퍼즐</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .content-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .grid-preview-container {
+            display: inline-block;
+            border: 2px solid #2c3e50;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .grid-preview-cell {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #bdc3c7;
+            display: inline-block;
+            position: relative;
+            background-color: #ffffff;
+        }
+
+        .grid-preview-cell.black {
+            background-color: #2c3e50;
+        }
+
+        .grid-preview-cell.number {
+            font-size: 10px;
+            font-weight: bold;
+            color: #2c3e50;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 1px;
+        }
+
+        .grid-preview-cell.number::before {
+            content: attr(data-number);
+            position: absolute;
+            top: 0px;
+            left: 1px;
+            font-size: 9px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1px;
+            padding: 0px 1px;
+            min-width: 12px;
+            text-align: center;
+        }
+
+        .word-list-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .word-preview-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: #e3f2fd;
+            border-radius: 5px;
+            border-left: 3px solid #2196f3;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .word-preview-item.horizontal {
+            border-left-color: #4caf50;
+        }
+
+        .word-preview-item.vertical {
+            border-left-color: #ff9800;
+        }
+
+        .info-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin: 0.25rem;
+            display: inline-block;
+        }
+
+        .action-buttons {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        .json-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .error-message {
+            display: none;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 페이지 헤더 -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="fas fa-eye me-2"></i>그리드 템플릿 상세보기</h1>
+                    <p class="mb-0" id="templateName">템플릿 정보를 불러오는 중...</p>
+                </div>
+                <div>
+                    <a href="/K-CrossWord/admin/grid-templates" class="btn btn-light me-2">
+                        <i class="fas fa-arrow-left me-1"></i>목록으로
+                    </a>
+                    <button class="btn btn-light" onclick="extractWords()">
+                        <i class="fas fa-magic me-1"></i>단어 추출
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로딩 스피너 -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">로딩 중...</span>
+            </div>
+            <p class="mt-2">템플릿 정보를 불러오는 중...</p>
+        </div>
+
+        <!-- 에러 메시지 -->
+        <div class="error-message" id="errorMessage">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span id="errorText"></span>
+        </div>
+
+        <!-- 기본 정보 -->
+        <div class="content-card" id="basicInfoCard" style="display: none;">
+            <h4 class="mb-3"><i class="fas fa-info-circle me-2"></i>기본 정보</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">템플릿 이름</label>
+                        <p class="form-control-plaintext" id="detailTemplateName"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">레벨</label>
+                        <p class="form-control-plaintext" id="detailLevelId"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">그리드 크기</label>
+                        <p class="form-control-plaintext" id="detailGridSize"></p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">단어 수</label>
+                        <p class="form-control-plaintext" id="detailWordCount"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">교차점 수</label>
+                        <p class="form-control-plaintext" id="detailIntersectionCount"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">생성일</label>
+                        <p class="form-control-plaintext" id="detailCreatedAt"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">설명</label>
+                <p class="form-control-plaintext" id="detailDescription"></p>
+            </div>
+        </div>
+
+        <!-- 그리드 미리보기 -->
+        <div class="content-card" id="gridPreviewCard" style="display: none;">
+            <h4 class="mb-3"><i class="fas fa-th me-2"></i>그리드 미리보기</h4>
+            <div class="text-center">
+                <div id="detailGridPreview" class="grid-preview-container"></div>
+            </div>
+        </div>
+
+        <!-- 단어 목록 -->
+        <div class="content-card" id="wordListCard" style="display: none;">
+            <h4 class="mb-3"><i class="fas fa-list me-2"></i>단어 목록</h4>
+            <div id="detailWordList" class="word-list-preview"></div>
+        </div>
+
+
+        <!-- 단어 추출 결과 -->
+        <div class="content-card" id="extractionResultCard" style="display: none;">
+            <h4 class="mb-3"><i class="fas fa-magic me-2"></i>단어 추출 결과</h4>
+            <div id="extractionResult"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script>
+        let templateId = null;
+        let templateData = null;
+
+        $(document).ready(function() {
+            // URL에서 템플릿 ID 추출
+            const urlParams = new URLSearchParams(window.location.search);
+            templateId = urlParams.get('id');
+            
+            if (templateId) {
+                loadTemplateDetail(templateId);
+            } else {
+                showError('템플릿 ID가 제공되지 않았습니다.');
+            }
+        });
+
+        function loadTemplateDetail(id) {
+            showLoading();
+            
+            $.ajax({
+                url: '/K-CrossWord/admin/api/grid-template-management/template/' + id,
+                type: 'GET',
+                success: function(response) {
+                    hideLoading();
+                    if (response.success) {
+                        templateData = response.data;
+                        displayTemplateDetail(response.data);
+                    } else {
+                        showError('템플릿 정보를 가져올 수 없습니다: ' + (response.error || '알 수 없는 오류'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    hideLoading();
+                    console.error('템플릿 조회 오류:', xhr.responseText);
+                    showError('템플릿 정보를 가져오는 중 오류가 발생했습니다.');
+                }
+            });
+        }
+
+        function displayTemplateDetail(template) {
+            // 기본 정보 표시
+            $('#templateName').text(template.templateName || '미지정');
+            $('#detailTemplateName').text(template.templateName || '미지정');
+            $('#detailLevelId').text('레벨 ' + template.levelId);
+            $('#detailGridSize').text(template.gridWidth + '×' + template.gridHeight);
+            $('#detailWordCount').text(template.wordCount);
+            $('#detailIntersectionCount').text(template.intersectionCount);
+            $('#detailDescription').text(template.description || '설명 없음');
+            $('#detailCreatedAt').text(template.createdAt ? new Date(template.createdAt).toLocaleString() : '미지정');
+            
+            // 그리드 미리보기 렌더링
+            renderGridPreview(template);
+            
+            // 단어 목록 렌더링
+            renderWordListPreview(template);
+            
+            
+            // 카드들 표시
+            $('#basicInfoCard').show();
+            $('#gridPreviewCard').show();
+            $('#wordListCard').show();
+        }
+
+        // 공통 그리드 렌더링 함수
+        function renderGridFromAPI(template, container, cellSize = 20, showNumbers = true) {
+            const gridContainer = $(container);
+            gridContainer.empty();
+            
+            // 로딩 표시
+            gridContainer.html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> 그리드 로딩 중...</div>');
+            
+            $.ajax({
+                url: '../api/grid-template-management/render-grid',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    gridPattern: template.gridPattern,
+                    wordPositions: template.wordPositions,
+                    cellSize: cellSize,
+                    showNumbers: showNumbers
+                }),
+                success: function(response) {
+                    if (response.success) {
+                        gridContainer.html(response.html);
+                    } else {
+                        gridContainer.html('<p class="text-danger">그리드 렌더링 실패: ' + response.error + '</p>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('그리드 렌더링 API 오류:', error);
+                    gridContainer.html('<p class="text-danger">그리드 렌더링 중 오류가 발생했습니다.</p>');
+                }
+            });
+        }
+
+        function renderGridPreview(template) {
+            const gridPreview = $('#detailGridPreview');
+            
+            // 공통 그리드 렌더링 함수 사용 (30px 셀 크기)
+            renderGridFromAPI(template, gridPreview, 30, true);
+        }
+
+        function renderWordListPreview(template) {
+            const wordListPreview = $('#detailWordList');
+            wordListPreview.empty();
+            
+            try {
+                const wordPositions = JSON.parse(template.wordPositions || '[]');
+                
+                if (!Array.isArray(wordPositions) || wordPositions.length === 0) {
+                    wordListPreview.html('<p class="text-muted">단어 정보가 없습니다.</p>');
+                    return;
+                }
+                
+                // 가로형과 세로형 단어 분류
+                const horizontalWords = wordPositions.filter(word => word.direction === 'horizontal');
+                const verticalWords = wordPositions.filter(word => word.direction === 'vertical');
+                
+                // 가로형 단어 표시
+                if (horizontalWords.length > 0) {
+                    wordListPreview.append('<h6 class="text-success mb-2"><i class="fas fa-arrows-alt-h me-1"></i>가로형 단어</h6>');
+                    horizontalWords.forEach((word, index) => {
+                        const wordItem = $(`
+                            <div class="word-preview-item horizontal">
+                                ${word.id}. ${word.start_y + 1}행 ${word.start_x + 1}열부터 ${word.length}글자
+                            </div>
+                        `);
+                        wordListPreview.append(wordItem);
+                    });
+                }
+                
+                // 세로형 단어 표시
+                if (verticalWords.length > 0) {
+                    wordListPreview.append('<h6 class="text-warning mb-2 mt-3"><i class="fas fa-arrows-alt-v me-1"></i>세로형 단어</h6>');
+                    verticalWords.forEach((word, index) => {
+                        const wordItem = $(`
+                            <div class="word-preview-item vertical">
+                                ${word.id}. ${word.start_y + 1}행 ${word.start_x + 1}열부터 ${word.length}글자
+                            </div>
+                        `);
+                        wordListPreview.append(wordItem);
+                    });
+                }
+                
+                if (horizontalWords.length === 0 && verticalWords.length === 0) {
+                    wordListPreview.html('<p class="text-muted">단어 정보가 없습니다.</p>');
+                }
+            } catch (e) {
+                console.error('단어 목록 렌더링 오류:', e);
+                wordListPreview.html('<p class="text-danger">단어 데이터를 파싱할 수 없습니다.</p>');
+            }
+        }
+
+
+        function extractWords() {
+            if (!templateId) {
+                alert('템플릿 ID가 없습니다.');
+                return;
+            }
+            
+            showLoading();
+            
+            $.ajax({
+                url: '/K-CrossWord/admin/api/grid-template-management/extract-words',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ template_id: templateId }),
+                success: function(response) {
+                    hideLoading();
+                    if (response.success) {
+                        displayExtractionResult(response);
+                    } else {
+                        alert('단어 추출 실패: ' + (response.message || '알 수 없는 오류'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    hideLoading();
+                    console.error('단어 추출 오류:', xhr.responseText);
+                    alert('단어 추출 중 오류가 발생했습니다.');
+                }
+            });
+        }
+
+        function displayExtractionResult(response) {
+            const resultContainer = $('#extractionResult');
+            resultContainer.empty();
+            
+            const extractedWords = response.extracted_words.word_order;
+            const wordAnalysis = response.word_analysis;
+            
+            // 분석 정보 표시
+            resultContainer.append(`
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="info-badge">
+                            <i class="fas fa-font me-1"></i>총 단어: ${wordAnalysis.total_words}개
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-badge">
+                            <i class="fas fa-check me-1"></i>추출 성공: ${wordAnalysis.extracted_words}개
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-badge">
+                            <i class="fas fa-redo me-1"></i>시도 횟수: ${wordAnalysis.retry_count}회
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-badge">
+                            <i class="fas fa-crosshairs me-1"></i>교차점: ${wordAnalysis.required_intersection_count}개
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            // 추출된 단어 목록 표시
+            if (extractedWords && extractedWords.length > 0) {
+                resultContainer.append('<h6 class="mb-3"><i class="fas fa-list me-2"></i>추출된 단어 목록</h6>');
+                
+                extractedWords.forEach((wordData, index) => {
+                    const wordItem = $(`
+                        <div class="word-preview-item">
+                            <strong>${index + 1}. ${wordData.extracted_word}</strong>
+                            <br>
+                            <small class="text-muted">힌트: ${wordData.hint}</small>
+                            <br>
+                            <small class="text-info">위치: ${wordData.position.row + 1}행 ${wordData.position.col + 1}열 (${wordData.position.direction})</small>
+                        </div>
+                    `);
+                    resultContainer.append(wordItem);
+                });
+            }
+            
+            $('#extractionResultCard').show();
+        }
+
+        function showLoading() {
+            $('#loadingSpinner').show();
+            $('#errorMessage').hide();
+        }
+
+        function hideLoading() {
+            $('#loadingSpinner').hide();
+        }
+
+        function showError(message) {
+            $('#errorText').text(message);
+            $('#errorMessage').show();
+            $('#loadingSpinner').hide();
+        }
+    </script>
+</body>
+</html>

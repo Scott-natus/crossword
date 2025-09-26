@@ -61,9 +61,16 @@ public class WordManagementService {
     }
 
     /**
+     * 관리자 페이지 통계 조회
+     */
+    public Map<String, Object> getAdminStats() {
+        return getStatistics();
+    }
+
+    /**
      * 단어 목록 조회 (DataTables용)
      */
-    public Map<String, Object> getWordsData(int draw, int start, int length, String search, String difficultyFilter) {
+    public Map<String, Object> getWordsData(int draw, int start, int length, String search, String difficultyFilter, String refinement) {
         Map<String, Object> response = new HashMap<>();
         response.put("draw", draw);
         
@@ -74,11 +81,22 @@ public class WordManagementService {
             
             Page<PzWord> page;
             
-            // 검색어와 난이도 필터에 따른 조회
-            if (!search.isEmpty() && !difficultyFilter.isEmpty()) {
+            // 검색어, 난이도 필터, 정제상태 필터에 따른 조회
+            if (!search.isEmpty() && !difficultyFilter.isEmpty() && !refinement.isEmpty()) {
+                // 검색어 + 난이도 필터 + 정제상태 필터
+                Integer difficulty = parseDifficulty(difficultyFilter);
+                page = pzWordRepository.findByWordContainingIgnoreCaseAndDifficultyAndConfYn(search, difficulty, refinement, pageable);
+            } else if (!search.isEmpty() && !difficultyFilter.isEmpty()) {
                 // 검색어 + 난이도 필터
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByWordContainingIgnoreCaseAndDifficulty(search, difficulty, pageable);
+            } else if (!search.isEmpty() && !refinement.isEmpty()) {
+                // 검색어 + 정제상태 필터
+                page = pzWordRepository.findByWordContainingIgnoreCaseAndConfYn(search, refinement, pageable);
+            } else if (!difficultyFilter.isEmpty() && !refinement.isEmpty()) {
+                // 난이도 필터 + 정제상태 필터
+                Integer difficulty = parseDifficulty(difficultyFilter);
+                page = pzWordRepository.findByDifficultyAndConfYn(difficulty, refinement, pageable);
             } else if (!search.isEmpty()) {
                 // 검색어만
                 page = pzWordRepository.findByWordContainingIgnoreCase(search, pageable);
@@ -86,6 +104,9 @@ public class WordManagementService {
                 // 난이도 필터만
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByDifficulty(difficulty, pageable);
+            } else if (!refinement.isEmpty()) {
+                // 정제상태 필터만
+                page = pzWordRepository.findByConfYn(refinement, pageable);
             } else {
                 // 전체 조회
                 page = pzWordRepository.findAll(pageable);
@@ -239,6 +260,7 @@ public class WordManagementService {
         wordMap.put("difficulty", word.getDifficulty());
         wordMap.put("difficulty_text", word.getDifficultyText());
         wordMap.put("is_active", word.getIsActive());
+        wordMap.put("conf_yn", word.getConfYn());
         wordMap.put("created_at", word.getCreatedAt());
         wordMap.put("updated_at", word.getUpdatedAt());
         
