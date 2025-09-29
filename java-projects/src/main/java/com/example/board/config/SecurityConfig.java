@@ -24,6 +24,15 @@ public class SecurityConfig {
             .formLogin(form -> form
                 .loginPage("/login")
                 .defaultSuccessUrl("/", true)
+                .successHandler((request, response, authentication) -> {
+                    // 로그인 성공 후 퍼즐게임으로 리다이렉트
+                    String referer = request.getHeader("Referer");
+                    if (referer != null && referer.contains("K-CrossWord")) {
+                        response.sendRedirect("https://natus250601.viewdns.net/K-CrossWord/");
+                    } else {
+                        response.sendRedirect("/");
+                    }
+                })
                 .permitAll()
             )
             .logout(logout -> logout

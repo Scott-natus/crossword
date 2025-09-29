@@ -65,4 +65,10 @@ public interface PzHintRepository extends JpaRepository<PzHint, Integer> {
     @Query("SELECT h.word.id, COUNT(h) FROM PzHint h WHERE h.word.id IN :wordIds GROUP BY h.word.id")
     List<Object[]> countHintsByWordIds(@Param("wordIds") List<Integer> wordIds);
     
+    /**
+     * 단어 ID와 난이도로 힌트 조회 (퍼즐 생성용)
+     */
+    @Query("SELECT h FROM PzHint h WHERE h.word.id = :wordId AND h.difficulty = :difficulty ORDER BY h.id ASC")
+    List<PzHint> findByWordIdAndDifficulty(@Param("wordId") Integer wordId, @Param("difficulty") Integer difficulty);
+    
 }

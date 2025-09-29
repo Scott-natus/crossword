@@ -490,4 +490,12 @@ public class PuzzleLevelService {
             puzzleLevelRepository.save(puzzleLevel);
         });
     }
+    
+    /**
+     * 레벨 번호로 퍼즐 레벨 조회 (퍼즐 게임용)
+     */
+    public PuzzleLevel getByLevel(Integer level) {
+        log.debug("레벨 번호로 퍼즐 레벨 조회: {}", level);
+        return puzzleLevelRepository.findByLevel(level).orElse(null);
+    }
 }

@@ -324,4 +324,12 @@ public class PzWordService {
             return stats;
         }
     }
+    
+    /**
+     * ID로 단어 조회 (퍼즐 게임용)
+     */
+    public PzWord getById(Long id) {
+        log.debug("ID로 단어 조회: {}", id);
+        return pzWordRepository.findById(id.intValue()).orElse(null);
+    }
 }

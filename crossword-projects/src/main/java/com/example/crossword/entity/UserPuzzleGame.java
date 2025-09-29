@@ -147,8 +147,10 @@ public class UserPuzzleGame {
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             this.currentPuzzleData = mapper.writeValueAsString(puzzleData);
+            System.out.println("DEBUG: currentPuzzleData 저장 성공, 길이: " + (this.currentPuzzleData != null ? this.currentPuzzleData.length() : 0));
         } catch (Exception e) {
             this.currentPuzzleData = null;
+            System.out.println("DEBUG: currentPuzzleData 저장 실패: " + e.getMessage());
         }
     }
     
@@ -253,5 +255,20 @@ public class UserPuzzleGame {
      */
     public void updateLastPlayedAt() {
         this.lastPlayedAt = LocalDateTime.now();
+    }
+    
+    
+    /**
+     * 게임 상태 설정 (라라벨과 동일한 로직)
+     */
+    public void setGameState(String gameState) {
+        this.currentGameState = gameState;
+    }
+    
+    /**
+     * 게임 상태 조회 (라라벨과 동일한 로직)
+     */
+    public String getGameState() {
+        return this.currentGameState;
     }
 }

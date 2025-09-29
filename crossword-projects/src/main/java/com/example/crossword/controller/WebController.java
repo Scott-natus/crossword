@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -22,8 +23,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 import java.util.Map;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 웹 페이지 컨트롤러
@@ -43,7 +49,7 @@ public class WebController {
     private final TemplateValidationService templateValidationService;
 
     /**
-     * 메인 페이지 (퍼즐게임)
+     * 메인 페이지 - 정적 리소스 사용 (index.html)
      */
     @GetMapping({"/", "/K-CrossWord/"})
     public ResponseEntity<String> index() {
@@ -57,10 +63,12 @@ public class WebController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(content);
-        } catch (IOException e) {
-            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("페이지를 로드할 수 없습니다.");
         }
     }
+
 
     /**
      * 퍼즐게임 페이지
@@ -68,6 +76,43 @@ public class WebController {
     @GetMapping("/puzzle")
     public ResponseEntity<String> puzzle() {
         return index();
+    }
+    
+    /**
+     * 인증 상태 확인 API
+     */
+    @GetMapping("/api/auth/status")
+    @ResponseBody
+    public Map<String, Object> checkAuthStatus(HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Spring Security에서 현재 사용자 정보 확인
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication != null && authentication.isAuthenticated() && 
+                !authentication.getPrincipal().equals("anonymousUser")) {
+                
+                // 인증된 사용자
+                response.put("authenticated", true);
+                response.put("userType", "user");
+                response.put("username", authentication.getName());
+                
+            } else {
+                // 비인증 사용자
+                response.put("authenticated", false);
+                response.put("userType", "guest");
+                response.put("username", null);
+            }
+            
+        } catch (Exception e) {
+            response.put("authenticated", false);
+            response.put("userType", "guest");
+            response.put("username", null);
+            response.put("error", e.getMessage());
+        }
+        
+        return response;
     }
 
     /**

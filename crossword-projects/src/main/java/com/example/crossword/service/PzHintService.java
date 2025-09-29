@@ -6,7 +6,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -81,6 +83,36 @@ public class PzHintService {
     public void deletePzHint(Integer id) {
         log.debug("힌트 삭제: ID {}", id);
         pzHintRepository.deleteById(id);
+    }
+    
+    /**
+     * 기본 힌트 조회 (primary=true)
+     */
+    public List<Map<String, Object>> getPrimaryHints(Long wordId) {
+        log.debug("기본 힌트 조회: wordId={}", wordId);
+        List<PzHint> hints = pzHintRepository.findByWordIdAndIsPrimaryOrderByDifficulty(wordId.intValue(), true);
+        return hints.stream().map(hint -> {
+            Map<String, Object> hintMap = new HashMap<>();
+            hintMap.put("id", hint.getId());
+            hintMap.put("hint_text", hint.getHintText());
+            hintMap.put("difficulty", hint.getDifficulty());
+            return hintMap;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+    
+    /**
+     * 추가 힌트 조회 (primary=false, id가 가장 작은 힌트)
+     */
+    public List<Map<String, Object>> getAdditionalHints(Long wordId) {
+        log.debug("추가 힌트 조회: wordId={}", wordId);
+        List<PzHint> hints = pzHintRepository.findByWordIdAndIsPrimaryOrderByDifficulty(wordId.intValue(), false);
+        return hints.stream().map(hint -> {
+            Map<String, Object> hintMap = new HashMap<>();
+            hintMap.put("id", hint.getId());
+            hintMap.put("hint_text", hint.getHintText());
+            hintMap.put("difficulty", hint.getDifficulty());
+            return hintMap;
+        }).collect(java.util.stream.Collectors.toList());
     }
 }
 

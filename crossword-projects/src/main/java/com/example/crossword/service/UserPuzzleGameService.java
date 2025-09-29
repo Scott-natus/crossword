@@ -201,4 +201,26 @@ public class UserPuzzleGameService {
     public Long getUserRanking(Long userId) {
         return userPuzzleGameRepository.findUserRanking(userId);
     }
+    
+    /**
+     * 사용자 ID로 게임 조회 또는 생성 (라라벨과 동일한 로직)
+     */
+    public UserPuzzleGame getOrCreateGameByUserId(Long userId) {
+        Optional<UserPuzzleGame> existingGame = userPuzzleGameRepository.findByUserIdAndIsActiveTrue(userId);
+        
+        if (existingGame.isPresent()) {
+            return existingGame.get();
+        }
+        
+        // 새 게임 생성
+        UserPuzzleGame newGame = UserPuzzleGame.builder()
+                .userId(userId)
+                .currentLevel(1)
+                .currentLevelCorrectAnswers(0)
+                .currentLevelWrongAnswers(0)
+                .isActive(true)
+                .build();
+        
+        return userPuzzleGameRepository.save(newGame);
+    }
 }

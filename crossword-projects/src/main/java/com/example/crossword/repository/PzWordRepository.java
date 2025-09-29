@@ -252,4 +252,10 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     @Query("SELECT w FROM PzWord w WHERE LOWER(w.word) LIKE LOWER(:search) AND w.difficulty = :difficulty AND w.confYn = :confYn")
     org.springframework.data.domain.Page<PzWord> findByWordContainingIgnoreCaseAndDifficultyAndConfYn(@Param("search") String search, @Param("difficulty") Integer difficulty, @Param("confYn") String confYn, org.springframework.data.domain.Pageable pageable);
 
+    /**
+     * 난이도와 길이로 단어 조회 (퍼즐 생성용)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.difficulty = :difficulty AND w.length = :length AND w.isActive = true")
+    List<PzWord> findByDifficultyAndLength(@Param("difficulty") Integer difficulty, @Param("length") Integer length);
+
 }

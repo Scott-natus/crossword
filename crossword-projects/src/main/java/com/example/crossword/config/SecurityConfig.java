@@ -27,10 +27,12 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // CSRF 비활성화 (개발용)
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/", "/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .requestMatchers("/K-CrossWord/").permitAll() // 게임은 선택화면
+                .requestMatchers("/K-CrossWord/**").permitAll() // 퍼즐게임 전체 경로 허용
+                .requestMatchers("/api/puzzle-game/**").permitAll() // 퍼즐게임 API 허용
+                .requestMatchers("/api/auth/**").permitAll() // 인증 상태 확인 API 허용
                 .requestMatchers("/admin/api/**").permitAll() // API는 임시로 인증 제외 (테스트용)
                 .requestMatchers("/admin/**").authenticated() // 관리자 페이지는 인증 필수
-                .anyRequest().permitAll() // 임시로 모든 요청 허용
+                .anyRequest().permitAll() // 나머지 모든 요청 허용
             )
             .formLogin(form -> form
                 .loginPage("https://natus250601.viewdns.net/login") // 8080 로그인 페이지로 리다이렉트
