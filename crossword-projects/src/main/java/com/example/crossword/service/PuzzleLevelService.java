@@ -33,6 +33,14 @@ public class PuzzleLevelService {
     }
     
     /**
+     * ID로 퍼즐 레벨 조회 (퍼즐 게임용)
+     */
+    public PuzzleLevel getById(Long id) {
+        log.debug("ID로 퍼즐 레벨 조회: {}", id);
+        return puzzleLevelRepository.findById(id).orElse(null);
+    }
+    
+    /**
      * 특정 레벨 번호로 퍼즐 레벨 조회
      */
     public Optional<PuzzleLevel> getPuzzleLevelByLevel(Integer level) {

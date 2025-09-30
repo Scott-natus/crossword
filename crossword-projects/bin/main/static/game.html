@@ -671,13 +671,22 @@
                         checkLevelCompletion();
                         
                 } else {
-                        $('#result-message').html(`<div class="alert alert-danger">${data.message}</div>`);
-                        
-                        setTimeout(function() {
-                            $('#result-message').empty();
-                        }, 2000);
-                        
-                        checkWrongAnswerLimit();
+                        // 오답회수 초과 체크
+                        if (data.wrong_count_exceeded) {
+                            // 오답회수 초과 시 모달 표시
+                            $('#wrong-answer-message').text('오답회수가 초과되었습니다.');
+                            $('#wrong-answer-sub-message').text('레벨을 다시 시작합니다.');
+                            $('#wrongAnswerModal').modal('show');
+                        } else {
+                            // 일반 오답 처리
+                            $('#result-message').html(`<div class="alert alert-danger">${data.message}</div>`);
+                            
+                            setTimeout(function() {
+                                $('#result-message').empty();
+                            }, 2000);
+                            
+                            checkWrongAnswerLimit();
+                        }
                     }
                 },
                 error: function(xhr, status, error) {
@@ -949,44 +958,31 @@
             }
         }
 
-        // 클리어 조건 업데이트
+        // 클리어 조건 업데이트 (Laravel과 동일한 로직)
         function updateClearCondition() {
             if (levelData && levelData.clear_condition > 1) {
                 $('#clear-condition-section').show();
-                const currentCount = gameData ? gameData.current_level_correct_answers : 0;
-                $('#clear-condition-display').text(`(${currentCount}/${levelData.clear_condition})`);
+                // 클리어 조건은 퍼즐 클리어 횟수를 의미하므로 현재 퍼즐의 정답 개수가 아닌
+                // 레벨 클리어 횟수를 표시해야 함 (서버에서 받아와야 함)
+                $('#clear-condition-display').text(`클리어 조건: ${levelData.clear_condition}회`);
             }
         }
 
-        // 레벨 완료 체크
+        // 레벨 완료 체크 (Laravel과 동일한 로직)
         function checkLevelCompletion() {
             if (!templateData || !templateData.words) {
                 return;
             }
             
-            // 현재 레벨의 클리어 조건 확인
-            const clearCondition = levelData ? levelData.clear_condition : 1;
             const currentCorrectCount = gameData ? gameData.current_level_correct_answers : 0;
-            
-            console.log('레벨 완료 체크:', {
-                clearCondition: clearCondition,
-                currentCorrectCount: currentCorrectCount,
-                totalWords: templateData.words.length
-            });
-            
-            // 클리어 조건이 1보다 크면 정답 개수로 판단
-            if (clearCondition > 1) {
-                if (currentCorrectCount >= clearCondition) {
-                    console.log('클리어 조건 달성 - 레벨 완료');
-                    showLevelCompleteModal();
-                }
-                return;
-            }
-            
-            // 클리어 조건이 1이면 모든 단어 완료로 판단
             const totalWords = templateData.words.length;
             
-            // 모든 단어가 완료되었는지 확인
+            console.log('레벨 완료 체크:', {
+                currentCorrectCount: currentCorrectCount,
+                totalWords: totalWords
+            });
+            
+            // 모든 단어가 완료되었는지 확인 (퍼즐 완료)
             if (currentCorrectCount >= totalWords) {
                 console.log('모든 단어 완료 - 레벨 완료');
                 showLevelCompleteModal();
@@ -1063,6 +1059,8 @@
 
         // 레벨 재시작
         $('#restart-level-btn').click(function() {
+            // 서버에서 이미 정오답 개수 초기화와 단어/힌트 재생성이 완료되었으므로
+            // 페이지를 새로고침하여 새로운 상태를 반영
             location.reload();
         });
 
@@ -1082,11 +1080,31 @@
                 data: JSON.stringify(requestData),
                 success: function(data) {
                     console.log('레벨 완료 처리 결과:', data);
-                    location.reload();
+                    
+                    if (data.condition_not_met) {
+                        // 클리어 조건 미달
+                        alert(data.message);
+                        $('#levelCompleteModal').modal('hide');
+                        location.reload(); // 현재 레벨에서 새 퍼즐 시작
+                    } else if (data.no_next_level) {
+                        // 모든 레벨 완료
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        // 다음 레벨로 진행
+                        location.reload();
+                    }
                 },
                 error: function(xhr, status, error) {
                     console.error('레벨 완료 처리 실패:', error);
-                    alert('레벨 완료 처리 중 오류가 발생했습니다.');
+                    if (xhr.status === 400 && xhr.responseJSON && xhr.responseJSON.condition_not_met) {
+                        // 클리어 조건 미달
+                        alert(xhr.responseJSON.message);
+                        $('#levelCompleteModal').modal('hide');
+                        location.reload();
+                    } else {
+                        alert('레벨 완료 처리 중 오류가 발생했습니다.');
+                    }
                 }
             });
         });

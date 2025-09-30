@@ -8,6 +8,7 @@ import com.example.crossword.service.UserPuzzleGameService;
 import com.example.crossword.service.PuzzleLevelService;
 import com.example.crossword.service.PzWordService;
 import com.example.crossword.service.PzHintService;
+import com.example.crossword.service.PuzzleGameRecordService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -38,6 +39,9 @@ public class PuzzleGameController {
     
     @Autowired
     private PzHintService pzHintService;
+    
+    @Autowired
+    private PuzzleGameRecordService puzzleGameRecordService;
     
     @Autowired
     private ObjectMapper objectMapper;
@@ -188,26 +192,77 @@ public class PuzzleGameController {
             
             // 게임 데이터 업데이트
             UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
+            Map<String, Object> response = new HashMap<>();
+            
             if (isCorrect) {
-                game.setCurrentLevelCorrectAnswers(game.getCurrentLevelCorrectAnswers() + 1);
+                // 이미 맞춘 단어인지 확인
+                boolean isAlreadyAnswered = isWordAlreadyAnswered(game, wordId);
+                
+                if (!isAlreadyAnswered) {
+                    // 새로운 정답인 경우에만 카운트 증가
+                    game.setCurrentLevelCorrectAnswers(game.getCurrentLevelCorrectAnswers() + 1);
+                    // 새로운 정답 추가됨
+                } else {
+                    // 이미 맞춘 단어
+                }
+                
                 // 정답 단어를 게임 상태에 추가
                 updateGameStateWithCorrectAnswer(game, wordId, answer);
+                
+                response.put("is_correct", true);
+                response.put("message", "정답입니다!");
+                response.put("correct_count", game.getCurrentLevelCorrectAnswers());
+                response.put("wrong_count", game.getCurrentLevelWrongAnswers());
+                response.put("correct_answer", answer);
+                
             } else {
+                // 오답 처리
                 game.setCurrentLevelWrongAnswers(game.getCurrentLevelWrongAnswers() + 1);
+                int wrongCount = game.getCurrentLevelWrongAnswers();
+                
+                // 오답 4회일 때 특별한 메시지
+                if (wrongCount == 4) {
+                    response.put("message", "현재 오답이 4회 입니다, 5회 오답시 레벨을 재시작합니다");
+                } else {
+                    response.put("message", "오답입니다. 누적 오답: " + wrongCount + "회");
+                }
+                
+                response.put("is_correct", false);
+                response.put("correct_count", game.getCurrentLevelCorrectAnswers());
+                response.put("wrong_count", wrongCount);
+                
+                // 오답 5회 초과 체크
+                if (wrongCount >= 5) {
+                    // 게임 상태 초기화 (정오답 개수만 초기화, 템플릿은 유지)
+                    game.setCurrentLevelCorrectAnswers(0);
+                    game.setCurrentLevelWrongAnswers(0);
+                    
+                    // 게임 상태에서 정답 기록 초기화
+                    Map<String, Object> gameState = game.getCurrentGameState();
+                    if (gameState != null) {
+                        gameState.put("answered_words", new ArrayList<Integer>());
+                        gameState.put("answered_words_with_answers", new HashMap<String, String>());
+                        gameState.put("wrong_answers", new HashMap<String, Integer>());
+                        gameState.put("hints_used", new HashMap<String, Boolean>());
+                        game.setCurrentGameState(gameState);
+                    }
+                    
+                    userPuzzleGameService.save(game);
+                    
+                    // 현재 퍼즐의 단어와 힌트를 새로 생성 (템플릿은 유지)
+                    regenerateWordsAndHintsForCurrentPuzzle(game);
+                    
+                    response.put("message", "오답회수가 초과되었습니다. 레벨을 다시 시작합니다.");
+                    response.put("restart_level", true);
+                    response.put("wrong_count_exceeded", true);
+                    response.put("correct_count", 0);
+                    response.put("wrong_count", 0);
+                    
+                    return ResponseEntity.ok(response);
+                }
             }
             
             userPuzzleGameService.save(game);
-                    
-                    Map<String, Object> response = new HashMap<>();
-            response.put("is_correct", isCorrect);
-            response.put("message", isCorrect ? "정답입니다!" : "오답입니다.");
-            response.put("correct_count", game.getCurrentLevelCorrectAnswers());
-            response.put("wrong_count", game.getCurrentLevelWrongAnswers());
-            
-            if (isCorrect) {
-                response.put("correct_answer", answer);
-            }
-            
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
@@ -314,7 +369,7 @@ public class PuzzleGameController {
     }
     
     /**
-     * 레벨 완료 처리
+     * 레벨 완료 처리 (Laravel과 동일한 클리어 조건 로직)
      */
     @PostMapping("/complete-level")
     public ResponseEntity<Map<String, Object>> completeLevel(@RequestBody Map<String, Object> requestData, HttpServletRequest request) {
@@ -340,20 +395,78 @@ public class PuzzleGameController {
             }
             
             UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
-            game.setCurrentLevel(game.getCurrentLevel() + 1);
+            Integer currentLevel = game.getCurrentLevel();
+            
+            // 현재 레벨 정보 조회
+            PuzzleLevel level = puzzleLevelService.getById(currentLevel.longValue());
+            if (level == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "레벨 정보를 찾을 수 없습니다."));
+            }
+            
+            // 레벨 클리어 기록 저장 (조건 충족 여부와 관계없이 항상 저장)
+            Map<String, Object> gameData = new HashMap<>();
+            gameData.put("score", requestData.getOrDefault("score", 0));
+            gameData.put("play_time", requestData.getOrDefault("play_time", 0));
+            gameData.put("hints_used", requestData.getOrDefault("hints_used", 0));
+            gameData.put("words_found", requestData.getOrDefault("words_found", 0));
+            gameData.put("total_words", requestData.getOrDefault("total_words", 0));
+            gameData.put("accuracy", requestData.getOrDefault("accuracy", 0.0));
+            
+            puzzleGameRecordService.recordLevelClear(userId, currentLevel, gameData);
+            
+            // 레벨 클리어 조건 확인 (기록 저장 후)
+            if (!puzzleGameRecordService.checkLevelClearCondition(userId, currentLevel, level)) {
+                Long clearCount = puzzleGameRecordService.getClearCountByUserAndLevel(userId, currentLevel);
+                int remaining = Math.max(0, level.getClearCondition() - clearCount.intValue());
+                
+                // 클리어 조건 미충족 시 새로운 퍼즐 생성 (라라벨과 동일한 로직)
+                System.out.println("=== 클리어 조건 미충족 - 새로운 퍼즐 생성 시작 ===");
+                System.out.println("사용자 ID: " + userId + ", 레벨: " + currentLevel);
+                System.out.println("현재 클리어 횟수: " + clearCount + ", 필요 횟수: " + level.getClearCondition());
+                System.out.println("남은 횟수: " + remaining);
+                
+                regenerateWordsAndHintsForCurrentPuzzle(game);
+                
+                System.out.println("=== 새로운 퍼즐 생성 완료 ===");
+                
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "레벨 클리어 조건을 만족하지 않습니다.",
+                    "message", "클리어까지 " + remaining + "회 남았습니다.",
+                    "remaining", remaining,
+                    "condition_not_met", true
+                ));
+            }
+            
+            // 다음 레벨 존재 여부 확인
+            PuzzleLevel nextLevel = puzzleLevelService.getById(Long.valueOf(currentLevel + 1));
+            if (nextLevel == null) {
+                // 다음 레벨이 없으면 현재 레벨 유지
+                return ResponseEntity.ok(Map.of(
+                    "message", "축하합니다! 모든 레벨을 완료했습니다!",
+                    "new_level", currentLevel,
+                    "success", true,
+                    "no_next_level", true
+                ));
+            }
+            
+            // 현재 퍼즐 세션 종료
+            game.completeActivePuzzle();
+            
+            // 다음 레벨로 진행
+            game.setCurrentLevel(currentLevel + 1);
             game.setCurrentLevelCorrectAnswers(0);
             game.setCurrentLevelWrongAnswers(0);
-            
-            // 활성 퍼즐 완료 (새로운 레벨을 위해 게임 상태 초기화)
-            game.completeActivePuzzle();
             
             userPuzzleGameService.save(game);
             
             System.out.println("레벨 완료 처리 - 새 레벨: " + game.getCurrentLevel());
             
             Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
+            response.put("message", "축하합니다! 다음 레벨로 진행합니다.");
             response.put("new_level", game.getCurrentLevel());
+            response.put("success", true);
+            response.put("condition_met", true);
+            response.put("is_final_level", false);
             
             return ResponseEntity.ok(response);
             
@@ -472,7 +585,7 @@ public class PuzzleGameController {
             session.setAttribute("guest_id", guestId);
             session.setAttribute("user_id", userId);
             
-            System.out.println("새 게스트 세션 생성: " + guestId + " -> " + userId);
+            // 게스트 세션 생성 완료
             return userId;
             
         } catch (Exception e) {
@@ -507,7 +620,7 @@ public class PuzzleGameController {
                 !authentication.getPrincipal().equals("anonymousUser")) {
                 
                 String email = authentication.getName();
-                System.out.println("인증된 사용자 이메일: " + email);
+                // 인증된 사용자 확인
                 
                 // 이메일로 사용자 ID 조회 (8080 서비스의 users 테이블과 동일)
                 // TODO: 실제로는 UserRepository를 주입받아서 사용해야 함
@@ -591,14 +704,11 @@ public class PuzzleGameController {
             gameState.put("wrong_answers", new ArrayList<>());
             gameState.put("hints_used", new ArrayList<>());
             
-            // 활성 퍼즐 시작
+            // 활성 퍼즐 시작 (라라벨과 동일: current_level_correct_answers는 레벨 단위로 유지)
             game.startActivePuzzle(puzzleData, gameState);
             userPuzzleGameService.save(game);
             
-            System.out.println("=== 새 퍼즐 생성 완료 ===");
-            System.out.println("hasActivePuzzle: " + game.hasActivePuzzle());
-            System.out.println("currentPuzzleData: " + (game.getCurrentPuzzleData() != null ? "존재" : "없음"));
-            System.out.println("currentGameState: " + (game.getCurrentGameState() != null ? "존재" : "없음"));
+            System.out.println("새 퍼즐 생성 완료 - 레벨: " + level.getLevel());
                 
             Map<String, Object> result = new HashMap<>();
             result.put("template", extractionResult.get("template"));
@@ -612,6 +722,26 @@ public class PuzzleGameController {
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("퍼즐 생성 중 오류가 발생했습니다.");
+        }
+    }
+    
+    /**
+     * 이미 맞춘 단어인지 확인
+     */
+    private boolean isWordAlreadyAnswered(UserPuzzleGame game, Long wordId) {
+        try {
+            Map<String, Object> gameState = game.getCurrentGameState();
+            if (gameState != null) {
+                @SuppressWarnings("unchecked")
+                List<Long> answeredWords = (List<Long>) gameState.get("answered_words");
+                if (answeredWords != null) {
+                    return answeredWords.contains(wordId);
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            System.err.println("단어 답변 상태 확인 중 오류: " + e.getMessage());
+            return false;
         }
     }
     
@@ -647,10 +777,85 @@ public class PuzzleGameController {
                 game.setCurrentGameState(gameState);
                 userPuzzleGameService.save(game);
                 
-                System.out.println("게임 상태 업데이트 완료 - 정답 단어 ID: " + wordId + ", 정답: " + answer);
+                // 게임 상태 업데이트 완료
             }
         } catch (Exception e) {
             System.err.println("게임 상태 업데이트 중 오류: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 현재 퍼즐의 단어와 힌트를 새로 생성 (템플릿은 유지)
+     * 1. 사용자별 진행데이터에서 템플릿 정보만 추출
+     * 2. 사용자별 데이터를 삭제
+     * 3. 퍼즐 제작 로직 2~6번을 다시 실행
+     * 4. 새로운 데이터를 사용자별 진행데이터에 저장
+     */
+    private void regenerateWordsAndHintsForCurrentPuzzle(UserPuzzleGame game) {
+        try {
+            System.out.println("퍼즐 재생성 시작");
+            
+            // 1. 현재 퍼즐 데이터에서 템플릿 정보만 추출
+            Map<String, Object> currentPuzzleData = game.getCurrentPuzzleData();
+            if (currentPuzzleData == null) {
+                System.err.println("현재 퍼즐 데이터가 없습니다.");
+                return;
+            }
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> template = (Map<String, Object>) currentPuzzleData.get("template");
+            if (template == null) {
+                System.err.println("템플릿 데이터가 없습니다.");
+                return;
+            }
+            
+            // 레벨 정보 가져오기
+            PuzzleLevel level = puzzleLevelService.getById(game.getCurrentLevel().longValue());
+            if (level == null) {
+                System.err.println("레벨 정보를 찾을 수 없습니다.");
+                return;
+            }
+            
+            // 템플릿 정보 추출 완료
+            
+            // 2. 사용자별 데이터를 삭제 (현재 퍼즐 종료)
+            game.completeActivePuzzle();
+            userPuzzleGameService.save(game);
+            // 기존 데이터 삭제 완료
+            
+            // 3. 퍼즐 제작 로직 2~6번을 다시 실행 (템플릿 기반으로 단어 추출 → 교차점 처리 → 힌트 생성)
+            Map<String, Object> extractionResult = puzzleGridTemplateService.extractWordsFromTemplate(
+                level.getWordDifficulty(), 
+                level.getHintDifficulty(), 
+                level.getWordCount(), 
+                level.getIntersectionCount()
+            );
+            
+            if (!(Boolean) extractionResult.get("success")) {
+                System.err.println("퍼즐 재생성에 실패했습니다: " + extractionResult.get("message"));
+                return;
+            }
+            
+            // 4. 새로운 데이터를 사용자별 진행데이터에 저장
+            Map<String, Object> newPuzzleData = new HashMap<>();
+            newPuzzleData.put("template", extractionResult.get("template"));
+            newPuzzleData.put("extracted_words", extractionResult.get("extracted_words"));
+            
+            Map<String, Object> newGameState = new HashMap<>();
+            newGameState.put("answered_words", new ArrayList<>());
+            newGameState.put("answered_words_with_answers", new HashMap<>());
+            newGameState.put("wrong_answers", new ArrayList<>());
+            newGameState.put("hints_used", new ArrayList<>());
+            
+            // 새로운 활성 퍼즐 시작 (라라벨과 동일: current_level_correct_answers는 레벨 단위로 유지)
+            game.startActivePuzzle(newPuzzleData, newGameState);
+            userPuzzleGameService.save(game);
+            
+            System.out.println("퍼즐 재생성 완료");
+            
+        } catch (Exception e) {
+            System.err.println("퍼즐 재생성 중 오류: " + e.getMessage());
             e.printStackTrace();
         }
     }

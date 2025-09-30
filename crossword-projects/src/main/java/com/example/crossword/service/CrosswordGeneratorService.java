@@ -28,7 +28,7 @@ public class CrosswordGeneratorService {
      * 퍼즐 레벨에 따른 크로스워드 퍼즐 생성
      */
     public CrosswordPuzzle generatePuzzle(Integer level) {
-        log.debug("크로스워드 퍼즐 생성 시작: 레벨 {}", level);
+        // 퍼즐 생성 시작
         
         try {
             // 실제 퍼즐 레벨 정보 조회
@@ -38,7 +38,7 @@ public class CrosswordGeneratorService {
             }
             
             PuzzleLevel puzzleLevel = puzzleLevelOpt.get();
-            log.debug("퍼즐 레벨 정보: {}", puzzleLevel.getLevelName());
+            // 레벨 정보 확인
             
             // 실제 데이터베이스에서 단어 선택
             List<Word> selectedWords = selectWordsForPuzzle(puzzleLevel);
@@ -47,7 +47,7 @@ public class CrosswordGeneratorService {
                 throw new RuntimeException("적합한 단어를 찾을 수 없습니다: 레벨 " + level);
             }
             
-            log.debug("선택된 단어 수: {}", selectedWords.size());
+            // 단어 선택 완료
             
             // 크로스워드 그리드 생성
             CrosswordGrid grid = createCrosswordGrid(selectedWords, puzzleLevel);
@@ -56,7 +56,7 @@ public class CrosswordGeneratorService {
                 throw new RuntimeException("그리드 생성에 실패했습니다: 레벨 " + level);
             }
             
-            log.info("실제 데이터 기반 퍼즐 생성 성공: 레벨 {}, 단어 수: {}", level, selectedWords.size());
+            log.info("퍼즐 생성 성공 - 레벨: {}, 단어: {}개", level, selectedWords.size());
             return new CrosswordPuzzle(puzzleLevel, selectedWords, grid);
             
         } catch (Exception e) {

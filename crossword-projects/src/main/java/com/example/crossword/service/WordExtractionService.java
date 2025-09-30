@@ -40,7 +40,7 @@ public class WordExtractionService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> extractWords(Long templateId) {
-        log.info("단어 추출 시작 - 템플릿 ID: {}", templateId);
+        // 단어 추출 시작
         
         // 쿼리 로그 수집을 위한 리스트
         List<Map<String, Object>> queryLog = new ArrayList<>();
@@ -65,9 +65,7 @@ public class WordExtractionService {
                 return idA.compareTo(idB);
             });
 
-            log.info("정렬된 단어 위치: {}", wordPositions.stream()
-                    .map(wp -> wp.get("id"))
-                    .collect(Collectors.toList()));
+            // 단어 위치 정렬 완료
 
             // 4. 최대 5회 재시도
             int maxRetries = 5;

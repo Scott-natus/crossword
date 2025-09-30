@@ -332,4 +332,26 @@ public class PzWordService {
         log.debug("ID로 단어 조회: {}", id);
         return pzWordRepository.findById(id.intValue()).orElse(null);
     }
+    
+    /**
+     * 레벨에 맞는 랜덤 단어 조회
+     */
+    public PzWord getRandomWordByLevel(com.example.crossword.entity.PuzzleLevel level) {
+        log.debug("레벨별 랜덤 단어 조회: 레벨 {}", level.getId());
+        
+        // 레벨의 난이도에 맞는 단어 조회
+        List<PzWord> words = pzWordRepository.findByDifficultyAndIsActiveTrue(level.getWordDifficulty());
+        
+        if (words.isEmpty()) {
+            log.warn("해당 레벨에 맞는 단어가 없습니다. 레벨: {}", level.getId());
+            return null;
+        }
+        
+        // 랜덤하게 하나 선택
+        int randomIndex = (int) (Math.random() * words.size());
+        PzWord selectedWord = words.get(randomIndex);
+        
+        log.debug("선택된 단어: {} (ID: {})", selectedWord.getWord(), selectedWord.getId());
+        return selectedWord;
+    }
 }
