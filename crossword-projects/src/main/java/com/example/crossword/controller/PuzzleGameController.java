@@ -3,6 +3,7 @@ package com.example.crossword.controller;
 import com.example.crossword.entity.PuzzleLevel;
 import com.example.crossword.entity.UserPuzzleGame;
 import com.example.crossword.entity.PzWord;
+import com.example.crossword.entity.PzHint;
 import com.example.crossword.entity.User;
 import com.example.crossword.repository.UserRepository;
 import com.example.crossword.service.PuzzleGridTemplateService;
@@ -11,6 +12,8 @@ import com.example.crossword.service.PuzzleLevelService;
 import com.example.crossword.service.PzWordService;
 import com.example.crossword.service.PzHintService;
 import com.example.crossword.service.PuzzleGameRecordService;
+import com.example.crossword.service.HintGeneratorManagementService;
+import com.example.crossword.service.WordService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -51,6 +54,12 @@ public class PuzzleGameController {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private HintGeneratorManagementService hintGeneratorManagementService;
+    
+    @Autowired
+    private WordService wordService;
 
     /**
      * 메인 퍼즐게임 페이지 - 라라벨과 동일한 로직
@@ -426,6 +435,16 @@ public class PuzzleGameController {
                 return ResponseEntity.badRequest().body(Map.of("error", "사용자 인증이 필요합니다."));
             }
             
+            // 사용자 ID 유효성 검증
+            Optional<User> userCheck = userRepository.findById(userId);
+            if (!userCheck.isPresent()) {
+                System.err.println("ERROR: 사용자 ID " + userId + "가 users 테이블에 존재하지 않습니다.");
+                return ResponseEntity.badRequest().body(Map.of("error", "유효하지 않은 사용자입니다."));
+            }
+            
+            System.out.println("=== 레벨 완료 처리 시작 ===");
+            System.out.println("사용자 ID: " + userId + " (유효성 검증 완료)");
+            
             UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
             Integer currentLevel = game.getCurrentLevel();
             
@@ -444,7 +463,18 @@ public class PuzzleGameController {
             gameData.put("total_words", requestData.getOrDefault("total_words", 0));
             gameData.put("accuracy", requestData.getOrDefault("accuracy", 0.0));
             
-            puzzleGameRecordService.recordLevelClear(userId, currentLevel, gameData);
+            System.out.println("=== 레벨 클리어 기록 저장 시도 ===");
+            System.out.println("사용자 ID: " + userId + ", 레벨: " + currentLevel);
+            System.out.println("게임 데이터: " + gameData);
+            
+            try {
+                puzzleGameRecordService.recordLevelClear(userId, currentLevel, gameData);
+                System.out.println("레벨 클리어 기록 저장 성공");
+            } catch (Exception e) {
+                System.err.println("레벨 클리어 기록 저장 실패: " + e.getMessage());
+                e.printStackTrace();
+                return ResponseEntity.badRequest().body(Map.of("error", "레벨 클리어 기록 저장에 실패했습니다: " + e.getMessage()));
+            }
             
             // 레벨 클리어 조건 확인 (기록 저장 후)
             if (!puzzleGameRecordService.checkLevelClearCondition(userId, currentLevel, level)) {
@@ -773,11 +803,13 @@ public class PuzzleGameController {
             gameState.put("wrong_answers", new ArrayList<>());
             gameState.put("hints_used", new ArrayList<>());
             
-            // 활성 퍼즐 시작 (라라벨과 동일: current_level_correct_answers는 레벨 단위로 유지)
+            // 활성 퍼즐 시작 (새 퍼즐이므로 정답/오답 카운트 초기화)
             game.startActivePuzzle(puzzleData, gameState);
+            game.setCurrentLevelCorrectAnswers(0);
+            game.setCurrentLevelWrongAnswers(0);
             userPuzzleGameService.save(game);
             
-            System.out.println("새 퍼즐 생성 완료 - 레벨: " + level.getLevel());
+            System.out.println("새 퍼즐 생성 완료 - 레벨: " + level.getLevel() + ", current_level_correct_answers: " + game.getCurrentLevelCorrectAnswers() + " (새 퍼즐로 초기화)");
                 
             Map<String, Object> result = new HashMap<>();
             result.put("template", extractionResult.get("template"));
@@ -917,15 +949,153 @@ public class PuzzleGameController {
             newGameState.put("wrong_answers", new ArrayList<>());
             newGameState.put("hints_used", new ArrayList<>());
             
-            // 새로운 활성 퍼즐 시작 (라라벨과 동일: current_level_correct_answers는 레벨 단위로 유지)
+            // 새로운 활성 퍼즐 시작 (새 퍼즐이므로 정답/오답 카운트 초기화)
             game.startActivePuzzle(newPuzzleData, newGameState);
+            game.setCurrentLevelCorrectAnswers(0);
+            game.setCurrentLevelWrongAnswers(0);
             userPuzzleGameService.save(game);
+            System.out.println("새 퍼즐 시작 - current_level_correct_answers: " + game.getCurrentLevelCorrectAnswers() + " (새 퍼즐로 초기화)");
             
             System.out.println("퍼즐 재생성 완료");
             
         } catch (Exception e) {
             System.err.println("퍼즐 재생성 중 오류: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 단어 상세 정보 조회 (단어정제용)
+     */
+    @GetMapping("/word-detail")
+    public ResponseEntity<Map<String, Object>> getWordDetail(@RequestParam Long word_id) {
+        try {
+            PzWord word = pzWordService.getById(word_id);
+            if (word == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "단어를 찾을 수 없습니다."));
+            }
+            
+            // 단어의 힌트 목록 조회
+            List<PzHint> hints = pzHintService.getHintsByWordId(word_id.intValue());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("word", Map.of(
+                "id", word.getId(),
+                "word", word.getWord(),
+                "category", word.getCategory(),
+                "difficulty", word.getDifficulty(),
+                "conf_yn", word.getConfYn(),
+                "created_at", word.getCreatedAt()
+            ));
+            
+            List<Map<String, Object>> hintsList = new ArrayList<>();
+            for (PzHint hint : hints) {
+                hintsList.add(Map.of(
+                    "id", hint.getId(),
+                    "hint_text", hint.getHintText(),
+                    "difficulty", hint.getDifficulty(),
+                    "is_primary", hint.getIsPrimary()
+                ));
+            }
+            response.put("hints", hintsList);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            System.err.println("단어 상세 정보 조회 중 오류: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "서버 오류가 발생했습니다."));
+        }
+    }
+    
+    /**
+     * 새 힌트 생성 (Gemini API 사용)
+     */
+    @PostMapping("/generate-hints")
+    public ResponseEntity<Map<String, Object>> generateNewHints(@RequestBody Map<String, Object> requestData) {
+        try {
+            Long wordId = Long.valueOf(requestData.get("word_id").toString());
+            String word = (String) requestData.get("word");
+            String category = (String) requestData.get("category");
+            
+            if (wordId == null || word == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "필수 파라미터가 누락되었습니다."));
+            }
+            
+            // Gemini API로 새 힌트 생성
+            Map<String, Object> geminiResult = hintGeneratorManagementService.generateForWord(wordId.intValue());
+            
+            if (!(Boolean) geminiResult.get("success")) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "힌트 생성에 실패했습니다."));
+            }
+            
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> generatedHints = (List<Map<String, Object>>) geminiResult.get("hints");
+            
+            // 생성된 힌트를 데이터베이스에 저장
+            List<Map<String, Object>> savedHints = new ArrayList<>();
+            PzWord wordEntity = pzWordService.getById(wordId);
+            for (Map<String, Object> hintData : generatedHints) {
+                PzHint hint = new PzHint();
+                hint.setWord(wordEntity);
+                hint.setHintText((String) hintData.get("hint_text"));
+                hint.setDifficulty((Integer) hintData.get("difficulty"));
+                hint.setIsPrimary(false);
+                hint.setCreatedAt(java.time.LocalDateTime.now());
+                hint.setUpdatedAt(java.time.LocalDateTime.now());
+                
+                PzHint savedHint = pzHintService.savePzHint(hint);
+                savedHints.add(Map.of(
+                    "id", savedHint.getId(),
+                    "hint_text", savedHint.getHintText(),
+                    "difficulty", savedHint.getDifficulty(),
+                    "is_primary", savedHint.getIsPrimary()
+                ));
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "새 힌트가 생성되었습니다.");
+            response.put("hints", savedHints);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            System.err.println("새 힌트 생성 중 오류: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "서버 오류가 발생했습니다."));
+        }
+    }
+    
+    /**
+     * 단어정제 확정
+     */
+    @PostMapping("/refine-word")
+    public ResponseEntity<Map<String, Object>> refineWord(@RequestBody Map<String, Object> refinementData) {
+        try {
+            Integer wordId = (Integer) refinementData.get("wordId");
+            Integer difficulty = (Integer) refinementData.get("difficulty");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hints = (List<Map<String, Object>>) refinementData.get("hints");
+            
+            if (wordId == null || difficulty == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "필수 파라미터가 누락되었습니다."));
+            }
+            
+            // 단어정제 실행
+            boolean success = wordService.refineWord(wordId, difficulty, hints);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", success);
+            response.put("message", success ? "단어정제가 완료되었습니다." : "정제 중 오류가 발생했습니다.");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            System.err.println("단어정제 중 오류: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "서버 오류가 발생했습니다."));
         }
     }
 }

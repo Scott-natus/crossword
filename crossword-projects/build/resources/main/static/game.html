@@ -164,6 +164,7 @@
                                 <button type="button" id="check-answer-btn" class="btn btn-primary">확인</button>
                                 <button type="button" id="show-hint-btn" class="btn btn-secondary">힌트보기</button>
                                 <button type="button" id="show-answer-btn" class="btn btn-warning" style="display: none;">정답보기</button>
+                                <button type="button" id="refine-word-btn" class="btn btn-info" style="display: none;">단어정제</button>
                         </div>
                             <div id="result-message" class="mt-3"></div>
                             <div id="additional-hints" class="mt-3" style="display: none;">
@@ -233,6 +234,69 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="restart-level-btn" class="btn btn-primary">레벨 재시작</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 단어정제 모달 -->
+    <div class="modal fade" id="wordRefinementModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>단어정제</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 단어 정보 섹션 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label"><strong>단어</strong></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="refinementWord" readonly>
+                                <select class="form-select" id="refinementDifficulty">
+                                    <option value="1">쉬움</option>
+                                    <option value="2">보통</option>
+                                    <option value="3">어려움</option>
+                                    <option value="4">매우어려움</option>
+                                    <option value="5">극도어려움</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label"><strong>카테고리</strong></label>
+                            <input type="text" class="form-control" id="refinementCategory" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label"><strong>생성일</strong></label>
+                            <input type="text" class="form-control" id="refinementCreatedAt" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label"><strong>상태</strong></label>
+                            <input type="text" class="form-control" id="refinementStatus" readonly>
+                        </div>
+                    </div>
+                    
+                    <!-- 힌트 섹션 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6><strong>힌트 관리</strong></h6>
+                                <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus me-1"></i>힌트 추가
+                                </button>
+                            </div>
+                            <div id="hintsContainer">
+                                <!-- 힌트 필드들이 여기에 동적으로 추가됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" id="confirmRefinementBtn" class="btn btn-warning">
+                        <i class="fas fa-check me-1"></i>정제 확정
+                    </button>
                 </div>
             </div>
         </div>
@@ -359,13 +423,15 @@
             const userType = window.USER_TYPE;
             const isAdmin = window.IS_ADMIN || false;
             
-            // 관리자 권한에 따라 정답보기 버튼 표시/숨김
+            // 관리자 권한에 따라 정답보기, 단어정제 버튼 표시/숨김
             if (isAdmin) {
                 $('#show-answer-btn').show();
-                console.log('관리자 권한 확인됨 - 정답보기 버튼 표시');
+                $('#refine-word-btn').show();
+                console.log('관리자 권한 확인됨 - 정답보기, 단어정제 버튼 표시');
             } else {
                 $('#show-answer-btn').hide();
-                console.log('일반 사용자 - 정답보기 버튼 숨김');
+                $('#refine-word-btn').hide();
+                console.log('일반 사용자 - 정답보기, 단어정제 버튼 숨김');
             }
             
             if (userType === 'user') {
@@ -929,6 +995,202 @@
                 } else {
                     alert('정답을 불러올 수 없습니다.');
                 }
+            });
+        });
+
+        // 단어정제 버튼 클릭 (관리자만)
+        $('#refine-word-btn').click(function() {
+            if (!currentWordId) {
+                alert('단어를 먼저 선택해주세요.');
+                return;
+            }
+            
+            // 관리자 권한 재확인
+            if (!window.IS_ADMIN) {
+                alert('관리자만 접근 가능합니다.');
+                return;
+            }
+            
+            // 단어정제 모달 표시
+            showWordRefinementModal(currentWordId);
+        });
+
+        // 단어정제 모달 표시
+        function showWordRefinementModal(wordId) {
+            // 단어 상세 정보 조회
+            $.get(`${API_BASE_URL}/word-detail`, { word_id: wordId })
+            .done(function(data) {
+                if (data.success) {
+                    // 단어 정보 설정
+                    $('#refinementWord').val(data.word.word);
+                    $('#refinementDifficulty').val(data.word.difficulty);
+                    $('#refinementCategory').val(data.word.category || '');
+                    $('#refinementCreatedAt').val(data.word.created_at || '');
+                    $('#refinementStatus').val(data.word.conf_yn === 'Y' ? '정제완료' : '미정제');
+                    
+                    // 힌트 정보 표시
+                    displayHintsForRefinement(data.hints || []);
+                    
+                    // 모달 표시
+                    $('#wordRefinementModal').modal('show');
+                } else {
+                    alert('단어 정보를 불러올 수 없습니다.');
+                }
+            })
+            .fail(function() {
+                alert('단어 정보를 불러올 수 없습니다.');
+            });
+        }
+        
+        // 힌트 정보 표시
+        function displayHintsForRefinement(hints) {
+            const container = $('#hintsContainer');
+            container.empty();
+            
+            if (hints.length === 0) {
+                container.html('<p class="text-muted">등록된 힌트가 없습니다.</p>');
+                return;
+            }
+            
+            hints.forEach((hint, index) => {
+                const hintField = $(`
+                    <div class="hint-field mb-3 p-3 border rounded" data-hint-id="${hint.id}">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <label class="form-label">힌트 ${index + 1}</label>
+                                <input type="text" class="form-control" value="${hint.hint_text || ''}" placeholder="힌트를 입력하세요">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">난이도</label>
+                                <select class="form-select">
+                                    <option value="1" ${hint.difficulty == 1 ? 'selected' : ''}>쉬움</option>
+                                    <option value="2" ${hint.difficulty == 2 ? 'selected' : ''}>보통</option>
+                                    <option value="3" ${hint.difficulty == 3 ? 'selected' : ''}>어려움</option>
+                                    <option value="4" ${hint.difficulty == 4 ? 'selected' : ''}>매우어려움</option>
+                                    <option value="5" ${hint.difficulty == 5 ? 'selected' : ''}>극도어려움</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">기본힌트</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" ${hint.is_primary ? 'checked' : ''}>
+                                    <label class="form-check-label">기본</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                container.append(hintField);
+            });
+        }
+        
+        // 새 힌트 추가 (사용자 입력)
+        $('#generateNewHintsBtn').click(function() {
+            // 빈 힌트 입력 필드 추가
+            addNewHintField();
+        });
+        
+        // 빈 힌트 입력 필드 추가 함수
+        function addNewHintField() {
+            const container = $('#hintsContainer');
+            const hintCount = container.find('.hint-field').length;
+            const newHintId = 'new_hint_' + Date.now(); // 임시 ID
+            
+            const hintField = $(`
+                <div class="hint-field mb-3 p-3 border rounded" data-hint-id="${newHintId}">
+                    <div class="row">
+                        <div class="col-8">
+                            <label class="form-label">힌트 텍스트</label>
+                            <input type="text" class="form-control hint-text" placeholder="힌트를 입력하세요" value="">
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label">난이도</label>
+                            <select class="form-select hint-difficulty">
+                                <option value="1">쉬움</option>
+                                <option value="2" selected>보통</option>
+                                <option value="3">어려움</option>
+                            </select>
+                        </div>
+                        <div class="col-1 d-flex align-items-end">
+                            <button type="button" class="btn btn-danger btn-sm remove-hint" title="힌트 삭제">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input hint-primary" type="checkbox" id="primary_${newHintId}">
+                                <label class="form-check-label" for="primary_${newHintId}">
+                                    기본힌트
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            container.append(hintField);
+            
+            // 삭제 버튼 이벤트
+            hintField.find('.remove-hint').click(function() {
+                $(this).closest('.hint-field').remove();
+            });
+        }
+        
+        // 단어정제 모달 취소 버튼 클릭
+        $('#wordRefinementModal .btn-secondary').click(function() {
+            $(this).blur(); // 포커스 제거
+        });
+        
+        // 정제 확정
+        $('#confirmRefinementBtn').click(function() {
+            const wordId = currentWordId;
+            const difficulty = $('#refinementDifficulty').val();
+            
+            // 힌트 데이터 수집
+            const hints = [];
+            $('.hint-field').each(function() {
+                const hintId = $(this).data('hint-id');
+                const hintText = $(this).find('input[type="text"]').val().trim();
+                const hintDifficulty = $(this).find('select').val();
+                const isPrimary = $(this).find('.form-check-input').is(':checked');
+                
+                if (hintText) {
+                    hints.push({
+                        id: hintId,
+                        hint_text: hintText,
+                        difficulty: parseInt(hintDifficulty),
+                        is_primary: isPrimary
+                    });
+                }
+            });
+            
+            // 정제 데이터 전송
+            const refinementData = {
+                wordId: wordId,
+                difficulty: parseInt(difficulty),
+                hints: hints
+            };
+            
+            $.ajax({
+                url: `${API_BASE_URL}/refine-word`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(refinementData),
+                dataType: 'json'
+            })
+            .done(function(data) {
+                if (data.success) {
+                    alert('단어정제가 완료되었습니다.');
+                    $('#confirmRefinementBtn').blur(); // 포커스 제거
+                    $('#wordRefinementModal').modal('hide');
+                } else {
+                    alert(data.message || '정제 중 오류가 발생했습니다.');
+                }
+            })
+            .fail(function() {
+                alert('정제 중 오류가 발생했습니다.');
             });
         });
 
