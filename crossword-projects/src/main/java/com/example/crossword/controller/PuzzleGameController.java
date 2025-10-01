@@ -586,7 +586,7 @@ public class PuzzleGameController {
     // ===== 헬퍼 메서드들 =====
 
     /**
-     * 게스트 사용자 생성 또는 조회 (세션 기반)
+     * 게스트 사용자 생성 또는 조회 (라라벨과 동일한 방식)
      */
     private Long getOrCreateGuestUser(String guestId, HttpServletRequest request) {
         try {
@@ -596,34 +596,71 @@ public class PuzzleGameController {
             String existingGuestId = (String) session.getAttribute("guest_id");
             Long existingUserId = (Long) session.getAttribute("user_id");
             
-            // 동일한 게스트 ID면 기존 사용자 ID 반환
+            // 동일한 게스트 ID면 기존 사용자 ID 반환 (단, users 테이블에 존재하는지 확인)
             if (existingGuestId != null && existingGuestId.equals(guestId) && existingUserId != null) {
-                System.out.println("기존 게스트 세션 사용: " + guestId + " -> " + existingUserId);
-                return existingUserId;
+                // 기존 사용자 ID가 users 테이블에 존재하는지 확인
+                Optional<User> existingUser = userRepository.findById(existingUserId);
+                if (existingUser.isPresent()) {
+                    System.out.println("기존 게스트 세션 사용: " + guestId + " -> " + existingUserId);
+                    return existingUserId;
+                } else {
+                    System.out.println("기존 세션의 사용자 ID가 users 테이블에 없음, 새로 생성: " + existingUserId);
+                    // 기존 세션의 사용자 ID가 users 테이블에 없으면 새로 생성
+                }
             }
             
-            // 새로운 게스트 ID 처리
-            Long userId;
+            // 라라벨과 동일한 방식: 게스트 사용자를 users 테이블에 생성/조회
+            User guestUser = null;
+            
+            // String guestId를 UUID로 변환
+            UUID guestUuid;
             try {
-                // 게스트 ID에서 숫자 부분만 추출하여 사용자 ID로 사용
-                String numericPart = guestId.replace("guest_", "");
-                userId = Long.parseLong(numericPart);
-            } catch (NumberFormatException e) {
-                // 숫자 변환 실패 시 해시코드 사용
-                userId = Math.abs((long) guestId.hashCode());
+                guestUuid = UUID.fromString(guestId);
+            } catch (IllegalArgumentException e) {
+                System.err.println("잘못된 UUID 형식: " + guestId);
+                // UUID가 아닌 경우 해시코드로 폴백
+                guestUuid = UUID.nameUUIDFromBytes(guestId.getBytes());
+            }
+            
+            // 1. guest_id로 기존 게스트 사용자 조회
+            Optional<User> existingUser = userRepository.findByGuestId(guestUuid);
+            if (existingUser.isPresent()) {
+                guestUser = existingUser.get();
+                System.out.println("기존 게스트 사용자 조회: " + guestId + " -> " + guestUser.getId());
+            } else {
+                // 2. 게스트 이메일로 조회
+                String guestEmail = guestId + "@guest.local";
+                Optional<User> emailUser = userRepository.findByEmailAndIsGuestTrue(guestEmail);
+                if (emailUser.isPresent()) {
+                    guestUser = emailUser.get();
+                    System.out.println("기존 게스트 이메일 사용자 조회: " + guestEmail + " -> " + guestUser.getId());
+                } else {
+                    // 3. 새로운 게스트 사용자 생성
+                    guestUser = new User();
+                    guestUser.setName("게스트_" + guestId.substring(0, Math.min(8, guestId.length())));
+                    guestUser.setEmail(guestEmail);
+                    guestUser.setPassword("guest_password_" + System.currentTimeMillis()); // 임시 비밀번호
+                    guestUser.setGuestId(guestUuid);
+                    guestUser.setIsGuest(true);
+                    guestUser.setIsAdmin(false);
+                    
+                    guestUser = userRepository.save(guestUser);
+                    System.out.println("새 게스트 사용자 생성: " + guestId + " -> " + guestUser.getId());
+                }
             }
             
             // 세션에 저장
             session.setAttribute("guest_id", guestId);
-            session.setAttribute("user_id", userId);
+            session.setAttribute("user_id", guestUser.getId());
             
-            // 게스트 세션 생성 완료
-            return userId;
+            return guestUser.getId();
             
         } catch (Exception e) {
             System.err.println("게스트 사용자 생성/조회 오류: " + e.getMessage());
-            // 기본값 반환
-            Long userId = Math.abs((long) guestId.hashCode());
+            e.printStackTrace();
+            
+            // 오류 시 기존 방식으로 폴백
+            Long userId = Math.abs((long) guestId.hashCode()) + 1000;
             HttpSession session = request.getSession();
             session.setAttribute("guest_id", guestId);
             session.setAttribute("user_id", userId);

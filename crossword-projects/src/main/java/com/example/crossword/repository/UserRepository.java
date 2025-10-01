@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 사용자 리포지토리
@@ -22,4 +23,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * 이메일 존재 여부 확인
      */
     boolean existsByEmail(String email);
+    
+    /**
+     * 게스트 ID로 사용자 조회
+     */
+    Optional<User> findByGuestId(UUID guestId);
+    
+    /**
+     * 게스트 이메일로 사용자 조회
+     */
+    Optional<User> findByEmailAndIsGuestTrue(String email);
 }

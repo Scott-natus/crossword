@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 사용자 엔티티
@@ -42,6 +43,12 @@ public class User {
     
     @Column(name = "is_admin")
     private Boolean isAdmin = false;
+    
+    @Column(name = "guest_id")
+    private UUID guestId;
+    
+    @Column(name = "is_guest")
+    private Boolean isGuest = false;
     
     @CreatedDate
     @Column(name = "created_at", updatable = false)
@@ -123,6 +130,22 @@ public class User {
     
     public void setIsAdmin(Boolean isAdmin) {
         this.isAdmin = isAdmin;
+    }
+    
+    public UUID getGuestId() {
+        return guestId;
+    }
+    
+    public void setGuestId(UUID guestId) {
+        this.guestId = guestId;
+    }
+    
+    public Boolean getIsGuest() {
+        return isGuest;
+    }
+    
+    public void setIsGuest(Boolean isGuest) {
+        this.isGuest = isGuest;
     }
     
     public LocalDateTime getCreatedAt() {
