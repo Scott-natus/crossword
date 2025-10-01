@@ -30,8 +30,8 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         List<GrantedAuthority> authorities = new ArrayList<>();
         
-        // 관리자 권한 확인 (이메일이 rainynux@gmail.com인 경우)
-        if ("rainynux@gmail.com".equals(email)) {
+        // 관리자 권한 확인 (데이터베이스의 is_admin 컬럼 참조)
+        if (user.getIsAdmin() != null && user.getIsAdmin()) {
             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
         } else {
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));

@@ -1,13 +1,17 @@
 package com.example.crossword.controller;
 
+import com.example.crossword.entity.User;
+import com.example.crossword.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -21,6 +25,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class AuthController {
     
+    private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    
     /**
      * 로그인 API
      */
@@ -32,52 +39,40 @@ public class AuthController {
             String email = credentials.get("email");
             String password = credentials.get("password");
             
-            // 간단한 인증 로직 (실제로는 데이터베이스에서 사용자 확인 필요)
+            // 데이터베이스에서 사용자 정보 조회
             if (email != null && password != null) {
-                // 테스트 계정 확인
-                if ("test@test.com".equals(email) && "123456".equals(password)) {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("success", true);
-                    response.put("message", "로그인 성공");
-                    response.put("data", Map.of(
-                        "user", Map.of(
-                            "id", 1,
-                            "email", email,
-                            "name", "테스트 사용자",
-                            "is_admin", false
-                        ),
-                        "authorization", Map.of(
-                            "token", "user_token_" + System.currentTimeMillis(),
-                            "type", "Bearer"
-                        )
-                    ));
-                    return ResponseEntity.ok(response);
+                Optional<User> userOpt = userRepository.findByEmail(email);
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    
+                    // BCrypt로 암호화된 비밀번호 확인
+                    if (user.getPassword() != null && passwordEncoder.matches(password, user.getPassword())) {
+                        Map<String, Object> response = new HashMap<>();
+                        response.put("success", true);
+                        response.put("message", "로그인 성공");
+                        response.put("data", Map.of(
+                            "user", Map.of(
+                                "id", user.getId(),
+                                "email", user.getEmail(),
+                                "name", user.getName(),
+                                "is_admin", user.getIsAdmin() != null ? user.getIsAdmin() : false
+                            ),
+                            "authorization", Map.of(
+                                "token", (user.getIsAdmin() != null && user.getIsAdmin()) ? 
+                                    "admin_token_" + System.currentTimeMillis() : 
+                                    "user_token_" + System.currentTimeMillis(),
+                                "type", "Bearer"
+                            )
+                        ));
+                        return ResponseEntity.ok(response);
+                    }
                 }
                 
-                // 관리자 계정 확인
-                if ("rainynux@gmail.com".equals(email) && "tngkrrhk".equals(password)) {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("success", true);
-                    response.put("message", "로그인 성공");
-                    response.put("data", Map.of(
-                        "user", Map.of(
-                            "id", 1,
-                            "email", email,
-                            "name", "박상우",
-                            "is_admin", true
-                        ),
-                        "authorization", Map.of(
-                            "token", "admin_token_" + System.currentTimeMillis(),
-                            "type", "Bearer"
-                        )
-                    ));
-                    return ResponseEntity.ok(response);
-                } else {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("success", false);
-                    response.put("message", "이메일 또는 비밀번호가 올바르지 않습니다.");
-                    return ResponseEntity.badRequest().body(response);
-                }
+                // 로그인 실패
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "이메일 또는 비밀번호가 올바르지 않습니다.");
+                return ResponseEntity.badRequest().body(response);
             } else {
                 Map<String, Object> response = new HashMap<>();
                 response.put("success", false);

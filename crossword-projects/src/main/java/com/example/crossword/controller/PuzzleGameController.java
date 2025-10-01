@@ -3,6 +3,8 @@ package com.example.crossword.controller;
 import com.example.crossword.entity.PuzzleLevel;
 import com.example.crossword.entity.UserPuzzleGame;
 import com.example.crossword.entity.PzWord;
+import com.example.crossword.entity.User;
+import com.example.crossword.repository.UserRepository;
 import com.example.crossword.service.PuzzleGridTemplateService;
 import com.example.crossword.service.UserPuzzleGameService;
 import com.example.crossword.service.PuzzleLevelService;
@@ -19,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -45,6 +48,9 @@ public class PuzzleGameController {
     
     @Autowired
     private ObjectMapper objectMapper;
+    
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * 메인 퍼즐게임 페이지 - 라라벨과 동일한 로직
@@ -337,35 +343,61 @@ public class PuzzleGameController {
             if (guestId != null) {
                 userId = getOrCreateGuestUser(guestId, request);
             } else {
-                String authHeader = request.getHeader("Authorization");
-                if (authHeader != null) {
-                    userId = getUserIdFromAuthHeader(authHeader);
-                }
+                // 세션 기반 인증으로 사용자 ID 가져오기
+                userId = getUserIdFromSession(request);
             }
             
             if (userId == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "사용자 인증이 필요합니다."));
             }
             
-            // 관리자 권한 확인 (추후 구현)
-            // if (!isAdmin(userId)) {
-            //     return ResponseEntity.forbidden().body(Map.of("error", "관리자 권한이 필요합니다."));
-            // }
+            // 관리자 권한 확인
+            if (!isAdmin(userId)) {
+                return ResponseEntity.status(403).body(Map.of("error", "관리자만 접근 가능합니다."));
+            }
             
             PzWord word = pzWordService.getById(word_id);
             if (word == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "단어를 찾을 수 없습니다."));
             }
-                
-                Map<String, Object> response = new HashMap<>();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
             response.put("answer", word.getWord());
+            response.put("message", "정답: " + word.getWord());
                 
-                return ResponseEntity.ok(response);
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("error", "서버 오류가 발생했습니다."));
         }
+    }
+    
+    /**
+     * 관리자 권한 확인
+     */
+    private boolean isAdmin(Long userId) {
+        try {
+            // Spring Security의 SecurityContext에서 인증 정보 확인
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication != null && authentication.isAuthenticated() && 
+                !authentication.getPrincipal().equals("anonymousUser")) {
+                
+                String email = authentication.getName();
+                
+                // 데이터베이스에서 사용자 정보 조회
+                Optional<User> userOpt = userRepository.findByEmail(email);
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    return user.getIsAdmin() != null && user.getIsAdmin();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("관리자 권한 확인 실패: " + e.getMessage());
+        }
+        return false;
     }
     
     /**
@@ -620,15 +652,15 @@ public class PuzzleGameController {
                 !authentication.getPrincipal().equals("anonymousUser")) {
                 
                 String email = authentication.getName();
-                // 인증된 사용자 확인
                 
-                // 이메일로 사용자 ID 조회 (8080 서비스의 users 테이블과 동일)
-                // TODO: 실제로는 UserRepository를 주입받아서 사용해야 함
-                // 임시로 이메일 기반으로 사용자 ID 생성
-                if ("rainynux@gmail.com".equals(email)) {
-                    return 1L; // 관리자 계정
+                // 데이터베이스에서 사용자 정보 조회
+                Optional<User> userOpt = userRepository.findByEmail(email);
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    return user.getId(); // 실제 사용자 ID 반환
                 } else {
-                    // 다른 사용자들의 경우 이메일 해시를 사용하여 일관된 ID 생성
+                    // 사용자가 데이터베이스에 없는 경우 (게스트 등)
+                    // 이메일 해시를 사용하여 일관된 ID 생성
                     return (long) Math.abs(email.hashCode() % 10000) + 1000;
                 }
             }

@@ -264,6 +264,7 @@
                     window.GUEST_ID = null;
                     window.USER_TYPE = 'user';
                     window.USERNAME = data.username;
+                    window.IS_ADMIN = data.is_admin || false; // 관리자 권한 정보 저장
                 } else {
                     // 비인증 사용자 - 게스트 ID 확인
                     if (guestId) {
@@ -271,6 +272,7 @@
                         console.log('기존 게스트 ID 사용:', guestId);
                         window.GUEST_ID = guestId;
                         window.USER_TYPE = 'guest';
+                        window.IS_ADMIN = false; // 게스트는 관리자 권한 없음
                     } else if (urlParams.get('guest_id')) {
                         // URL에 게스트 ID가 있으면 저장하고 사용
                         guestId = urlParams.get('guest_id');
@@ -278,6 +280,7 @@
                         console.log('URL에서 게스트 ID 설정:', guestId);
                         window.GUEST_ID = guestId;
                         window.USER_TYPE = 'guest';
+                        window.IS_ADMIN = false; // 게스트는 관리자 권한 없음
                     } else {
                         // 게스트 ID도 없으면 메인으로 리다이렉트
                         console.log('인증 정보 및 게스트 ID 없음, 메인으로 이동');
@@ -354,6 +357,16 @@
             // 전역 변수 사용 (인증 상태 확인에서 설정됨)
             const guestId = window.GUEST_ID;
             const userType = window.USER_TYPE;
+            const isAdmin = window.IS_ADMIN || false;
+            
+            // 관리자 권한에 따라 정답보기 버튼 표시/숨김
+            if (isAdmin) {
+                $('#show-answer-btn').show();
+                console.log('관리자 권한 확인됨 - 정답보기 버튼 표시');
+            } else {
+                $('#show-answer-btn').hide();
+                console.log('일반 사용자 - 정답보기 버튼 숨김');
+            }
             
             if (userType === 'user') {
                 // 로그인 사용자로 게임 시작
@@ -876,6 +889,45 @@
                     alert('힌트를 불러올 수 없습니다.');
                     // 오류 발생 시 버튼 다시 활성화
                     $('#show-hint-btn').prop('disabled', false).text('힌트보기');
+                }
+            });
+        });
+
+        // 정답보기 버튼 클릭 (관리자만)
+        $('#show-answer-btn').click(function() {
+            if (!currentWordId) {
+                alert('단어를 먼저 선택해주세요.');
+                return;
+            }
+            
+            // 관리자 권한 재확인
+            if (!window.IS_ADMIN) {
+                alert('관리자만 접근 가능합니다.');
+                return;
+            }
+            
+            $.get(`${API_BASE_URL}/show-answer`, {
+                word_id: currentWordId
+            })
+            .done(function(data) {
+                if (data.success) {
+                    // 정답을 정답 입력칸에 자동 입력
+                    $('#answer-input').val(data.answer);
+                    $('#result-message').html(`<div class="alert alert-info"><i class="fas fa-eye me-2"></i>${data.message}</div>`);
+                    
+                    // 정답 메시지 표시 후 3초 뒤 숨기기
+                    setTimeout(function() {
+                        $('#result-message').empty();
+                    }, 3000);
+                } else {
+                    alert(data.message || '정답을 불러올 수 없습니다.');
+                }
+            })
+            .fail(function(xhr) {
+                if (xhr.status === 403) {
+                    alert('관리자만 접근 가능합니다.');
+                } else {
+                    alert('정답을 불러올 수 없습니다.');
                 }
             });
         });

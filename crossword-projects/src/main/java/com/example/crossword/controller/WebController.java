@@ -1,5 +1,7 @@
 package com.example.crossword.controller;
 
+import com.example.crossword.entity.User;
+import com.example.crossword.repository.UserRepository;
 import com.example.crossword.service.WordExtractionService;
 import com.example.crossword.service.IntersectionCalculationService;
 import com.example.crossword.service.TemplateValidationService;
@@ -28,6 +30,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -47,6 +50,7 @@ public class WebController {
     private final WordExtractionService wordExtractionService;
     private final IntersectionCalculationService intersectionCalculationService;
     private final TemplateValidationService templateValidationService;
+    private final UserRepository userRepository;
 
     /**
      * 메인 페이지 - 정적 리소스 사용 (index.html)
@@ -93,22 +97,36 @@ public class WebController {
             if (authentication != null && authentication.isAuthenticated() && 
                 !authentication.getPrincipal().equals("anonymousUser")) {
                 
+                String email = authentication.getName();
+                
+                // 데이터베이스에서 사용자 정보 조회하여 관리자 권한 확인
+                Optional<User> userOpt = userRepository.findByEmail(email);
+                boolean isAdmin = false;
+                
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    isAdmin = user.getIsAdmin() != null && user.getIsAdmin();
+                }
+                
                 // 인증된 사용자
                 response.put("authenticated", true);
                 response.put("userType", "user");
-                response.put("username", authentication.getName());
+                response.put("username", email);
+                response.put("is_admin", isAdmin);
                 
             } else {
                 // 비인증 사용자
                 response.put("authenticated", false);
                 response.put("userType", "guest");
                 response.put("username", null);
+                response.put("is_admin", false);
             }
             
         } catch (Exception e) {
             response.put("authenticated", false);
             response.put("userType", "guest");
             response.put("username", null);
+            response.put("is_admin", false);
             response.put("error", e.getMessage());
         }
         

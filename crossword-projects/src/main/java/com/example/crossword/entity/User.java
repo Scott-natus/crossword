@@ -40,6 +40,9 @@ public class User {
     @Column(name = "profile_image")
     private String profileImage;
     
+    @Column(name = "is_admin")
+    private Boolean isAdmin = false;
+    
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -112,6 +115,14 @@ public class User {
     
     public void setProfileImage(String profileImage) {
         this.profileImage = profileImage;
+    }
+    
+    public Boolean getIsAdmin() {
+        return isAdmin;
+    }
+    
+    public void setIsAdmin(Boolean isAdmin) {
+        this.isAdmin = isAdmin;
     }
     
     public LocalDateTime getCreatedAt() {
