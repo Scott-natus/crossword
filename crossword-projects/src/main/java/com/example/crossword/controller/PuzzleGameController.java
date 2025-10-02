@@ -248,20 +248,12 @@ public class PuzzleGameController {
                 
                 // 오답 5회 초과 체크
                 if (wrongCount >= 5) {
-                    // 게임 상태 초기화 (라라벨과 동일하게 단순 초기화만)
+                    // 게임 상태 초기화 (라라벨과 동일)
                     game.setCurrentLevelCorrectAnswers(0);
                     game.setCurrentLevelWrongAnswers(0);
                     
-                    // 게임 상태에서 정답 기록 초기화
-                    Map<String, Object> gameState = game.getCurrentGameState();
-                    if (gameState != null) {
-                        gameState.put("answered_words", new ArrayList<Integer>());
-                        gameState.put("answered_words_with_answers", new HashMap<String, String>());
-                        gameState.put("wrong_answers", new HashMap<String, Integer>());
-                        gameState.put("hints_used", new HashMap<String, Boolean>());
-                        game.setCurrentGameState(gameState);
-                    }
-                    
+                    // 현재 퍼즐 세션 종료 (라라벨의 endCurrentPuzzle()과 동일)
+                    game.completeActivePuzzle();
                     userPuzzleGameService.save(game);
                     
                     response.put("message", "오답회수가 초과되었습니다. 레벨을 다시 시작합니다.");

@@ -895,12 +895,12 @@
                             
                             setTimeout(function() {
                                 $('#result-message').empty();
-                            }, 100);
+                            }, 2000);
                         }
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('정답 확인 실패:', error);
+                    
                 alert('정답 확인 중 오류가 발생했습니다.');
                 }
             });
