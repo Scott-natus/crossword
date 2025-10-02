@@ -263,20 +263,22 @@
         </div>
     </div>
 
-    <!-- 오답 회수 초과 모달 -->
-    <div class="modal fade" id="wrongAnswerModal" tabindex="-1">
-        <div class="modal-dialog">
+    <!-- 오답 회수 초과 모달 (기본 힌트 영역 위에 덮어쓰기) -->
+    <div class="modal fade" id="wrongAnswerModal" tabindex="-1" data-bs-backdrop="false" style="display: none;">
+        <div class="modal-dialog" style="position: fixed; width: 100%; margin: 0; z-index: 1055;">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">오답 회수 초과</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">게임 종료</h6>
+                    <button type="button" class="btn-close btn-close-sm" id="modal-close-btn" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <p id="wrong-answer-message">오답회수가 초과했습니다!</p>
-                    <p id="wrong-answer-sub-message">레벨을 다시 시작합니다.</p>
+                <div class="modal-body text-center py-3">
+                    <i class="fas fa-times-circle fa-2x text-danger mb-2"></i>
+                    <h6 id="wrong-answer-message" class="mb-2">오답 회수 초과!</h6>
+                    <p id="wrong-answer-sub-message" class="small mb-0">재도전하시겠습니까?</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" id="restart-level-btn" class="btn btn-primary">레벨 재시작</button>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" id="cancel-retry-btn">취소</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="restart-level-btn">재도전하기</button>
                 </div>
             </div>
         </div>
@@ -878,26 +880,27 @@
                         checkLevelCompletion();
                         
                 } else {
-                        // 오답회수 초과 체크
+                        // 오답인 경우
                         if (data.wrong_count_exceeded) {
-                            // 오답회수 초과 시 모달 표시
-                            $('#wrong-answer-message').text('오답회수가 초과되었습니다.');
-                            $('#wrong-answer-sub-message').text('레벨을 다시 시작합니다.');
-                            $('#wrongAnswerModal').modal('show');
+                            // 오답 5회 초과 시 메시지 표시
+                            $('#result-message').html(`<div class="alert alert-danger">${data.message}</div>`);
+                            // 2초 후 모달 표시
+                            setTimeout(function() {
+                                
+                                showWrongAnswerModal();
+                            }, 100);
                         } else {
-                            // 일반 오답 처리
+                            // 일반 오답 시 메시지 표시 (4회일 때는 특별 메시지)
                             $('#result-message').html(`<div class="alert alert-danger">${data.message}</div>`);
                             
                             setTimeout(function() {
                                 $('#result-message').empty();
                             }, 2000);
-                            
-                            checkWrongAnswerLimit();
                         }
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('정답 확인 실패:', error);
+                    
                 alert('정답 확인 중 오류가 발생했습니다.');
                 }
             });
@@ -1506,30 +1509,60 @@
         }
         
 
-        // 오답 회수 초과 체크
-        function checkWrongAnswerLimit() {
-            if (!levelData || !gameData) {
-                return;
-            }
-            
-            // 레벨의 오답 제한 확인 (기본값: 5회)
-            const wrongAnswerLimit = levelData.wrong_answer_limit || 5;
-            const currentWrongCount = gameData.current_level_wrong_answers || 0;
-            
-            if (currentWrongCount >= wrongAnswerLimit) {
-                showWrongAnswerModal();
-            }
-        }
         
         // 오답 회수 초과 모달 표시
         function showWrongAnswerModal() {
             isGameActive = false;
             clearInterval(timerInterval);
             
-            $('#wrong-answer-message').text('오답 회수가 초과했습니다!');
-            $('#wrong-answer-sub-message').text('레벨을 다시 시작합니다.');
+            $('#wrong-answer-message').text('오답 회수 초과!');
+            $('#wrong-answer-sub-message').text('재도전하시겠습니까?');
             
-            $('#wrongAnswerModal').modal('show');
+            // 기본 힌트 영역 위치 계산하여 모달 위치 설정
+            positionModalAtHintArea();
+            console.log('오답 회수 초과 모달 표시');
+
+            // Bootstrap Modal로 표시
+            const modalElement = document.getElementById('wrongAnswerModal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                console.log('오답 초과 모달 표시됨');
+            } else {
+                console.error('오답 초과 모달을 찾을 수 없음');
+            }
+        }
+        
+        // word-input-section 영역 위에 모달 덮어쓰기
+        function positionModalAtHintArea() {
+            const wordInputSection = $('#word-input-section');
+            console.log('wordInputSection', wordInputSection); 
+            if (wordInputSection.length > 0) {
+                const sectionOffset = wordInputSection.offset();
+                const sectionWidth = wordInputSection.outerWidth();
+                const sectionHeight = wordInputSection.outerHeight();
+                
+                // 모달을 word-input-section 영역 위에 덮어쓰기
+                const modalDialog = $('#wrongAnswerModal .modal-dialog');
+                modalDialog.css({
+                    'top': sectionOffset.top + 'px',
+                    'left': sectionOffset.left + 'px',
+                    'width': sectionWidth + 'px',
+                    'position': 'fixed',
+                    'margin': '0',
+                    'z-index': '1055'
+                });
+                
+                console.log('모달 위치 설정 (word-input-section 위 덮어쓰기):', {
+                    sectionTop: sectionOffset.top,
+                    sectionLeft: sectionOffset.left,
+                    sectionWidth: sectionWidth,
+                    sectionHeight: sectionHeight,
+                    modalTop: sectionOffset.top,
+                    modalLeft: '0px',
+                    modalWidth: '100%'
+                });
+            }
         }
 
         // 타이머 시작
@@ -1560,8 +1593,39 @@
             window.location.href = '/K-CrossWord/';
         });
 
+        // 모달 닫기 버튼 클릭 (메인으로 이동)
+        $('#modal-close-btn').click(function() {
+            const modalElement = document.getElementById('wrongAnswerModal');
+            if (modalElement) {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                }
+            }
+            window.location.href = '/K-CrossWord/';
+        });
+
+        // 취소 버튼 클릭 (메인으로 이동)
+        $('#cancel-retry-btn').click(function() {
+            const modalElement = document.getElementById('wrongAnswerModal');
+            if (modalElement) {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                }
+            }
+            window.location.href = '/K-CrossWord/';
+        });
+        
         // 레벨 재시작
         $('#restart-level-btn').click(function() {
+            const modalElement = document.getElementById('wrongAnswerModal');
+            if (modalElement) {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                }
+            }
             // 서버에서 이미 정오답 개수 초기화와 단어/힌트 재생성이 완료되었으므로
             // 페이지를 새로고침하여 새로운 상태를 반영
             location.reload();

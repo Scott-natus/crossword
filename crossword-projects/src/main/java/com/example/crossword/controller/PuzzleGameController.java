@@ -248,7 +248,7 @@ public class PuzzleGameController {
                 
                 // 오답 5회 초과 체크
                 if (wrongCount >= 5) {
-                    // 게임 상태 초기화 (정오답 개수만 초기화, 템플릿은 유지)
+                    // 게임 상태 초기화 (라라벨과 동일하게 단순 초기화만)
                     game.setCurrentLevelCorrectAnswers(0);
                     game.setCurrentLevelWrongAnswers(0);
                     
@@ -263,9 +263,6 @@ public class PuzzleGameController {
                     }
                     
                     userPuzzleGameService.save(game);
-                    
-                    // 현재 퍼즐의 단어와 힌트를 새로 생성 (템플릿은 유지)
-                    regenerateWordsAndHintsForCurrentPuzzle(game);
                     
                     response.put("message", "오답회수가 초과되었습니다. 레벨을 다시 시작합니다.");
                     response.put("restart_level", true);
