@@ -49,6 +49,22 @@ public interface UserPuzzleGameRepository extends JpaRepository<UserPuzzleGame, 
     Optional<UserPuzzleGame> findByGuestIdAndIsActiveTrueOnly(@Param("guestId") UUID guestId);
     
     /**
+     * 사용자 ID로 활성 게임 조회 (is_active만 확인, hasActivePuzzle 조건 제외)
+     * @param userId 사용자 ID
+     * @return 활성 게임
+     */
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.isActive = true")
+    Optional<UserPuzzleGame> findByUserIdAndIsActiveOnly(@Param("userId") Long userId);
+    
+    /**
+     * 게스트 ID로 활성 게임 조회 (is_active만 확인, hasActivePuzzle 조건 제외)
+     * @param guestId 게스트 ID
+     * @return 활성 게임
+     */
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.isActive = true")
+    Optional<UserPuzzleGame> findByGuestIdAndIsActiveOnly(@Param("guestId") UUID guestId);
+    
+    /**
      * 랭킹 순으로 상위 게임들 조회
      * @param limit 조회할 개수
      * @return 랭킹 순 게임 목록

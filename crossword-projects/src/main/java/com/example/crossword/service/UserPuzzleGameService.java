@@ -53,7 +53,7 @@ public class UserPuzzleGameService {
     public Optional<UserPuzzleGame> findActiveGameByUserIdOrGuestId(Long userId, UUID guestId) {
         // 먼저 사용자 ID로 조회
         if (userId != null) {
-            Optional<UserPuzzleGame> userGame = userPuzzleGameRepository.findByUserIdAndIsActiveTrueOnly(userId);
+            Optional<UserPuzzleGame> userGame = userPuzzleGameRepository.findByUserIdAndIsActiveOnly(userId);
             if (userGame.isPresent()) {
                 return userGame;
             }
@@ -61,7 +61,7 @@ public class UserPuzzleGameService {
         
         // 사용자 ID로 찾지 못했으면 게스트 ID로 조회
         if (guestId != null) {
-            return userPuzzleGameRepository.findByGuestIdAndIsActiveTrueOnly(guestId);
+            return userPuzzleGameRepository.findByGuestIdAndIsActiveOnly(guestId);
         }
         
         return Optional.empty();

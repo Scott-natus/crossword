@@ -248,7 +248,32 @@ public class PuzzleGameController {
                 
                 // 오답 5회 초과 체크
                 if (wrongCount >= 5) {
-                    // 게임 상태 초기화 (라라벨과 동일)
+                    // 정답 정보를 먼저 클라이언트에 전송
+                    Map<String, Object> puzzleData = game.getCurrentPuzzleData();
+                    if (puzzleData != null) {
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> extractedWords = (List<Map<String, Object>>) puzzleData.get("extracted_words");
+                        if (extractedWords != null && !extractedWords.isEmpty()) {
+                            List<Map<String, Object>> allAnswers = new ArrayList<>();
+                            for (int i = 0; i < extractedWords.size(); i++) {
+                                Map<String, Object> wordData = extractedWords.get(i);
+                                Map<String, Object> answerData = new HashMap<>();
+                                answerData.put("word_id", wordData.get("word_id"));
+                                
+                                // pz_word_id를 사용해서 실제 단어 조회
+                                Integer pzWordId = Integer.valueOf(wordData.get("pz_word_id").toString());
+                                Optional<PzWord> pzWordOpt = pzWordService.getPzWordById(pzWordId);
+                                String actualWord = pzWordOpt.map(PzWord::getWord).orElse("");
+                                answerData.put("word", actualWord);
+                                
+                                answerData.put("position", (i + 1) + "번");
+                                allAnswers.add(answerData);
+                            }
+                            response.put("all_answers", allAnswers);
+                        }
+                    }
+                    
+                    // 그 다음에 게임 상태 초기화 (라라벨과 동일)
                     game.setCurrentLevelCorrectAnswers(0);
                     game.setCurrentLevelWrongAnswers(0);
                     
@@ -1083,6 +1108,109 @@ public class PuzzleGameController {
             
         } catch (Exception e) {
             System.err.println("단어정제 중 오류: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "서버 오류가 발생했습니다."));
+        }
+    }
+    
+    /**
+     * 오답 초과 시 모든 정답 반환 (보안: wrong_count_exceeded 상태에서만 접근 가능)
+     */
+    @PostMapping("/get-all-answers")
+    public ResponseEntity<Map<String, Object>> getAllAnswers(@RequestBody Map<String, Object> requestBody, HttpServletRequest request) {
+        try {
+            System.out.println("=== get-all-answers API 호출 ===");
+            System.out.println("requestBody: " + requestBody);
+            
+            // 1. 사용자 ID 추출 (로그인 사용자 또는 게스트)
+            String guestId = (String) requestBody.get("guestId");
+            String authHeader = request.getHeader("Authorization");
+            
+            System.out.println("guestId: " + guestId);
+            System.out.println("authHeader: " + authHeader);
+            
+            String userId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                // 로그인 사용자
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null && authentication.isAuthenticated() && 
+                    !authentication.getPrincipal().equals("anonymousUser")) {
+                    String email = authentication.getName();
+                    Optional<User> userOpt = userRepository.findByEmail(email);
+                    if (userOpt.isPresent()) {
+                        userId = userOpt.get().getId().toString();
+                    }
+                }
+            } else if (guestId != null) {
+                // 게스트 사용자
+                userId = guestId;
+            }
+            
+            if (userId == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "사용자 정보를 찾을 수 없습니다."));
+            }
+            
+            // 2. 현재 활성 게임 조회 (로그인 사용자 또는 게스트)
+            Optional<UserPuzzleGame> gameOpt;
+            
+            if (userId.startsWith("guest_")) {
+                // 게스트 사용자: getOrCreateGuestUser 호출하여 users 테이블에서 조회/생성
+                Long guestUserId = getOrCreateGuestUser(userId, request);
+                userId = guestUserId.toString(); // userId를 실제 users 테이블의 ID로 업데이트
+                gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(guestUserId, null);
+                System.out.println("게스트 사용자로 조회: " + userId + " -> " + guestUserId);
+            } else {
+                // 일반 사용자 ID (숫자)
+                try {
+                    Long userIdLong = Long.parseLong(userId);
+                    gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(userIdLong, null);
+                    System.out.println("일반 사용자로 조회: " + userIdLong);
+                } catch (NumberFormatException ex) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "잘못된 사용자 ID 형식입니다."));
+                }
+            }
+            
+            if (!gameOpt.isPresent()) {
+                System.out.println("활성 게임을 찾을 수 없습니다. userId: " + userId);
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "활성 게임을 찾을 수 없습니다."));
+            }
+            
+            UserPuzzleGame game = gameOpt.get();
+            
+            // 3. 퍼즐 데이터 확인
+            Map<String, Object> puzzleData = game.getCurrentPuzzleData();
+            if (puzzleData == null) {
+                System.out.println("퍼즐 데이터를 찾을 수 없습니다. game: " + game);
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "퍼즐 데이터를 찾을 수 없습니다."));
+            }
+            
+            // 4. extracted_words에서 모든 단어 정보 추출
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> extractedWords = (List<Map<String, Object>>) puzzleData.get("extracted_words");
+            if (extractedWords == null || extractedWords.isEmpty()) {
+                System.out.println("추출된 단어를 찾을 수 없습니다. puzzleData: " + puzzleData);
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "추출된 단어를 찾을 수 없습니다."));
+            }
+            
+            // 5. 정답 목록 생성
+            List<Map<String, Object>> answers = new ArrayList<>();
+            for (int i = 0; i < extractedWords.size(); i++) {
+                Map<String, Object> word = extractedWords.get(i);
+                Map<String, Object> answer = new HashMap<>();
+                answer.put("word_id", word.get("word_id"));
+                answer.put("word", word.get("word"));
+                answer.put("position", (i + 1) + "번");
+                answers.add(answer);
+            }
+            
+            System.out.println("정답 목록 생성 완료: " + answers.size() + "개");
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "answers", answers
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("모든 정답 조회 중 오류: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "서버 오류가 발생했습니다."));
         }
