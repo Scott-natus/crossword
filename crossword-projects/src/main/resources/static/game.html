@@ -49,6 +49,55 @@
         .puzzle-cell.filled {
             background-color: #e9ecef;
         }
+        
+        /*  스타일 카드 뒤집기 애니메이션 */
+        .wordle-card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.6s ease-in-out;
+            cursor: pointer;
+        }
+        
+        .wordle-card.flip {
+            transform: rotateY(180deg);
+        }
+        
+        .wordle-card-front,
+        .wordle-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        
+        .wordle-card-front {
+            background-color: #ffffff;
+            color: transparent;
+            border: 2px solid #d3d6da;
+        }
+        
+        .wordle-card-back {
+            background-color: #6aaa64;
+            color: white;
+            transform: rotateY(180deg);
+            font-weight: 900;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        /* 애니메이션 지연 효과 (순차적으로 뒤집기) */
+        .wordle-card.delay-1 { transition-delay: 0.1s; }
+        .wordle-card.delay-2 { transition-delay: 0.2s; }
+        .wordle-card.delay-3 { transition-delay: 0.3s; }
+        .wordle-card.delay-4 { transition-delay: 0.4s; }
+        .wordle-card.delay-5 { transition-delay: 0.5s; }
 
         .puzzle-cell.correct {
             background-color: #d4edda;
@@ -147,18 +196,13 @@
             </div>
             <div class="col-md-4">
                 <div class="card">
-                    <div class="card-header">
-                        <h6 class="mb-0">단어 입력</h6>
-                    </div>
                     <div class="card-body">
                         <div id="word-input-section">
                         <div class="mb-3">
-                            <label class="form-label">힌트:</label>
                                 <div id="current-hint" class="alert alert-info">번호를 클릭하여 단어를 선택하세요.</div>
-                            </div>
+                            
                         <div class="mb-3">
-                                <label class="form-label">정답 입력:</label>
-                                <input type="text" id="answer-input" class="form-control" placeholder="단어를 입력하세요" autocomplete="off">
+                                <input type="text" id="answer-input" class="form-control" placeholder="정답을 입력하세요" autocomplete="off">
                         </div>
                             <div class="d-flex gap-2">
                                 <button type="button" id="check-answer-btn" class="btn btn-primary">확인</button>
@@ -1324,7 +1368,7 @@
             const badgeSize = Math.max(8, Math.min(16, cellSize * 0.3));
             const badgeFontSize = Math.max(6, Math.min(10, cellSize * 0.2));
             
-            // 그리드에서 해당 단어 위치에 정답 표시
+            // 그리드에서 해당 단어 위치에 정답 표시 (Wordle 스타일 애니메이션)
             for (let i = 0; i < correctWord.length; i++) {
                 let x, y;
                 
@@ -1341,23 +1385,31 @@
                 if (cell.length > 0) {
                     const isStartPosition = (direction === 'horizontal' && i === 0) || (direction === 'vertical' && i === 0);
                     
+                    // Wordle 스타일 카드 구조 생성 (앞면은 빈 공간, 뒷면에 정답)
+                    let cardHtml = `
+                        <div class="wordle-card delay-${i + 1}">
+                            <div class="wordle-card-front">
+                                <!-- 앞면은 빈 공간 (Wordle 스타일) -->
+                            </div>
+                            <div class="wordle-card-back">
+                                ${correctWord[i]}
+                            </div>
+                        </div>
+                    `;
+                    
                     if (isStartPosition) {
-                        // 시작 위치: 배지를 정답 뒤로 숨기고 정답만 표시 (라라벨과 동일)
-                        cell.html(`
-                            <div style="background-color: #6c757d; color: white; padding: ${answerPadding}px ${answerPadding * 2}px; border-radius: 2px; font-size: ${answerFontSize}px; font-weight: bold; z-index: 10;">${correctWord[i]}</div>
-                            <span class="word-number" style="position: absolute; top: 2px; left: 2px; z-index: 5; opacity: 0.3; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${badgeFontSize}px; display: flex; align-items: center; justify-content: center;">${wordInfo.word_id}</span>
-                        `);
-                    } else {
-                        // 중간 위치: 정답 문자만 표시
-                        cell.html(`
-                            <div style="background-color: #6c757d; color: white; padding: ${answerPadding}px ${answerPadding * 2}px; border-radius: 2px; font-size: ${answerFontSize}px; font-weight: bold;">${correctWord[i]}</div>
-                        `);
+                        // 시작 위치: 배지 추가
+                        cardHtml += `<span class="word-number" style="position: absolute; top: 2px; left: 2px; z-index: 5; opacity: 0.3; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${badgeFontSize}px; display: flex; align-items: center; justify-content: center;">${wordInfo.word_id}</span>`;
                     }
                     
-                    // 칸 자체를 회색으로 변경
-                    cell.css('background-color', '#6c757d');
+                    cell.html(cardHtml);
                     cell.addClass('answered');
-                    cell.css('position', 'relative'); // 절대 위치를 위한 relative 설정
+                    cell.css('position', 'relative');
+                    
+                    // 애니메이션 시작 (약간의 지연 후)
+                    setTimeout(() => {
+                        cell.find('.wordle-card').addClass('flip');
+                    }, 100 + (i * 100)); // 각 글자마다 100ms씩 지연
                 }
             }
         }
