@@ -169,7 +169,18 @@ public class LevelManagementController {
                 existingLevel.setTimeLimit(Integer.valueOf(updateData.get("timeLimit").toString()));
             }
             if (updateData.containsKey("clearCondition")) {
-                existingLevel.setClearCondition(updateData.get("clearCondition").toString());
+                Object clearConditionObj = updateData.get("clearCondition");
+                if (clearConditionObj instanceof Integer) {
+                    existingLevel.setClearCondition((Integer) clearConditionObj);
+                } else if (clearConditionObj instanceof String) {
+                    try {
+                        existingLevel.setClearCondition(Integer.valueOf((String) clearConditionObj));
+                    } catch (NumberFormatException e) {
+                        existingLevel.setClearCondition(null);
+                    }
+                } else {
+                    existingLevel.setClearCondition(null);
+                }
             }
             
             PzLevel updatedLevel = levelManagementService.updateLevel(id, existingLevel);

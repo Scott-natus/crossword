@@ -41,7 +41,7 @@ public class PzLevel {
     private Integer timeLimit;
     
     @Column(name = "clear_condition")
-    private String clearCondition;
+    private Integer clearCondition;
     
     @Column(name = "word_count")
     private Integer wordCount;

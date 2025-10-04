@@ -885,11 +885,12 @@
                 
                 updateWordPositionsList(wordPositions);
                 
-                // 드롭다운에 selected 값 설정 (Laravel과 동일)
+                // 드롭다운에 selected 값 설정 (저장된 번호 사용)
                 setTimeout(() => {
                     wordPositions.forEach(word => {
                         const select = document.querySelector(`select[data-word-id="${word.id}"]`);
                         if (select) {
+                            // 저장된 번호를 사용 (데이터베이스의 word.id 값)
                             select.value = word.id.toString();
                         }
                     });
@@ -918,7 +919,13 @@
                 return;
             }
             
-            // Laravel과 동일: 데이터베이스에서 가져온 word.id 값을 그대로 사용
+            // 기존 선택된 번호들 저장 (Laravel과 동일)
+            const existingSelections = {};
+            document.querySelectorAll('.word-number-select').forEach(select => {
+                if (select.value) {
+                    existingSelections[select.dataset.wordId] = select.value;
+                }
+            });
             
             // 가로형과 세로형 분리
             const horizontalWords = wordPositions.filter(word => word.direction === 'horizontal');
@@ -934,8 +941,8 @@
                     const startPos = `(${word.start_x},${word.start_y})`;
                     const endPos = `(${word.end_x},${word.end_y})`;
                     
-                    // Laravel과 동일: 데이터베이스에서 가져온 word.id 값을 그대로 사용
-                    const selectedValue = word.id.toString();
+                    // 템플릿에서 가져온 번호를 우선 사용, 없으면 기존 선택된 번호 사용
+                    const selectedValue = word.selectedNumber || existingSelections[word.id] || '';
                     
                     horizontalHtml += `
                         <div class="word-position-item mb-2 p-2 border rounded" data-word-id="${word.id}" data-direction="horizontal">
@@ -968,8 +975,8 @@
                     const startPos = `(${word.start_x},${word.start_y})`;
                     const endPos = `(${word.end_x},${word.end_y})`;
                     
-                    // Laravel과 동일: 데이터베이스에서 가져온 word.id 값을 그대로 사용
-                    const selectedValue = word.id.toString();
+                    // 템플릿에서 가져온 번호를 우선 사용, 없으면 기존 선택된 번호 사용
+                    const selectedValue = word.selectedNumber || existingSelections[word.id] || '';
                     
                     verticalHtml += `
                         <div class="word-position-item mb-2 p-2 border rounded" data-word-id="${word.id}" data-direction="vertical">
@@ -996,13 +1003,46 @@
             horizontalContainer.innerHTML = horizontalHtml;
             verticalContainer.innerHTML = verticalHtml;
             
-            // 번호 선택 이벤트 추가
+            // 번호 선택 이벤트 추가 (라라벨과 동일)
             document.querySelectorAll('.word-number-select').forEach(select => {
                 select.addEventListener('change', function() {
                     const wordId = this.dataset.wordId;
                     const selectedNumber = this.value;
+                    
+                    // 다른 번호와 중복 체크
+                    if (selectedNumber && isDuplicateNumber(selectedNumber, wordId)) {
+                        alert('이미 사용된 번호입니다.');
+                        this.value = '';
+                        return;
+                    }
+                    
+                    // 그리드에서 해당 단어 하이라이트
+                    highlightWordInGrid(parseInt(wordId), selectedNumber);
+                    
                     updateWordNumber(wordId, selectedNumber);
                 });
+                
+                // 포커스 시 하이라이트
+                select.addEventListener('focus', function() {
+                    const wordId = this.dataset.wordId;
+                    highlightWordInGrid(parseInt(wordId), this.value || 'focus');
+                });
+                
+                // 포커스 아웃 시 하이라이트 제거
+                select.addEventListener('blur', function() {
+                    const wordId = this.dataset.wordId;
+                    if (!this.value) {
+                        removeWordHighlight(parseInt(wordId));
+                    }
+                });
+                
+                // 단어 위치 아이템 클릭 시에도 포커스
+                const wordItem = select.closest('.word-position-item');
+                if (wordItem) {
+                    wordItem.addEventListener('click', function() {
+                        select.focus();
+                    });
+                }
             });
         }
 
@@ -1019,6 +1059,77 @@
         // 단어 번호 업데이트
         function updateWordNumber(wordId, number) {
             // 단어 번호 업데이트 로직
+        }
+
+        // 중복 번호 체크 (라라벨과 동일)
+        function isDuplicateNumber(number, currentWordId) {
+            const selects = document.querySelectorAll('.word-number-select');
+            for (const select of selects) {
+                if (select.dataset.wordId !== currentWordId && select.value === number) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 그리드에서 단어 하이라이트 (라라벨과 동일)
+        function highlightWordInGrid(wordId, number) {
+            // 단어 위치 정보에서 해당 wordId를 가진 요소 찾기
+            const wordItem = document.querySelector(`.word-position-item[data-word-id="${wordId}"]`);
+            if (!wordItem) return;
+            
+            // 단어 위치 정보에서 좌표 추출
+            const text = wordItem.querySelector('small').textContent;
+            const match = text.match(/\((\d+),(\d+)\) 에서 \((\d+),(\d+)\)/);
+            if (!match) return;
+            
+            const startX = parseInt(match[1]);
+            const startY = parseInt(match[2]);
+            const endX = parseInt(match[3]);
+            const endY = parseInt(match[4]);
+            
+            // 기존 하이라이트 제거
+            removeAllHighlights();
+            
+            // 해당 단어 하이라이트
+            const cells = document.querySelectorAll('.grid-cell');
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    const cellIndex = y * gridSize + x;
+                    if (cells[cellIndex]) {
+                        if (number === 'focus') {
+                            cells[cellIndex].classList.add('highlighted-focus');
+                        } else {
+                            cells[cellIndex].classList.add('highlighted');
+                        }
+                    }
+                }
+            }
+            
+            // 단어 위치 아이템도 하이라이트
+            wordItem.classList.add('selected');
+        }
+
+        // 단어 하이라이트 제거
+        function removeWordHighlight(wordId) {
+            const wordItem = document.querySelector(`.word-position-item[data-word-id="${wordId}"]`);
+            if (wordItem) {
+                wordItem.classList.remove('selected');
+            }
+            removeAllHighlights();
+        }
+
+        // 모든 하이라이트 제거
+        function removeAllHighlights() {
+            const cells = document.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('highlighted', 'highlighted-focus');
+            });
+            
+            const wordItems = document.querySelectorAll('.word-position-item');
+            wordItems.forEach(item => {
+                item.classList.remove('selected');
+            });
         }
 
         // 단어 추출 함수 (Laravel과 동일)
@@ -1626,7 +1737,7 @@
             box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
         }
 
-        /* 그리드 하이라이트 효과 */
+        /* 그리드 하이라이트 효과 (라라벨과 동일) */
         .grid-cell.highlighted {
             border: 2px solid red !important;
             box-shadow: 0 0 8px rgba(255,0,0,0.3);
@@ -1638,6 +1749,12 @@
             background-color: #ffebee !important;
             box-shadow: 0 0 8px rgba(255,107,107,0.3);
             z-index: 5;
+        }
+
+        /* 단어 위치 정보 카드 선택 효과 */
+        .word-position-item.selected {
+            border-color: #28a745 !important;
+            background-color: #f8fff9;
         }
 
         /* 단어 위치 항목 스타일 */

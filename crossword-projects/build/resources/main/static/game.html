@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="screen-orientation" content="portrait">
     <title>K-CrossWord</title>
     <link rel="icon" type="image/x-icon" href="/K-CrossWord/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -11,6 +12,28 @@
         body {
             background-color: #f8f9fa;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* 가로모드 방지 (모바일만) */
+        @media screen and (orientation: landscape) and (max-width: 768px) {
+            body::before {
+                content: "가로모드는 지원하지 않습니다. 세로모드로 회전해주세요.";
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                text-align: center;
+                z-index: 9999;
+                padding: 20px;
+                box-sizing: border-box;
+            }
         }
         
         .card {
@@ -433,8 +456,25 @@
         // API 기본 URL
         const API_BASE_URL = '/K-CrossWord/api/puzzle-game';
 
+        // 가로모드 방지
+        function preventLandscapeMode() {
+            // 모바일 환경에서만 가로모드 방지 (화면 너비 768px 이하)
+            if (window.innerWidth <= 768 && window.innerHeight < window.innerWidth) {
+                // 가로모드 감지 시 경고 표시
+                alert('가로모드는 지원하지 않습니다. 세로모드로 회전해주세요.');
+            }
+        }
+        
+        // 화면 회전 감지
+        window.addEventListener('orientationchange', function() {
+            setTimeout(preventLandscapeMode, 100);
+        });
+        
         // 페이지 로드 시 초기화
         $(document).ready(function() {
+            // 가로모드 방지 체크
+            preventLandscapeMode();
+            
             // 인증 상태 확인이 완료될 때까지 대기
             function waitForAuthAndInitialize() {
                 if (window.AUTH_CHECK_COMPLETED) {
@@ -577,6 +617,7 @@
             
             // 동적 셀 크기 계산
             const cellSize = calculateCellSize(gridSize);
+            console.log('그리드 크기:', gridSize, '셀 크기:', cellSize, '화면 크기:', window.innerWidth, 'x', window.innerHeight);
             
             let html = `<div class="grid-container" style="display: inline-block; border: 2px solid #333; max-width: 90vw; max-height: 90vh; margin: 0 auto;">`;
             
@@ -600,8 +641,8 @@
                         if (wordInfo) {
                             if (wordInfo.isIntersection) {
                                 // 교차점인 경우: 가로 단어는 큰 번호, 세로 단어는 작은 번호로 표시
-                                const badgeSize = Math.max(8, Math.min(16, cellSize * 0.3));
-                                const fontSize = Math.max(6, Math.min(10, cellSize * 0.2));
+                                const badgeSize = Math.max(8, Math.min(20, cellSize * 0.35));
+                                const fontSize = Math.max(6, Math.min(12, cellSize * 0.25));
                                 cellContent = `
                                     <div style="position: relative; width: 100%; height: 100%;">
                                         <span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${wordInfo.horizontalWord.word_id}</span>
@@ -610,7 +651,9 @@
                                 `;
                             } else {
                                 // 단일 단어인 경우 (라라벨과 동일한 간단한 방식)
-                                cellContent = `<span class="word-number">${wordInfo.word_id}</span>`;
+                                const badgeSize = Math.max(8, Math.min(20, cellSize * 0.35));
+                                const fontSize = Math.max(6, Math.min(12, cellSize * 0.25));
+                                cellContent = `<span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${wordInfo.word_id}</span>`;
                             }
                         }
                         
@@ -623,7 +666,7 @@
                         cellContent = '□';
                     }
                     
-                    const fontSize = Math.max(8, Math.min(14, cellSize * 0.3));
+                    const fontSize = Math.max(10, Math.min(18, cellSize * 0.35));
                     const dataWordId = wordInfo ? (wordInfo.pz_word_id || wordInfo.word_id) : '';
                     const dataAttr = dataWordId ? ` data-word-id="${dataWordId}"` : '';
                     html += `<div class="${cellClass}" style="width: ${cellSize}px; height: ${cellSize}px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}px; font-weight: bold; box-sizing: border-box;"${clickEvent}${dataAttr}>${cellContent}</div>`;
@@ -643,16 +686,28 @@
             
             let availableWidth, availableHeight;
             
+            // 그리드 크기에 따른 가로 비율 조정
+            let widthRatio;
+            if (gridSize <= 5) {
+                widthRatio = 0.7;  // 5x5 이하: 70%
+            } else if (gridSize <= 7) {
+                widthRatio = 0.8;  // 7x7 이하: 80%
+            } else {
+                widthRatio = 0.9;  // 9x9: 90%
+            }
+            
             if (isMobile && isPortrait) {
-                availableWidth = window.innerWidth * 0.9;
+                availableWidth = window.innerWidth * widthRatio;
                 availableHeight = window.innerHeight * 0.9;
             } else if (isMobile) {
-                availableWidth = window.innerWidth * 0.85;
+                availableWidth = window.innerWidth * widthRatio;
                 availableHeight = window.innerHeight * 0.8;
             } else {
-                availableWidth = Math.min(600, window.innerWidth * 0.8);
-                availableHeight = Math.min(600, window.innerHeight * 0.8);
+                availableWidth = Math.min(window.innerWidth * widthRatio, 800);
+                availableHeight = Math.min(window.innerHeight * 0.8, 800);
             }
+            
+            console.log('사용 가능한 크기:', availableWidth, 'x', availableHeight, 'widthRatio:', widthRatio);
 
             const borderWidth = 2;
             const cellBorder = 1;
@@ -666,8 +721,8 @@
             
             const calculatedSize = Math.min(maxCellWidth, maxCellHeight);
             
-            const minSize = isMobile ? 12 : 20;
-            const maxSize = isMobile ? 35 : 50;
+            const minSize = isMobile ? 20 : 25;
+            const maxSize = isMobile ? 80 : 100;
             
             const finalSize = Math.max(minSize, Math.min(maxSize, calculatedSize));
             
@@ -1387,10 +1442,10 @@
             // 현재 그리드 크기에 따른 동적 크기 계산
             const gridSize = templateData.grid_pattern.length;
             const cellSize = calculateCellSize(gridSize);
-            const answerFontSize = Math.max(10, Math.min(18, cellSize * 0.4));
-            const answerPadding = Math.max(2, Math.min(6, cellSize * 0.1));
-            const badgeSize = Math.max(8, Math.min(16, cellSize * 0.3));
-            const badgeFontSize = Math.max(6, Math.min(10, cellSize * 0.2));
+            const answerFontSize = Math.max(12, Math.min(22, cellSize * 0.45));
+            const answerPadding = Math.max(2, Math.min(8, cellSize * 0.12));
+            const badgeSize = Math.max(10, Math.min(24, cellSize * 0.4));
+            const badgeFontSize = Math.max(8, Math.min(14, cellSize * 0.3));
             
             // 그리드에서 해당 단어 위치에 정답 표시 (Wordle 스타일 애니메이션)
             for (let i = 0; i < correctWord.length; i++) {

@@ -210,7 +210,18 @@ public class LevelManagementService {
                 level.setTimeLimit((Integer) updateData.get("timeLimit"));
             }
             if (updateData.containsKey("clearCondition")) {
-                level.setClearCondition(updateData.get("clearCondition").toString());
+                Object clearConditionObj = updateData.get("clearCondition");
+                if (clearConditionObj instanceof Integer) {
+                    level.setClearCondition((Integer) clearConditionObj);
+                } else if (clearConditionObj instanceof String) {
+                    try {
+                        level.setClearCondition(Integer.valueOf((String) clearConditionObj));
+                    } catch (NumberFormatException e) {
+                        level.setClearCondition(null);
+                    }
+                } else {
+                    level.setClearCondition(null);
+                }
             }
             if (updateData.containsKey("updatedBy")) {
                 level.setUpdatedBy((String) updateData.get("updatedBy"));

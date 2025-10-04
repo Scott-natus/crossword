@@ -3,6 +3,8 @@ package com.example.crossword.service;
 import com.example.crossword.entity.PzGridTemplate;
 import com.example.crossword.entity.PzLevel;
 import com.example.crossword.repository.PzLevelRepository;
+import com.example.crossword.repository.PzGridTemplateRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ import java.util.*;
 public class TemplateValidationService {
 
     private final PzLevelRepository pzLevelRepository;
+    private final PzGridTemplateRepository pzGridTemplateRepository;
     private final IntersectionCalculationService intersectionCalculationService;
 
     /**
@@ -236,9 +239,59 @@ public class TemplateValidationService {
      * Laravel의 중복 검사 로직과 동일
      */
     private void validateDuplicateTemplate(Map<String, Object> templateData, Integer levelId, List<String> errors) {
-        // TODO: 실제 데이터베이스에서 중복 템플릿 검사 구현 필요
-        // 현재는 임시로 검증 통과
-        log.debug("중복 템플릿 검증 - 레벨 ID: {}", levelId);
+        try {
+            // 동일 레벨의 기존 템플릿들 조회
+            List<PzGridTemplate> existingTemplates = pzGridTemplateRepository.findByLevelIdOrderByCreatedAtDesc(levelId);
+            
+            @SuppressWarnings("unchecked")
+            List<List<Integer>> newGridPattern = (List<List<Integer>>) templateData.get("grid_pattern");
+            
+            for (PzGridTemplate existingTemplate : existingTemplates) {
+                // 기존 템플릿의 그리드 패턴 파싱
+                List<List<Integer>> existingGridPattern = parseGridPattern(existingTemplate.getGridPattern());
+                
+                // 그리드 크기가 다르면 건너뛰기
+                if (existingGridPattern.size() != newGridPattern.size()) {
+                    continue;
+                }
+                
+                // 그리드 패턴 비교
+                boolean isSame = true;
+                for (int i = 0; i < existingGridPattern.size() && isSame; i++) {
+                    for (int j = 0; j < existingGridPattern.get(i).size(); j++) {
+                        if (!existingGridPattern.get(i).get(j).equals(newGridPattern.get(i).get(j))) {
+                            isSame = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if (isSame) {
+                    errors.add(String.format("동일한 그리드 패턴의 템플릿이 이미 존재합니다.\n\n템플릿명: %s\n템플릿 ID: %d\n\n다른 그리드 패턴을 사용하거나 기존 템플릿을 수정해주세요.", 
+                            existingTemplate.getTemplateName(), existingTemplate.getId()));
+                    return;
+                }
+            }
+            
+            log.debug("중복 템플릿 검증 완료 - 레벨 ID: {}, 중복 없음", levelId);
+        } catch (Exception e) {
+            log.error("중복 템플릿 검증 중 오류 발생", e);
+            errors.add("템플릿 중복 검증 중 오류가 발생했습니다.");
+        }
+    }
+    
+    /**
+     * 그리드 패턴 JSON 문자열을 List<List<Integer>>로 파싱
+     */
+    @SuppressWarnings("unchecked")
+    private List<List<Integer>> parseGridPattern(String gridPatternJson) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(gridPatternJson, List.class);
+        } catch (Exception e) {
+            log.error("그리드 패턴 파싱 오류", e);
+            return new ArrayList<>();
+        }
     }
 
     /**

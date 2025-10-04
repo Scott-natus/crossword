@@ -2,6 +2,7 @@ package com.example.crossword.controller;
 
 import com.example.crossword.entity.PzGridTemplate;
 import com.example.crossword.service.GridTemplateService;
+import com.example.crossword.service.TemplateValidationService;
 import com.example.crossword.util.GridRenderer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,9 @@ public class GridTemplateController {
     
     @Autowired
     private GridRenderer gridRenderer;
+    
+    @Autowired
+    private TemplateValidationService templateValidationService;
 
     /**
      * 그리드 템플릿 관리 API 연결 테스트
@@ -139,6 +143,24 @@ public class GridTemplateController {
     @PostMapping("/template")
     public ResponseEntity<Map<String, Object>> createTemplate(@RequestBody PzGridTemplate template) {
         try {
+            // 템플릿 검증 (라라벨과 동일)
+            Map<String, Object> templateData = new HashMap<>();
+            templateData.put("level_id", template.getLevelId());
+            templateData.put("grid_pattern", template.getGridPattern());
+            templateData.put("word_count", template.getWordCount());
+            templateData.put("intersection_count", template.getIntersectionCount());
+            
+            Map<String, Object> validationResult = templateValidationService.validateTemplateCreation(templateData);
+            
+            if (!(Boolean) validationResult.get("valid")) {
+                @SuppressWarnings("unchecked")
+                List<String> errors = (List<String>) validationResult.get("errors");
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", String.join("\n", errors));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            }
+            
             PzGridTemplate createdTemplate = gridTemplateService.createTemplate(template);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
