@@ -587,13 +587,13 @@
         // 게임 정보 업데이트
         function updateGameInfo() {
             if (gameData && levelData) {
-                $('#current-level').text(gameData.current_level || 1);
-                $('#level-name').text(`(${levelData.level_name || '초급'})`);
-                $('#correct-count').text(gameData.current_level_correct_answers || 0);
-                $('#wrong-count').text(gameData.current_level_wrong_answers || 0);
+                $('#current-level').text(gameData.currentLevel || 1);
+                $('#level-name').text(`(${levelData.levelName || '초급'})`);
+                $('#correct-count').text(gameData.currentLevelCorrectAnswers || 0);
+                $('#wrong-count').text(gameData.currentLevelWrongAnswers || 0);
                 
-                if (levelData.time_limit > 0) {
-                    timeLeft = levelData.time_limit;
+                if (levelData.timeLimit > 0) {
+                    timeLeft = levelData.timeLimit;
                     $('#time-left').text(timeLeft);
                     $('#timer').show();
                     } else {
