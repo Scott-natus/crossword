@@ -35,6 +35,6 @@ public interface PuzzleGridTemplateRepository extends JpaRepository<PuzzleGridTe
     /**
      * 조건에 맞는 템플릿 조회 (퍼즐 생성용)
      */
-    @Query("SELECT t FROM PuzzleGridTemplate t WHERE t.wordCount = :wordCount AND t.intersectionCount = :intersectionCount AND t.isActive = true")
+    @Query("SELECT t FROM PuzzleGridTemplate t WHERE t.isActive = true")
     List<PuzzleGridTemplate> findByConditions(@Param("wordCount") Integer wordCount, @Param("intersectionCount") Integer intersectionCount);
 }

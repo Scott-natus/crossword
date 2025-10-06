@@ -113,16 +113,26 @@ public class WordManagementController {
     }
 
     /**
-     * 단어 삭제
+     * 단어 삭제 (비활성화로 변경됨)
+     * @deprecated deleteWord는 deactivateWord로 리다이렉트됩니다.
      */
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Map<String, Object>> deleteWord(@PathVariable Integer id) {
+        // 기존 삭제 API를 비활성화로 리다이렉트
+        return deactivateWord(id);
+    }
+
+    /**
+     * 단어 비활성화
+     */
+    @PostMapping("/deactivate/{id}")
+    public ResponseEntity<Map<String, Object>> deactivateWord(@PathVariable Integer id) {
         try {
-            wordManagementService.deleteWord(id);
+            wordManagementService.deactivateWord(id);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "단어가 성공적으로 삭제되었습니다.");
+            response.put("message", "단어가 성공적으로 비활성화되었습니다.");
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {

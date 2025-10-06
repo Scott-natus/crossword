@@ -350,9 +350,14 @@
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6><strong>힌트 관리</strong></h6>
-                                <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm">
-                                    <i class="fas fa-plus me-1"></i>힌트 추가
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm">
+                                        <i class="fas fa-plus me-1"></i>힌트 추가
+                                    </button>
+                                    <button type="button" id="deactivateWordBtn" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-ban me-1"></i>비활성
+                                    </button>
+                                </div>
                             </div>
                             <div id="hintsContainer">
                                 <!-- 힌트 필드들이 여기에 동적으로 추가됩니다 -->
@@ -1314,6 +1319,43 @@
             })
             .fail(function() {
                 alert('정제 중 오류가 발생했습니다.');
+            });
+        });
+
+        // 단어 비활성화 버튼 클릭
+        $('#deactivateWordBtn').click(function() {
+            if (!currentWordId) {
+                alert('단어를 먼저 선택해주세요.');
+                return;
+            }
+            
+            // 관리자 권한 재확인
+            if (!window.IS_ADMIN) {
+                alert('관리자만 접근 가능합니다.');
+                return;
+            }
+            
+            if (!confirm('이 단어를 비활성화하시겠습니까?\n비활성화된 단어는 퍼즐에서 사용되지 않습니다.')) {
+                return;
+            }
+            
+            // 단어 비활성화 API 호출
+            $.ajax({
+                url: `${API_BASE_URL}/admin/api/words/deactivate/${currentWordId}`,
+                method: 'POST',
+                dataType: 'json'
+            })
+            .done(function(data) {
+                if (data.success) {
+                    alert('단어가 성공적으로 비활성화되었습니다.');
+                    $('#deactivateWordBtn').blur(); // 포커스 제거
+                    $('#wordRefinementModal').modal('hide');
+                } else {
+                    alert(data.error || '비활성화 중 오류가 발생했습니다.');
+                }
+            })
+            .fail(function() {
+                alert('비활성화 중 오류가 발생했습니다.');
             });
         });
 

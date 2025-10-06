@@ -172,13 +172,26 @@ public class WordManagementService {
     }
 
     /**
-     * 단어 삭제
+     * 단어 삭제 (비활성화로 변경됨)
+     * @deprecated deleteWord는 deactivateWord로 리다이렉트됩니다.
      */
     public void deleteWord(Integer id) {
-        if (!pzWordRepository.existsById(id)) {
+        // 기존 삭제 메서드를 비활성화로 리다이렉트
+        deactivateWord(id);
+    }
+
+    /**
+     * 단어 비활성화
+     */
+    public void deactivateWord(Integer id) {
+        Optional<PzWord> wordOpt = pzWordRepository.findById(id);
+        if (!wordOpt.isPresent()) {
             throw new IllegalArgumentException("단어를 찾을 수 없습니다: " + id);
         }
-        pzWordRepository.deleteById(id);
+        
+        PzWord word = wordOpt.get();
+        word.setIsActive(false);
+        pzWordRepository.save(word);
     }
 
     /**
