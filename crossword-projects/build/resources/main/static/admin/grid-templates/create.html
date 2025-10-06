@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>그리드 템플릿 생성 - 크로스워드 관리</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/K-CrossWord/admin/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/K-CrossWord/admin/css/font-awesome.min.css" rel="stylesheet">
     <style>
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -525,8 +525,8 @@
     </div>
 
     <!-- JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/K-CrossWord/admin/js/bootstrap.bundle.min.js"></script>
+    <script src="/K-CrossWord/admin/js/jquery-3.6.0.min.js"></script>
     
     <script>
         let currentGrid = [];
@@ -621,7 +621,9 @@
             wordPositions.forEach(word => {
                 const key = `${word.start_x},${word.start_y}-${word.end_x},${word.end_y}`;
                 if (currentSelections[key]) {
-                    word.selectedNumber = currentSelections[key];
+                    word.selectedNumber = currentSelections[key]; // 기존 번호 유지
+                } else {
+                    word.selectedNumber = null; // 매칭되지 않는 단어는 "번호" 옵션
                 }
             });
             
@@ -927,7 +929,7 @@
                 }
             });
             
-            // 가로형과 세로형 분리
+            // 가로형과 세로형 분리 (정렬은 나중에 별도 함수에서 처리)
             const horizontalWords = wordPositions.filter(word => word.direction === 'horizontal');
             const verticalWords = wordPositions.filter(word => word.direction === 'vertical');
             
@@ -1003,6 +1005,21 @@
             horizontalContainer.innerHTML = horizontalHtml;
             verticalContainer.innerHTML = verticalHtml;
             
+            // DOM이 완전히 렌더링된 후 드롭다운 값 설정 및 정렬 실행
+            setTimeout(() => {
+                // 드롭다운에 selected 값 설정
+                wordPositions.forEach(word => {
+                    const select = document.querySelector(`select[data-word-id="${word.id}"]`);
+                    if (select) {
+                        // selectedNumber가 있으면 해당 값, 없으면 빈 값("번호" 옵션)
+                        select.value = word.selectedNumber || '';
+                        //console.log(`드롭다운 값 설정: wordId=${word.id}, value=${select.value}`);
+                    }
+                });
+                // 정렬 실행
+                sortWordListsByNumber();
+            }, 50);
+            
             // 번호 선택 이벤트 추가 (라라벨과 동일)
             document.querySelectorAll('.word-number-select').forEach(select => {
                 select.addEventListener('change', function() {
@@ -1020,6 +1037,11 @@
                     highlightWordInGrid(parseInt(wordId), selectedNumber);
                     
                     updateWordNumber(wordId, selectedNumber);
+                    
+                    // 번호 변경 후 실시간 정렬 업데이트
+                    setTimeout(() => {
+                        sortWordListsByNumber();
+                    }, 100);
                 });
                 
                 // 포커스 시 하이라이트
@@ -1505,8 +1527,8 @@
                         end_y: gridSize - 1,
                         direction: 'vertical',
                         length: gridSize - start
-                });
-            }
+                    });
+                }
         }
 
             return wordPositions;
@@ -1608,8 +1630,9 @@
             }
             
             const templateData = {
-                levelId: levelConditions.level,
-                templateName: `레벨 ${levelConditions.level} 템플릿 #${Date.now()}`,
+                levelId: levelConditions.level,  // Spring Boot 엔티티 필드명 (camelCase)
+                templateName: '',  // 서버에서 자동 생성하도록 빈 문자열로 설정
+                gridSize: gridSize,  // 백엔드 검증에서 필수로 요구하는 필드
                 gridWidth: gridSize,
                 gridHeight: gridSize,
                 wordCount: wordPositions.length,
@@ -1620,6 +1643,8 @@
                 gridPattern: JSON.stringify(currentGrid),
                 wordPositions: JSON.stringify(wordPositions)
             };
+            
+            console.log('전송할 템플릿 데이터:', templateData);
 
             $.ajax({
                 url: '/K-CrossWord/admin/api/grid-template-management/template',
@@ -1801,5 +1826,72 @@
             flex-shrink: 0;
         }
     </style>
+
+    <script>
+        // 단어 목록을 번호 순으로 정렬하는 함수
+        function sortWordListsByNumber() {
+
+            
+            // 가로형 컨테이너 정렬
+            const horizontalContainer = document.getElementById('horizontalWordPositionsList');
+            
+            
+            if (horizontalContainer && horizontalContainer.children.length > 0) {
+                const horizontalItems = Array.from(horizontalContainer.children);
+ 
+                
+                // 각 아이템의 번호 정보 수집
+                const itemsWithNumbers = horizontalItems.map(item => {
+                    const select = item.querySelector('.word-number-select');
+                    const number = select ? parseInt(select.value) || 999 : 999;
+                    return { item, number };
+                });
+                
+                 
+                // 번호 순으로 정렬
+                itemsWithNumbers.sort((a, b) => a.number - b.number);
+                
+                
+                // 정렬된 순서로 DOM 재배치 (강제로 순서 변경)
+                itemsWithNumbers.forEach(({ item }, index) => {
+                    if (index === 0) {
+                        horizontalContainer.insertBefore(item, horizontalContainer.firstChild);
+                    } else {
+                        const prevItem = itemsWithNumbers[index - 1].item;
+                        horizontalContainer.insertBefore(item, prevItem.nextSibling);
+                    }
+                });
+            }
+            
+            // 세로형 컨테이너 정렬
+            const verticalContainer = document.getElementById('verticalWordPositionsList');
+            
+            if (verticalContainer && verticalContainer.children.length > 0) {
+                const verticalItems = Array.from(verticalContainer.children);
+                
+                // 각 아이템의 번호 정보 수집
+                const itemsWithNumbers = verticalItems.map(item => {
+                    const select = item.querySelector('.word-number-select');
+                    const number = select ? parseInt(select.value) || 999 : 999;
+                    return { item, number };
+                });
+                
+                
+                // 번호 순으로 정렬
+                itemsWithNumbers.sort((a, b) => a.number - b.number);
+                
+                
+                // 정렬된 순서로 DOM 재배치 (강제로 순서 변경)
+                itemsWithNumbers.forEach(({ item }, index) => {
+                    if (index === 0) {
+                        verticalContainer.insertBefore(item, verticalContainer.firstChild);
+                    } else {
+                        const prevItem = itemsWithNumbers[index - 1].item;
+                        verticalContainer.insertBefore(item, prevItem.nextSibling);
+                    }
+                });
+            }
+        }
+    </script>
 </body>
 </html>

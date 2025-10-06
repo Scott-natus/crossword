@@ -63,7 +63,7 @@ public class TemplateValidationService {
             
             // 3. 그리드 패턴 검증
             @SuppressWarnings("unchecked")
-            List<List<Integer>> gridPattern = (List<List<Integer>>) templateData.get("grid_pattern");
+            List<List<Integer>> gridPattern = parseGridPattern((String) templateData.get("grid_pattern"));
             Map<String, Object> gridValidation = intersectionCalculationService.validateGridPattern(gridPattern);
             
             if (!(Boolean) gridValidation.get("valid")) {
@@ -134,7 +134,7 @@ public class TemplateValidationService {
             
             // 3. 그리드 패턴 검증
             @SuppressWarnings("unchecked")
-            List<List<Integer>> gridPattern = (List<List<Integer>>) templateData.get("grid_pattern");
+            List<List<Integer>> gridPattern = parseGridPattern((String) templateData.get("grid_pattern"));
             Map<String, Object> gridValidation = intersectionCalculationService.validateGridPattern(gridPattern);
             
             if (!(Boolean) gridValidation.get("valid")) {
@@ -243,8 +243,7 @@ public class TemplateValidationService {
             // 동일 레벨의 기존 템플릿들 조회
             List<PzGridTemplate> existingTemplates = pzGridTemplateRepository.findByLevelIdOrderByCreatedAtDesc(levelId);
             
-            @SuppressWarnings("unchecked")
-            List<List<Integer>> newGridPattern = (List<List<Integer>>) templateData.get("grid_pattern");
+            List<List<Integer>> newGridPattern = parseGridPattern((String) templateData.get("grid_pattern"));
             
             for (PzGridTemplate existingTemplate : existingTemplates) {
                 // 기존 템플릿의 그리드 패턴 파싱

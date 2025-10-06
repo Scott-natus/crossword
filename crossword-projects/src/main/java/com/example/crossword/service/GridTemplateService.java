@@ -41,12 +41,40 @@ public class GridTemplateService {
                                                 Integer levelId, String templateName, Integer minWordCount, 
                                                 Integer maxWordCount, Integer minIntersectionCount,
                                                 Integer maxIntersectionCount) {
+        log.info("=== 템플릿 검색 요청 ===");
+        log.info("페이지: {}, 크기: {}, 정렬필드: {}, 정렬방향: {}", page, size, sortField, sortDir);
+        log.info("검색조건 - 레벨: {}, 템플릿명: {}, 최소단어수: {}, 최대단어수: {}, 최소교차점: {}, 최대교차점: {}", 
+                levelId, templateName, minWordCount, maxWordCount, minIntersectionCount, maxIntersectionCount);
+        
         Sort sort = Sort.by(sortField);
         sort = sortDir.equalsIgnoreCase("asc") ? sort.ascending() : sort.descending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        // 활성 템플릿만 조회
-        return pzGridTemplateRepository.findByIsActiveTrue(pageable);
+        // 검색 조건이 있는 경우 필터링된 조회, 없는 경우 전체 조회
+        if (levelId != null || (templateName != null && !templateName.trim().isEmpty()) || 
+            minWordCount != null || maxWordCount != null || 
+            minIntersectionCount != null || maxIntersectionCount != null) {
+            
+            log.info("검색 조건이 있음 - 필터링된 조회 실행");
+            List<PzGridTemplate> filteredTemplates = pzGridTemplateRepository.findTemplatesWithFilters(
+                    levelId, templateName, minWordCount, maxWordCount,
+                    minIntersectionCount, maxIntersectionCount
+            );
+            
+            // List를 Page로 변환
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), filteredTemplates.size());
+            List<PzGridTemplate> pageContent = filteredTemplates.subList(start, end);
+            
+            log.info("필터링 결과: 총 {}개, 현재 페이지: {}개", filteredTemplates.size(), pageContent.size());
+            
+            return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, filteredTemplates.size());
+        } else {
+            log.info("검색 조건이 없음 - 전체 조회 실행");
+            Page<PzGridTemplate> result = pzGridTemplateRepository.findByIsActiveTrue(pageable);
+            log.info("전체 조회 결과: 총 {}개", result.getTotalElements());
+            return result;
+        }
     }
 
     /**

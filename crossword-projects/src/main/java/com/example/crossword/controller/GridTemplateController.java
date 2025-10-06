@@ -146,7 +146,9 @@ public class GridTemplateController {
             // 템플릿 검증 (라라벨과 동일)
             Map<String, Object> templateData = new HashMap<>();
             templateData.put("level_id", template.getLevelId());
+            templateData.put("grid_size", template.getGridWidth()); // gridSize 필드 추가
             templateData.put("grid_pattern", template.getGridPattern());
+            templateData.put("word_positions", template.getWordPositions()); // word_positions 필드 추가
             templateData.put("word_count", template.getWordCount());
             templateData.put("intersection_count", template.getIntersectionCount());
             

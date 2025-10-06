@@ -921,7 +921,7 @@
         function initializeDataTable() {
             templatesTable = $('#templatesTable').DataTable({
                 processing: true,
-                serverSide: false,
+                serverSide: true,
                 scrollX: true,
                 autoWidth: false,
                 columnDefs: [
@@ -1054,8 +1054,27 @@
         }
 
         function searchTemplates() {
-            // TODO: 검색 기능 구현
-            templatesTable.ajax.reload();
+            // 검색 조건 수집
+            const level = $('#levelFilter').val();
+            const templateName = $('#templateNameFilter').val().trim();
+            const minWordCount = $('#minWordCountFilter').val();
+            const maxWordCount = $('#maxWordCountFilter').val();
+            const category = $('#categoryFilter').val();
+            
+            // 검색 조건을 URL 파라미터로 구성
+            const params = new URLSearchParams();
+            
+            if (level) params.append('level', level);
+            if (templateName) params.append('templateName', templateName);
+            if (minWordCount) params.append('minWordCount', minWordCount);
+            if (maxWordCount) params.append('maxWordCount', maxWordCount);
+            if (category) params.append('category', category);
+            
+            // DataTable에 검색 조건 전달
+            const url = './api/grid-template-management/templates-ajax' + 
+                       (params.toString() ? '?' + params.toString() : '');
+            
+            templatesTable.ajax.url(url).load();
         }
 
         function resetFilters() {
@@ -1064,7 +1083,9 @@
             $('#minWordCountFilter').val('');
             $('#maxWordCountFilter').val('');
             $('#categoryFilter').val('');
-            templatesTable.ajax.reload();
+            
+            // 검색 조건 초기화 후 테이블 새로고침
+            templatesTable.ajax.url('./api/grid-template-management/templates-ajax').load();
         }
 
         function showSampleModal() {
