@@ -200,7 +200,7 @@
                             <div>
                                 <span class="badge bg-primary me-2">정답: <span id="correct-count">0</span></span>
                                 <span class="badge bg-danger me-2">오답: <span id="wrong-count">0</span></span>
-                                <span class="badge bg-warning" id="timer">남은시간: <span id="time-left">300</span>초</span>
+                                <span class="badge bg-warning" id="timer" style="display: none;">남은시간: <span id="time-left">0</span>초</span>
                     </div>
                             </div>
                             </div>
@@ -277,7 +277,7 @@
                 </div>
                 <div class="modal-body">
                     <p id="game-over-message">시간이 초과되었습니다.</p>
-                    <p id="game-over-sub-message">5분 후 재시도 가능합니다.</p>
+                    <p id="game-over-sub-message">재시도하시겠습니까?</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="go-to-main-btn" class="btn btn-primary">메인으로</button>
@@ -452,7 +452,7 @@
         let gameData = null;
         let levelData = null;
         let templateData = null;
-        let timeLeft = 300;
+        let timeLeft = 0;
         let timerInterval = null;
         let isGameActive = true;
         let answeredWords = new Set(); // 정답 단어 저장
@@ -671,7 +671,7 @@
                         cellContent = '□';
                     }
                     
-                    const fontSize = Math.max(10, Math.min(18, cellSize * 0.35));
+                    const fontSize = Math.max(10, Math.min(18, cellSize * 0.7));
                     const dataWordId = wordInfo ? (wordInfo.pz_word_id || wordInfo.word_id) : '';
                     const dataAttr = dataWordId ? ` data-word-id="${dataWordId}"` : '';
                     html += `<div class="${cellClass}" style="width: ${cellSize}px; height: ${cellSize}px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}px; font-weight: bold; box-sizing: border-box;"${clickEvent}${dataAttr}>${cellContent}</div>`;
@@ -1758,7 +1758,7 @@
         function showGameOverModal() {
             isGameActive = false;
             $('#game-over-message').text('시간이 초과되었습니다.');
-            $('#game-over-sub-message').text('5분 후 재시도 가능합니다.');
+            $('#game-over-sub-message').text('재시도하시겠습니까?');
             $('#gameOverModal').modal('show');
         }
 

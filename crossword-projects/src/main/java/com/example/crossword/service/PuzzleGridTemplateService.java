@@ -44,9 +44,9 @@ public class PuzzleGridTemplateService {
             Integer intersectionCount) {
         
         try {
-            // 1. 조건에 맞는 템플릿 찾기
-            List<PuzzleGridTemplate> templates = templateRepository.findByConditions(
-                wordCount, intersectionCount);
+            // 1. 레벨에 맞는 템플릿 찾기 (레벨 기반으로 변경)
+            List<PuzzleGridTemplate> templates = templateRepository.findByLevelIdAndIsActiveTrue(
+                wordCount); // wordCount를 levelId로 사용
             
             if (templates.isEmpty()) {
                 return Map.of("success", false, "message", "조건에 맞는 템플릿을 찾을 수 없습니다.");

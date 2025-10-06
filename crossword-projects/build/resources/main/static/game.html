@@ -200,7 +200,7 @@
                             <div>
                                 <span class="badge bg-primary me-2">정답: <span id="correct-count">0</span></span>
                                 <span class="badge bg-danger me-2">오답: <span id="wrong-count">0</span></span>
-                                <span class="badge bg-warning" id="timer">남은시간: <span id="time-left">300</span>초</span>
+                                <span class="badge bg-warning" id="timer" style="display: none;">남은시간: <span id="time-left">0</span>초</span>
                     </div>
                             </div>
                             </div>
@@ -277,7 +277,7 @@
                 </div>
                 <div class="modal-body">
                     <p id="game-over-message">시간이 초과되었습니다.</p>
-                    <p id="game-over-sub-message">5분 후 재시도 가능합니다.</p>
+                    <p id="game-over-sub-message">재시도하시겠습니까?</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="go-to-main-btn" class="btn btn-primary">메인으로</button>
@@ -350,9 +350,14 @@
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6><strong>힌트 관리</strong></h6>
-                                <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm">
-                                    <i class="fas fa-plus me-1"></i>힌트 추가
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm">
+                                        <i class="fas fa-plus me-1"></i>힌트 추가
+                                    </button>
+                                    <button type="button" id="deactivateWordBtn" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-ban me-1"></i>비활성
+                                    </button>
+                                </div>
                             </div>
                             <div id="hintsContainer">
                                 <!-- 힌트 필드들이 여기에 동적으로 추가됩니다 -->
@@ -447,7 +452,7 @@
         let gameData = null;
         let levelData = null;
         let templateData = null;
-        let timeLeft = 300;
+        let timeLeft = 0;
         let timerInterval = null;
         let isGameActive = true;
         let answeredWords = new Set(); // 정답 단어 저장
@@ -666,7 +671,7 @@
                         cellContent = '□';
                     }
                     
-                    const fontSize = Math.max(10, Math.min(18, cellSize * 0.35));
+                    const fontSize = Math.max(10, Math.min(18, cellSize * 0.7));
                     const dataWordId = wordInfo ? (wordInfo.pz_word_id || wordInfo.word_id) : '';
                     const dataAttr = dataWordId ? ` data-word-id="${dataWordId}"` : '';
                     html += `<div class="${cellClass}" style="width: ${cellSize}px; height: ${cellSize}px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}px; font-weight: bold; box-sizing: border-box;"${clickEvent}${dataAttr}>${cellContent}</div>`;
@@ -1317,6 +1322,43 @@
             });
         });
 
+        // 단어 비활성화 버튼 클릭
+        $('#deactivateWordBtn').click(function() {
+            if (!currentWordId) {
+                alert('단어를 먼저 선택해주세요.');
+                return;
+            }
+            
+            // 관리자 권한 재확인
+            if (!window.IS_ADMIN) {
+                alert('관리자만 접근 가능합니다.');
+                return;
+            }
+            
+            if (!confirm('이 단어를 비활성화하시겠습니까?\n비활성화된 단어는 퍼즐에서 사용되지 않습니다.')) {
+                return;
+            }
+            
+            // 단어 비활성화 API 호출
+            $.ajax({
+                url: `${API_BASE_URL}/admin/api/words/deactivate/${currentWordId}`,
+                method: 'POST',
+                dataType: 'json'
+            })
+            .done(function(data) {
+                if (data.success) {
+                    alert('단어가 성공적으로 비활성화되었습니다.');
+                    $('#deactivateWordBtn').blur(); // 포커스 제거
+                    $('#wordRefinementModal').modal('hide');
+                } else {
+                    alert(data.error || '비활성화 중 오류가 발생했습니다.');
+                }
+            })
+            .fail(function() {
+                alert('비활성화 중 오류가 발생했습니다.');
+            });
+        });
+
         // 게임 카운트 업데이트
         function updateGameCounts(correctCount, wrongCount) {
             $('#correct-count').text(correctCount);
@@ -1716,7 +1758,7 @@
         function showGameOverModal() {
             isGameActive = false;
             $('#game-over-message').text('시간이 초과되었습니다.');
-            $('#game-over-sub-message').text('5분 후 재시도 가능합니다.');
+            $('#game-over-sub-message').text('재시도하시겠습니까?');
             $('#gameOverModal').modal('show');
         }
 

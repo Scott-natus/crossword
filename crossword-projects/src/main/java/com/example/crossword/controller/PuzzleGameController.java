@@ -794,11 +794,11 @@ public class PuzzleGameController {
      */
     private Map<String, Object> createNewPuzzle(UserPuzzleGame game, PuzzleLevel level) {
         try {
-            // 퍼즐 그리드 템플릿에서 단어 추출
+            // 퍼즐 그리드 템플릿에서 단어 추출 (레벨 기반)
             Map<String, Object> extractionResult = puzzleGridTemplateService.extractWordsFromTemplate(
                 level.getWordDifficulty(), 
                 level.getHintDifficulty(), 
-                level.getWordCount(), 
+                level.getLevel(), // levelId로 사용
                 level.getIntersectionCount()
             );
             
@@ -943,7 +943,7 @@ public class PuzzleGameController {
             Map<String, Object> extractionResult = puzzleGridTemplateService.extractWordsFromTemplate(
                 level.getWordDifficulty(), 
                 level.getHintDifficulty(), 
-                level.getWordCount(), 
+                level.getLevel(), // levelId로 사용
                 level.getIntersectionCount()
             );
             
