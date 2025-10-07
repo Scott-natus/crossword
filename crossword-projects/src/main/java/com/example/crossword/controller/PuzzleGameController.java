@@ -22,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.Optional;
@@ -30,6 +32,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/puzzle-game")
 public class PuzzleGameController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(PuzzleGameController.class);
     
     @Autowired
     private PuzzleGridTemplateService puzzleGridTemplateService;
@@ -200,10 +204,15 @@ public class PuzzleGameController {
             // 정답 확인 로직
             PzWord word = pzWordService.getById(wordId);
             if (word == null) {
+                logger.warn("정답 확인 실패 - 단어를 찾을 수 없음: wordId={}, userId={}, guestId={}", wordId, userId, guestId);
                 return ResponseEntity.badRequest().body(Map.of("error", "단어를 찾을 수 없습니다."));
             }
             
             boolean isCorrect = word.getWord().equals(answer.trim());
+            
+            // 정답 확인 로그 기록
+            logger.info("정답 확인 요청 - userId={}, guestId={}, wordId={}, 제출답안='{}', 정답='{}', 결과={}", 
+                userId, guestId, wordId, answer, word.getWord(), isCorrect ? "정답" : "오답");
             
             // 게임 데이터 업데이트
             UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
@@ -216,9 +225,11 @@ public class PuzzleGameController {
                 if (!isAlreadyAnswered) {
                     // 새로운 정답인 경우에만 카운트 증가
                     game.setCurrentLevelCorrectAnswers(game.getCurrentLevelCorrectAnswers() + 1);
-                    // 새로운 정답 추가됨
+                    logger.info("정답 처리 완료 - userId={}, wordId={}, 정답='{}', 현재정답수={}, 레벨={}", 
+                        userId, wordId, answer, game.getCurrentLevelCorrectAnswers(), game.getCurrentLevel());
                 } else {
                     // 이미 맞춘 단어
+                    logger.info("이미 맞춘 단어 재제출 - userId={}, wordId={}, 정답='{}'", userId, wordId, answer);
                 }
                 
                 // 정답 단어를 게임 상태에 추가
@@ -235,6 +246,9 @@ public class PuzzleGameController {
                 game.setCurrentLevelWrongAnswers(game.getCurrentLevelWrongAnswers() + 1);
                 int wrongCount = game.getCurrentLevelWrongAnswers();
                 
+                logger.info("오답 처리 - userId={}, wordId={}, 제출답안='{}', 정답='{}', 현재오답수={}, 레벨={}", 
+                    userId, wordId, answer, word.getWord(), wrongCount, game.getCurrentLevel());
+                
                 // 오답 4회일 때 특별한 메시지
                 if (wrongCount == 4) {
                     response.put("message", "현재 오답이 4회 입니다, 5회 오답시 레벨을 재시작합니다");
@@ -248,6 +262,9 @@ public class PuzzleGameController {
                 
                 // 오답 5회 초과 체크
                 if (wrongCount >= 5) {
+                    logger.warn("오답 5회 초과로 레벨 재시작 - userId={}, 레벨={}, 오답수={}", 
+                        userId, game.getCurrentLevel(), wrongCount);
+                    
                     // 정답 정보를 먼저 클라이언트에 전송
                     Map<String, Object> puzzleData = game.getCurrentPuzzleData();
                     if (puzzleData != null) {
@@ -456,11 +473,13 @@ public class PuzzleGameController {
                 return ResponseEntity.badRequest().body(Map.of("error", "유효하지 않은 사용자입니다."));
             }
             
-            System.out.println("=== 레벨 완료 처리 시작 ===");
-            System.out.println("사용자 ID: " + userId + " (유효성 검증 완료)");
+            logger.info("=== 레벨 완료 처리 시작 - userId={}, guestId={} ===", userId, guestId);
             
             UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
             Integer currentLevel = game.getCurrentLevel();
+            
+            logger.info("레벨 완료 요청 - userId={}, 현재레벨={}, 정답수={}, 오답수={}", 
+                userId, currentLevel, game.getCurrentLevelCorrectAnswers(), game.getCurrentLevelWrongAnswers());
             
             // 현재 레벨 정보 조회
             PuzzleLevel level = puzzleLevelService.getById(currentLevel.longValue());
@@ -498,12 +517,12 @@ public class PuzzleGameController {
                 // 클리어 조건 미충족 시 새로운 퍼즐 생성 (라라벨과 동일한 로직)
                 System.out.println("=== 클리어 조건 미충족 - 새로운 퍼즐 생성 시작 ===");
                 System.out.println("사용자 ID: " + userId + ", 레벨: " + currentLevel);
-                System.out.println("현재 클리어 횟수: " + clearCount + ", 필요 횟수: " + level.getClearCondition());
-                System.out.println("남은 횟수: " + remaining);
+                logger.warn("레벨 클리어 조건 미충족 - userId={}, 레벨={}, 현재클리어횟수={}, 필요횟수={}, 남은횟수={}", 
+                    userId, currentLevel, clearCount, level.getClearCondition(), remaining);
                 
                 regenerateWordsAndHintsForCurrentPuzzle(game);
                 
-                System.out.println("=== 새로운 퍼즐 생성 완료 ===");
+                logger.info("클리어 조건 미충족으로 새 퍼즐 생성 완료 - userId={}, 레벨={}", userId, currentLevel);
                 
                 return ResponseEntity.badRequest().body(Map.of(
                     "error", "레벨 클리어 조건을 만족하지 않습니다.",
@@ -517,6 +536,7 @@ public class PuzzleGameController {
             PuzzleLevel nextLevel = puzzleLevelService.getById(Long.valueOf(currentLevel + 1));
             if (nextLevel == null) {
                 // 다음 레벨이 없으면 현재 레벨 유지
+                logger.info("모든 레벨 완료 - userId={}, 마지막레벨={}", userId, currentLevel);
                 return ResponseEntity.ok(Map.of(
                     "message", "축하합니다! 모든 레벨을 완료했습니다!",
                     "new_level", currentLevel,
@@ -535,7 +555,8 @@ public class PuzzleGameController {
             
             userPuzzleGameService.save(game);
             
-            System.out.println("레벨 완료 처리 - 새 레벨: " + game.getCurrentLevel());
+            logger.info("레벨 완료 및 다음 레벨 진행 - userId={}, 이전레벨={}, 새레벨={}", 
+                userId, currentLevel, game.getCurrentLevel());
             
             Map<String, Object> response = new HashMap<>();
             response.put("message", "축하합니다! 다음 레벨로 진행합니다.");
