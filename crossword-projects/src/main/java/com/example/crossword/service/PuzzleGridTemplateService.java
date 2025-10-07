@@ -74,20 +74,24 @@ public class PuzzleGridTemplateService {
             int retryCount = 0;
             List<Map<String, Object>> extractedWords = new ArrayList<>();
             Map<Integer, String> confirmedWords = new HashMap<>(); // word_id => word
+            boolean extractionFailed = false;
             
             while (retryCount < maxRetries) {
                 retryCount++;
                 extractedWords.clear();
                 confirmedWords.clear();
-                boolean extractionFailed = false;
+                extractionFailed = false;
                 
                 System.out.println("단어 추출 시도 #" + retryCount + " 시작");
+                System.out.println("총 단어 개수: " + wordPositions.size());
                 
                 for (Map<String, Object> word : wordPositions) {
                     Integer wordId = (Integer) word.get("id");
+                    System.out.println("단어 ID " + wordId + " 처리 시작");
                     
                     // 이미 확정된 단어는 건너뛰기
                     if (confirmedWords.containsKey(wordId)) {
+                        System.out.println("단어 ID " + wordId + " 이미 확정됨, 건너뛰기");
                         continue;
                     }
                     
@@ -97,8 +101,10 @@ public class PuzzleGridTemplateService {
                     
                     if (intersections.isEmpty()) {
                         // 5. 교차점이 없으면 독립적으로 단어 추출
+                        System.out.println("단어 ID " + wordId + " 교차점 없음, 독립 추출");
                         Map<String, Object> extractedWord = extractIndependentWord(word, level);
                         if ("추출 실패".equals(extractedWord.get("word"))) {
+                            System.out.println("단어 ID " + wordId + " 독립 추출 실패");
                             extractionFailed = true;
                             break;
                         }
@@ -173,8 +179,13 @@ public class PuzzleGridTemplateService {
                 }
             }
             
-            if (extractedWords.isEmpty()) {
-                return Map.of("success", false, "message", "단어 추출에 실패했습니다.");
+            // 5회 시도 후에도 실패한 경우 (라라벨과 동일한 방어 로직)
+            if (extractionFailed || extractedWords.size() != wordPositions.size()) {
+                System.out.println("단어 추출 최종 실패 - 추출된 단어: " + extractedWords.size() + 
+                    ", 필요한 단어: " + wordPositions.size());
+                return Map.of("success", false, "message", 
+                    "단어 추출에 실패했습니다. 모든 단어를 추출할 수 없습니다. (추출된 단어: " + 
+                    extractedWords.size() + "/" + wordPositions.size() + ")");
             }
             
             // 8. 결과 반환

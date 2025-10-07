@@ -617,12 +617,13 @@
             const words = template.words;
             const gridSize = gridData.length;
             
-            console.log('그리드 데이터:', gridData);
-            console.log('단어 데이터:', words);
+            // console.log('그리드 데이터:', gridData);
+            // console.log('단어 데이터:', words);
+            // console.log('단어 데이터 상세:', JSON.stringify(words, null, 2));
             
             // 동적 셀 크기 계산
             const cellSize = calculateCellSize(gridSize);
-            console.log('그리드 크기:', gridSize, '셀 크기:', cellSize, '화면 크기:', window.innerWidth, 'x', window.innerHeight);
+            // console.log('그리드 크기:', gridSize, '셀 크기:', cellSize, '화면 크기:', window.innerWidth, 'x', window.innerHeight);
             
             let html = `<div class="grid-container" style="display: inline-block; border: 2px solid #333; max-width: 90vw; max-height: 90vh; margin: 0 auto;">`;
             
@@ -641,6 +642,8 @@
                         cellClass += ' bg-dark text-white';
                         
                         // 셀 정보 확인
+                        const wordInfo = getWordInfoAtPosition(x, y, words);
+                        // console.log(`셀 (${x}, ${y}) - wordInfo:`, wordInfo);
                         
                         // 번호는 시작 위치에만 표시 (라라벨과 동일)
                         if (wordInfo) {
@@ -681,7 +684,7 @@
             
             html += '</div>';
             grid.html(html);
-            console.log('그리드 렌더링 완료');
+            // console.log('그리드 렌더링 완료');
         }
 
         // 셀 크기 계산
@@ -1341,7 +1344,7 @@
             
             // 단어 비활성화 API 호출
             $.ajax({
-                url: `${API_BASE_URL}/admin/api/words/deactivate/${currentWordId}`,
+                url: `/K-CrossWord/admin/api/words/deactivate/${currentWordId}`,
                 method: 'POST',
                 dataType: 'json'
             })
