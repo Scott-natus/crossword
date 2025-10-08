@@ -46,6 +46,31 @@
             border-bottom: 1px solid #dee2e6;
         }
         
+        /* K-CrossWord 헤더 스타일 */
+        .puzzle-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 1.5rem;
+            border-radius: 0.375rem 0.375rem 0 0;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            min-height: 80px;
+        }
+        
+        .puzzle-icon {
+            font-size: 2rem;
+            color: white;
+        }
+        
+        .puzzle-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        
         .badge {
             font-size: 0.875rem;
         }
@@ -190,8 +215,13 @@
         <div class="row">
             <div class="col-md-8">
                 <div class="card">
+                    <!-- K-CrossWord 헤더 -->
+                    <div class="puzzle-header">
+                        <i class="fas fa-puzzle-piece puzzle-icon"></i>
+                        <h3 class="puzzle-title">크로스워드</h3>
+                    </div>
+                    
                     <div class="card-header d-flex flex-column align-items-center">
-                        <h3 class="text-center mb-2">K-CrossWord</h3>
                         <div class="w-100 d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
                                 레벨 <span id="current-level">1</span>
@@ -260,7 +290,7 @@
                     <p id="level-complete-sub-message">다음 레벨로 진행하시겠습니까?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" id="cancel-level-complete-btn" class="btn btn-secondary">취소</button>
                     <button type="button" id="next-level-btn" class="btn btn-primary">다음 레벨</button>
                 </div>
             </div>
@@ -281,6 +311,18 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="go-to-main-btn" class="btn btn-primary">메인으로</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 정답/오답 결과 모달 -->
+    <div class="modal fade" id="answerResultModal" tabindex="-1" data-bs-backdrop="false" data-bs-keyboard="false" style="display: none;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div id="answer-result-icon" class="mb-3"></div>
+                    <h5 id="answer-result-message" class="mb-0"></h5>
                 </div>
             </div>
         </div>
@@ -653,15 +695,15 @@
                                 const fontSize = Math.max(6, Math.min(12, cellSize * 0.25));
                                 cellContent = `
                                     <div style="position: relative; width: 100%; height: 100%;">
-                                        <span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${wordInfo.horizontalWord.word_id}</span>
-                                        <span class="word-number" style="position: absolute; bottom: 2px; right: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #4ecdc4; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${wordInfo.verticalWord.word_id}</span>
+                                        <span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; aspect-ratio: 1; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${wordInfo.horizontalWord.word_id}</span>
+                                        <span class="word-number" style="position: absolute; bottom: 2px; right: 2px; width: ${badgeSize}px; height: ${badgeSize}px; aspect-ratio: 1; font-size: ${fontSize}px; background: #4ecdc4; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${wordInfo.verticalWord.word_id}</span>
                                     </div>
                                 `;
                             } else {
                                 // 단일 단어인 경우 (라라벨과 동일한 간단한 방식)
                                 const badgeSize = Math.max(8, Math.min(20, cellSize * 0.35));
                                 const fontSize = Math.max(6, Math.min(12, cellSize * 0.25));
-                                cellContent = `<span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${wordInfo.word_id}</span>`;
+                                cellContent = `<span class="word-number" style="position: absolute; top: 2px; left: 2px; width: ${badgeSize}px; height: ${badgeSize}px; aspect-ratio: 1; font-size: ${fontSize}px; background: #ff6b6b; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${wordInfo.word_id}</span>`;
                             }
                         }
                         
@@ -677,7 +719,7 @@
                     const fontSize = Math.max(10, Math.min(18, cellSize * 0.7));
                     const dataWordId = wordInfo ? (wordInfo.pz_word_id || wordInfo.word_id) : '';
                     const dataAttr = dataWordId ? ` data-word-id="${dataWordId}"` : '';
-                    html += `<div class="${cellClass}" style="width: ${cellSize}px; height: ${cellSize}px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}px; font-weight: bold; box-sizing: border-box;"${clickEvent}${dataAttr}>${cellContent}</div>`;
+                    html += `<div class="${cellClass}" style="width: ${cellSize}px; height: ${cellSize}px; aspect-ratio: 1; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: ${fontSize}px; font-weight: bold; box-sizing: border-box;"${clickEvent}${dataAttr}>${cellContent}</div>`;
                 }
                 html += '</div>';
             }
@@ -715,7 +757,6 @@
                 availableHeight = Math.min(window.innerHeight * 0.8, 800);
             }
             
-            console.log('사용 가능한 크기:', availableWidth, 'x', availableHeight, 'widthRatio:', widthRatio);
 
             const borderWidth = 2;
             const cellBorder = 1;
@@ -920,8 +961,7 @@
                 }
                 
                 if (data.is_correct) {
-                        $('#result-message').html(`<div class="alert alert-success">${data.message}</div>`);
-                        
+                        // 정답인 경우 - 모달 표시하지 않음 (조건 1)
                         // 서버에서 받은 정답을 그리드에 표시
                         updateGridWithAnswer(data.correct_answer, null);
                         
@@ -934,36 +974,27 @@
                         $('#current-hint').text('번호를 클릭하여 단어를 선택하세요.');
                         currentWordId = null;
                         
-                        // 정답 메시지 표시 후 2초 뒤 숨기기
-                        setTimeout(function() {
-                            $('#result-message').empty();
-                        }, 2000);
-                        
                         updateClearCondition();
                         checkLevelCompletion();
                         
                 } else {
                         // 오답인 경우
                         if (data.wrong_count_exceeded) {
-                            // 오답 5회 초과 시 메시지 표시
-                            $('#result-message').html(`<div class="alert alert-danger">${data.message}</div>`);
-                            
+                            // 오답 5회 초과 시 기존 모달 표시
                             // 서버에서 받은 정답 정보를 전역 변수에 저장
                             if (data.all_answers) {
                                 window.allAnswers = data.all_answers;
                             }
                             
-                            // 2초 후 모달 표시
+                            // 0.1초 후 오답 초과 모달 표시
                             setTimeout(function() {
                                 showWrongAnswerModal();
                             }, 100);
                         } else {
-                            // 일반 오답 시 메시지 표시 (4회일 때는 특별 메시지)
-                            $('#result-message').html(`<div class="alert alert-danger">${data.message}</div>`);
-                            
-                            setTimeout(function() {
-                                $('#result-message').empty();
-                            }, 2000);
+                            // 일반 오답 시 모달 표시
+                            // 4회 실패인지 확인 (경고 메시지 포함 여부로 판단)
+                            const isWarning = data.message && data.message.includes('경고');
+                            showAnswerResultModal(false, data.message, isWarning);
                         }
                     }
                 },
@@ -1045,7 +1076,6 @@
                 method: 'GET',
                 data: requestData,
                 success: function(data) {
-                    console.log('추가 힌트 조회 결과:', data);
                     
                     if (data.hints && data.hints.length > 0) {
                         // 힌트 목록을 초기화하고 새로운 힌트만 표시
@@ -1374,6 +1404,40 @@
             }
         }
 
+        // 정답/오답 결과 모달 표시
+        function showAnswerResultModal(isCorrect, message, isWarning = false) {
+            const modal = $('#answerResultModal');
+            const iconDiv = $('#answer-result-icon');
+            const messageDiv = $('#answer-result-message');
+            
+            // 정답인 경우 모달을 표시하지 않음
+            if (isCorrect) {
+                return;
+            }
+            
+            // 아이콘 설정
+            if (isWarning) {
+                // 4회 실패 경고 (3초 유지)
+                iconDiv.html('<i class="fas fa-exclamation-triangle fa-3x text-warning"></i>');
+                messageDiv.text(message).removeClass().addClass('mb-0 text-warning');
+            } else {
+                // 일반 오답 (1.5초 유지)
+                iconDiv.html('<i class="fas fa-times-circle fa-3x text-danger"></i>');
+                messageDiv.text(message).removeClass().addClass('mb-0 text-danger');
+            }
+            
+            // 모달 표시
+            modal.modal('show');
+            
+            // 자동으로 모달 닫기
+            const duration = isWarning ? 3000 : 1500;
+            setTimeout(function() {
+                // 포커스 제거 후 모달 닫기
+                modal.find('*').blur();
+                modal.modal('hide');
+            }, duration);
+        }
+
 
         // 게임 상태 복원 (라라벨과 동일)
         function restoreGameState(gameState, answeredWordsWithAnswers) {
@@ -1414,7 +1478,6 @@
                     }
                     
                     if (wordInfo) {
-                        console.log('정답 상태 복원:', wordId, correctWord, wordInfo);
                         updateGridWithAnswer(correctWord, wordInfo);
                     }
                 }
@@ -1523,7 +1586,7 @@
                     
                     if (isStartPosition) {
                         // 시작 위치: 배지 추가
-                        cardHtml += `<span class="word-number" style="position: absolute; top: 2px; left: 2px; z-index: 5; opacity: 0.3; width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${badgeFontSize}px; display: flex; align-items: center; justify-content: center;">${wordInfo.word_id}</span>`;
+                        cardHtml += `<span class="word-number" style="position: absolute; top: 2px; left: 2px; z-index: 5; opacity: 0.3; width: ${badgeSize}px; height: ${badgeSize}px; aspect-ratio: 1; font-size: ${badgeFontSize}px; display: flex; align-items: center; justify-content: center;">${wordInfo.word_id}</span>`;
                     }
                     
                     cell.html(cardHtml);
@@ -1806,6 +1869,20 @@
             // 서버에서 이미 정오답 개수 초기화와 단어/힌트 재생성이 완료되었으므로
             // 페이지를 새로고침하여 새로운 상태를 반영
             location.reload();
+        });
+
+        // 레벨 완료 모달 취소 버튼 클릭 처리
+        $('#cancel-level-complete-btn').click(function() {
+            // 포커스 제거로 aria-hidden 에러 방지
+            $(this).blur();
+            
+            // 모달 닫기
+            $('#levelCompleteModal').modal('hide');
+            
+            // 퍼즐 메인 화면으로 이동
+            setTimeout(function() {
+                window.location.href = '/K-CrossWord/';
+            }, 300);
         });
 
         // 다음 레벨 버튼 클릭 처리 (라라벨과 동일한 로직)

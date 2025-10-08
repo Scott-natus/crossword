@@ -424,70 +424,6 @@
         </div>
     </div>
 
-    <!-- 힌트 추가 모달 -->
-    <div class="modal fade" id="addHintModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-plus me-2"></i>힌트 추가</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addHintForm">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="hintType" class="form-label">힌트 타입</label>
-                                    <select class="form-select" id="hintType" onchange="toggleHintInputs()">
-                                        <option value="">선택하세요</option>
-                                        <option value="TEXT">텍스트</option>
-                                        <option value="IMAGE">이미지</option>
-                                        <option value="SOUND">사운드</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="hintDifficulty" class="form-label">난이도</label>
-                                    <select class="form-select" id="hintDifficulty">
-                                        <option value="">선택하세요</option>
-                                        <option value="1">쉬움</option>
-                                        <option value="2">보통</option>
-                                        <option value="3">어려움</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="hintContent" class="form-label">힌트 내용</label>
-                            <textarea class="form-control" id="hintContent" rows="3"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="hintFile" class="form-label">파일 업로드</label>
-                            <input type="file" class="form-control" id="hintFile" accept=".jpg,.jpeg,.png,.gif,.mp3,.wav">
-                            <div class="form-text">이미지: JPG, PNG, GIF / 사운드: MP3, WAV (최대 10MB)</div>
-                        </div>
-                        <div id="filePreview" class="mb-3" style="display: none;">
-                            <label class="form-label">파일 미리보기</label>
-                            <div id="previewContent"></div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="isPrimary">
-                                <label class="form-check-label" for="isPrimary">
-                                    주요 힌트로 설정
-                                </label>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-primary" onclick="addHint()">저장</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- 단어 수정 모달 -->
     <div class="modal fade" id="editWordModal" tabindex="-1">
@@ -539,45 +475,6 @@
         </div>
     </div>
 
-    <!-- 힌트 보기 모달 -->
-    <div class="modal fade" id="viewHintsModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title"><i class="fas fa-eye me-2"></i>힌트 보기</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="word-info mb-4">
-                        <h6>단어 정보</h6>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <strong>카테고리:</strong> <span id="viewHintsCategory" class="badge bg-primary"></span>
-                            </div>
-                            <div class="col-md-4">
-                                <strong>단어:</strong> <span id="viewHintsWord" class="fw-bold text-primary"></span>
-                            </div>
-                            <div class="col-md-4">
-                                <strong>글자수:</strong> <span id="viewHintsLength" class="badge bg-secondary"></span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="hints-section">
-                        <h6>등록된 힌트</h6>
-                        <div id="viewHintsList">
-                            <!-- 힌트들이 여기에 표시됩니다 -->
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times"></i> 닫기
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- 단어 정제 모달 -->
     <div class="modal fade" id="refinementModal" tabindex="-1">
@@ -794,6 +691,7 @@
                     data: function(d) {
                         d.difficulty_filter = $('#difficultyFilter').val();
                         d.search = $('#keywordSearch').val();
+                        d.refinement = $('#refinementFilter').val();
                     }
                 },
                 columns: [
@@ -858,12 +756,6 @@
                                 <button class="btn btn-sm btn-outline-primary me-1" onclick="editWord(${row.id})" title="수정">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-success me-1" onclick="openAddHintModalForWord(${row.id})" title="힌트 추가">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-info me-1" onclick="loadWordHints(${row.id})" title="힌트 보기">
-                                    <i class="fas fa-eye"></i>
-                                </button>
                                 <button class="btn btn-sm btn-outline-warning me-1" onclick="openRefinementModal(${row.id})" title="정제">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -908,17 +800,8 @@
 
         // 검색 실행
         function performSearch() {
-            const keyword = document.getElementById('keywordSearch').value;
-            const difficulty = document.getElementById('difficultyFilter').value;
-            const refinement = document.getElementById('refinementFilter').value;
-            
-            // URL 파라미터로 필터 값 전달
-            const params = new URLSearchParams();
-            if (keyword) params.append('keyword', keyword);
-            if (difficulty) params.append('difficulty', difficulty);
-            if (refinement) params.append('refinement', refinement);
-            
-            wordsTable.ajax.url('/K-CrossWord/admin/api/words/data?' + params.toString()).load();
+            // DataTables의 ajax.reload()를 사용하여 현재 필터 값으로 다시 로드
+            wordsTable.ajax.reload();
         }
 
         // 전체 선택/해제
@@ -1003,15 +886,6 @@
             });
         }
 
-        // 개별 단어에 대한 힌트 추가 모달 열기
-        function openAddHintModalForWord(wordId) {
-            // 선택된 단어 ID를 해당 단어로 설정
-            selectedWordIds = [wordId];
-            document.getElementById('addHintForm').reset();
-            document.getElementById('filePreview').style.display = 'none';
-            toggleHintInputs(); // 초기 상태 설정
-            new bootstrap.Modal(document.getElementById('addHintModal')).show();
-        }
 
         // 기존 함수는 제거 (더 이상 사용하지 않음)
         function openAddHintModal() {
@@ -1318,30 +1192,43 @@
 
         // 단어 수정 모달 열기
         function editWord(id) {
+            console.log('editWord 호출됨, id:', id);
+            
             // 단어 정보 조회
             fetch(`/K-CrossWord/admin/api/words/${id}`)
-                .then(response => response.json())
+                .then(response => {
+                    console.log('API 응답 상태:', response.status);
+                    return response.json();
+                })
                 .then(data => {
-                    if (data.success) {
-                        const word = data.word;
+                    console.log('API 응답 데이터:', data);
+                    
+                    if (data.success && data.data) {
+                        const word = data.data;
+                        console.log('단어 데이터:', word);
                         
                         // 모달에 데이터 채우기
-                        document.getElementById('editWordId').value = word.id;
+                        document.getElementById('editWordId').value = word.id || id;
                         document.getElementById('editWordCategory').value = word.category || '';
-                        document.getElementById('editWordText').value = word.word;
-                        document.getElementById('editWordDifficulty').value = word.difficulty;
+                        document.getElementById('editWordText').value = word.word || '';
+                        document.getElementById('editWordDifficulty').value = word.difficulty || '1';
                         
                         // 사용여부 라디오 버튼 설정
-                        if (word.isActive) {
-                            document.getElementById('editActiveTrue').checked = true;
+                        if (word.isActive !== undefined) {
+                            if (word.isActive) {
+                                document.getElementById('editActiveTrue').checked = true;
+                            } else {
+                                document.getElementById('editActiveFalse').checked = true;
+                            }
                         } else {
-                            document.getElementById('editActiveFalse').checked = true;
+                            document.getElementById('editActiveTrue').checked = true;
                         }
                         
                         // 모달 열기
                         new bootstrap.Modal(document.getElementById('editWordModal')).show();
                     } else {
-                        showAlert('danger', data.error);
+                        console.error('API 응답 실패:', data);
+                        showAlert('danger', data.error || '단어 정보를 불러올 수 없습니다.');
                     }
                 })
                 .catch(error => {

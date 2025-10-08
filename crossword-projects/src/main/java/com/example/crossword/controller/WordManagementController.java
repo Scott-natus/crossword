@@ -3,6 +3,8 @@ package com.example.crossword.controller;
 import com.example.crossword.entity.PzWord;
 import com.example.crossword.entity.PzHint;
 import com.example.crossword.service.WordManagementService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +22,8 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/admin/api/words")
 public class WordManagementController {
+
+    private static final Logger logger = LoggerFactory.getLogger(WordManagementController.class);
 
     @Autowired
     private WordManagementService wordManagementService;
@@ -47,11 +51,18 @@ public class WordManagementController {
             @RequestParam(defaultValue = "") String difficulty_filter,
             @RequestParam(defaultValue = "") String refinement) {
         
+        logger.info("=== API 호출됨 ===");
+        logger.info("draw: {}, start: {}, length: {}", draw, start, length);
+        logger.info("search: '{}', difficulty_filter: '{}', refinement: '{}'", search, difficulty_filter, refinement);
+        
         try {
             Map<String, Object> data = wordManagementService.getWordsData(
                 draw, start, length, search, difficulty_filter, refinement);
+            logger.info("응답 데이터: recordsTotal={}, recordsFiltered={}", 
+                data.get("recordsTotal"), data.get("recordsFiltered"));
             return ResponseEntity.ok(data);
         } catch (Exception e) {
+            logger.error("데이터 조회 실패", e);
             Map<String, Object> error = new HashMap<>();
             error.put("error", "데이터 조회 실패: " + e.getMessage());
             return ResponseEntity.internalServerError().body(error);

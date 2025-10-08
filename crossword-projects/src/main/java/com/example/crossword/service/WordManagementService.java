@@ -4,6 +4,8 @@ import com.example.crossword.entity.PzWord;
 import com.example.crossword.entity.PzHint;
 import com.example.crossword.repository.PzWordRepository;
 import com.example.crossword.repository.PzHintRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +30,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class WordManagementService {
+
+    private static final Logger logger = LoggerFactory.getLogger(WordManagementService.class);
 
     @Autowired
     private PzWordRepository pzWordRepository;
@@ -74,6 +78,12 @@ public class WordManagementService {
         Map<String, Object> response = new HashMap<>();
         response.put("draw", draw);
         
+        // 디버깅 로그 추가
+        logger.info("=== 단어 검색 파라미터 ===");
+        logger.info("search: '{}'", search);
+        logger.info("difficultyFilter: '{}'", difficultyFilter);
+        logger.info("refinement: '{}'", refinement);
+        
         try {
             // 정렬 설정 (생성일자 내림차순)
             Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
@@ -82,33 +92,49 @@ public class WordManagementService {
             Page<PzWord> page;
             
             // 검색어, 난이도 필터, 정제상태 필터에 따른 조회
-            if (!search.isEmpty() && !difficultyFilter.isEmpty() && !refinement.isEmpty()) {
+            // null 체크와 빈 문자열 체크를 모두 고려
+            boolean hasSearch = search != null && !search.trim().isEmpty();
+            boolean hasDifficulty = difficultyFilter != null && !difficultyFilter.trim().isEmpty();
+            boolean hasRefinement = refinement != null && !refinement.trim().isEmpty();
+            
+            logger.info("필터 조건 체크 - search: '{}', difficulty: '{}', refinement: '{}'", search, difficultyFilter, refinement);
+            logger.info("필터 존재 여부 - hasSearch: {}, hasDifficulty: {}, hasRefinement: {}", hasSearch, hasDifficulty, hasRefinement);
+            
+            if (hasSearch && hasDifficulty && hasRefinement) {
                 // 검색어 + 난이도 필터 + 정제상태 필터
+                logger.info("조건: 검색어 + 난이도 + 정제상태");
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByWordContainingIgnoreCaseAndDifficultyAndConfYn(search, difficulty, refinement, pageable);
-            } else if (!search.isEmpty() && !difficultyFilter.isEmpty()) {
+            } else if (hasSearch && hasDifficulty) {
                 // 검색어 + 난이도 필터
+                logger.info("조건: 검색어 + 난이도");
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByWordContainingIgnoreCaseAndDifficulty(search, difficulty, pageable);
-            } else if (!search.isEmpty() && !refinement.isEmpty()) {
+            } else if (hasSearch && hasRefinement) {
                 // 검색어 + 정제상태 필터
+                logger.info("조건: 검색어 + 정제상태");
                 page = pzWordRepository.findByWordContainingIgnoreCaseAndConfYn(search, refinement, pageable);
-            } else if (!difficultyFilter.isEmpty() && !refinement.isEmpty()) {
+            } else if (hasDifficulty && hasRefinement) {
                 // 난이도 필터 + 정제상태 필터
+                logger.info("조건: 난이도 + 정제상태");
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByDifficultyAndConfYn(difficulty, refinement, pageable);
-            } else if (!search.isEmpty()) {
+            } else if (hasSearch) {
                 // 검색어만
+                logger.info("조건: 검색어만");
                 page = pzWordRepository.findByWordContainingIgnoreCase(search, pageable);
-            } else if (!difficultyFilter.isEmpty()) {
+            } else if (hasDifficulty) {
                 // 난이도 필터만
+                logger.info("조건: 난이도만");
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByDifficulty(difficulty, pageable);
-            } else if (!refinement.isEmpty()) {
+            } else if (hasRefinement) {
                 // 정제상태 필터만
+                logger.info("조건: 정제상태만");
                 page = pzWordRepository.findByConfYn(refinement, pageable);
             } else {
                 // 전체 조회
+                logger.info("조건: 전체 조회");
                 page = pzWordRepository.findAll(pageable);
             }
             
@@ -295,14 +321,43 @@ public class WordManagementService {
      * 난이도 문자열을 숫자로 변환
      */
     private Integer parseDifficulty(String difficultyFilter) {
-        switch (difficultyFilter) {
-            case "쉬움": return PzWord.DIFFICULTY_EASY;
-            case "보통": return PzWord.DIFFICULTY_MEDIUM;
-            case "어려움": return PzWord.DIFFICULTY_HARD;
-            case "매우 어려움": return PzWord.DIFFICULTY_VERY_HARD;
-            case "극도 어려움": return PzWord.DIFFICULTY_EXTREME;
-            default: return null;
+        logger.info("parseDifficulty 호출됨: '{}'", difficultyFilter);
+        
+        // 쉼표로 구분된 값이 있으면 첫 번째 값만 사용
+        if (difficultyFilter.contains(",")) {
+            difficultyFilter = difficultyFilter.split(",")[0].trim();
+            logger.info("쉼표 구분 값 처리: '{}'", difficultyFilter);
         }
+        
+        Integer result = null;
+        switch (difficultyFilter) {
+            case "1":
+            case "쉬움": 
+                result = PzWord.DIFFICULTY_EASY;
+                break;
+            case "2":
+            case "보통": 
+                result = PzWord.DIFFICULTY_MEDIUM;
+                break;
+            case "3":
+            case "어려움": 
+                result = PzWord.DIFFICULTY_HARD;
+                break;
+            case "4":
+            case "매우 어려움": 
+                result = PzWord.DIFFICULTY_VERY_HARD;
+                break;
+            case "5":
+            case "극도 어려움": 
+                result = PzWord.DIFFICULTY_EXTREME;
+                break;
+            default: 
+                result = null;
+                break;
+        }
+        
+        logger.info("parseDifficulty 결과: {}", result);
+        return result;
     }
 
     /**
