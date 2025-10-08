@@ -177,7 +177,7 @@ public class HintGeneratorManagementService {
      * 라라벨의 generateForWord와 동일한 기능
      */
     @Transactional
-    public Map<String, Object> generateForWord(Integer wordId) {
+    public Map<String, Object> generateForWord(Integer wordId, Boolean overwrite) {
         Map<String, Object> response = new HashMap<>();
         
         try {
@@ -198,11 +198,21 @@ public class HintGeneratorManagementService {
                 return response;
             }
             
-            // 기존 힌트 삭제 (새로 생성할 것이므로)
-            pzHintRepository.deleteByWordId(wordId);
+            // 기존 힌트 확인
+            List<PzHint> existingHints = pzHintRepository.findByWordId(wordId);
+            if (!existingHints.isEmpty() && !overwrite) {
+                response.put("success", false);
+                response.put("message", "이미 힌트가 존재합니다. 덮어쓰기 옵션을 선택하거나 기존 힌트를 삭제 후 다시 시도해주세요.");
+                return response;
+            }
             
-            // Gemini API를 통한 힌트 생성 (실제 구현에서는 HintGenerationService 사용)
-            // 임시로 더미 힌트 생성
+            // 덮어쓰기 모드인 경우 기존 힌트 삭제
+            if (overwrite && !existingHints.isEmpty()) {
+                pzHintRepository.deleteByWordId(wordId);
+                log.info("기존 힌트 삭제 완료: wordId={}, 삭제된 힌트 수={}", wordId, existingHints.size());
+            }
+            
+            // Gemini API를 통한 힌트 생성
             List<PzHint> createdHints = createDummyHints(word);
             
             response.put("success", true);
@@ -538,28 +548,20 @@ public class HintGeneratorManagementService {
                         hints.add(pzHintRepository.save(hint));
                         log.info("힌트 생성 성공: 난이도 {} - {}", difficulty, hint.getHintText());
                     } else {
-                        // API 실패 시 폴백 힌트 생성
-                        PzHint fallbackHint = createFallbackHint(word, difficulty);
-                        hints.add(pzHintRepository.save(fallbackHint));
-                        log.warn("힌트 생성 실패, 폴백 힌트 사용: 난이도 {}", difficulty);
+                        // API 실패 시 더미 힌트 생성하지 않고 로그만 기록
+                        log.warn("힌트 생성 실패: 난이도 {}", difficulty);
                     }
                 }
             } else {
-                // 전체 API 실패 시 폴백 힌트들 생성
-                log.error("Gemini API 전체 실패, 폴백 힌트들 생성");
-                for (int difficulty = 1; difficulty <= 3; difficulty++) {
-                    PzHint fallbackHint = createFallbackHint(word, difficulty);
-                    hints.add(pzHintRepository.save(fallbackHint));
-                }
+                // 전체 API 실패 시 더미 힌트 생성하지 않고 예외 발생
+                log.error("Gemini API 전체 실패, 힌트 생성 중단");
+                throw new RuntimeException("제미나이 API 호출에 실패했습니다. 잠시 후 다시 시도해주세요.");
             }
             
         } catch (Exception e) {
             log.error("힌트 생성 중 예외 발생: {}", e.getMessage());
-            // 예외 발생 시 폴백 힌트들 생성
-            for (int difficulty = 1; difficulty <= 3; difficulty++) {
-                PzHint fallbackHint = createFallbackHint(word, difficulty);
-                hints.add(pzHintRepository.save(fallbackHint));
-            }
+            // 예외 발생 시 더미 힌트 생성하지 않고 예외 재발생
+            throw new RuntimeException("힌트 생성 중 오류가 발생했습니다: " + e.getMessage());
         }
         
         return hints;

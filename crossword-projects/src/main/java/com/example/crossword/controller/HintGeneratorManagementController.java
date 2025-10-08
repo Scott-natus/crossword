@@ -71,11 +71,13 @@ public class HintGeneratorManagementController {
      * 라라벨의 generateForWord와 동일한 기능
      */
     @PostMapping("/word/{wordId}")
-    public ResponseEntity<Map<String, Object>> generateForWord(@PathVariable Integer wordId) {
-        log.debug("단일 단어 힌트 생성: {}", wordId);
+    public ResponseEntity<Map<String, Object>> generateForWord(
+            @PathVariable Integer wordId,
+            @RequestParam(defaultValue = "false") Boolean overwrite) {
+        log.debug("단일 단어 힌트 생성: wordId={}, overwrite={}", wordId, overwrite);
         
         try {
-            Map<String, Object> result = hintGeneratorService.generateForWord(wordId);
+            Map<String, Object> result = hintGeneratorService.generateForWord(wordId, overwrite);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("단일 힌트 생성 실패: {}", e.getMessage());

@@ -163,9 +163,9 @@ public class WordManagementService {
      * 단어 추가
      */
     public PzWord addWord(String word, String category, Integer difficulty) {
-        // 중복 검사
-        if (pzWordRepository.existsByWord(word)) {
-            throw new IllegalArgumentException("이미 존재하는 단어입니다: " + word);
+        // 중복 검사 (카테고리 + 단어 조합)
+        if (pzWordRepository.existsByCategoryAndWord(category, word)) {
+            throw new IllegalArgumentException("이미 존재하는 단어입니다: " + category + " - " + word);
         }
         
         PzWord newWord = new PzWord();
@@ -184,9 +184,10 @@ public class WordManagementService {
         PzWord existingWord = pzWordRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("단어를 찾을 수 없습니다: " + id));
         
-        // 단어 변경 시 중복 검사
-        if (!existingWord.getWord().equals(word) && pzWordRepository.existsByWord(word)) {
-            throw new IllegalArgumentException("이미 존재하는 단어입니다: " + word);
+        // 단어나 카테고리 변경 시 중복 검사 (카테고리 + 단어 조합)
+        if ((!existingWord.getWord().equals(word) || !existingWord.getCategory().equals(category)) 
+            && pzWordRepository.existsByCategoryAndWord(category, word)) {
+            throw new IllegalArgumentException("이미 존재하는 단어입니다: " + category + " - " + word);
         }
         
         existingWord.setWord(word);

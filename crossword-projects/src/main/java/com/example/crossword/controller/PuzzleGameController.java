@@ -1058,8 +1058,8 @@ public class PuzzleGameController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "필수 파라미터가 누락되었습니다."));
             }
             
-            // Gemini API로 새 힌트 생성
-            Map<String, Object> geminiResult = hintGeneratorManagementService.generateForWord(wordId.intValue());
+            // Gemini API로 새 힌트 생성 (덮어쓰기 모드)
+            Map<String, Object> geminiResult = hintGeneratorManagementService.generateForWord(wordId.intValue(), true);
             
             if (!(Boolean) geminiResult.get("success")) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "힌트 생성에 실패했습니다."));

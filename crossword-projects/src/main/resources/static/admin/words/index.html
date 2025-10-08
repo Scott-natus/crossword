@@ -594,6 +594,88 @@
         </div>
     </div>
 
+    <!-- 힌트 생성 모달 -->
+    <div class="modal fade" id="hintGenerationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-lightbulb me-2"></i>힌트 생성</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 단어 정보 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6 class="mb-2"><i class="fas fa-info-circle me-2"></i>단어 정보</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>단어:</strong> <span id="hintWordText"></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>카테고리:</strong> <span id="hintWordCategory"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 힌트 생성 옵션 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="overwriteExistingHints" checked>
+                                <label class="form-check-label" for="overwriteExistingHints">
+                                    기존 힌트 덮어쓰기 (체크 해제 시 기존 힌트가 있으면 생성하지 않음)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 진행 상태 -->
+                    <div class="row mb-4" id="hintGenerationProgress" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <div class="d-flex align-items-center">
+                                    <div class="spinner-border spinner-border-sm me-3" role="status">
+                                        <span class="visually-hidden">로딩 중...</span>
+                                    </div>
+                                    <span id="hintGenerationStatus">힌트를 생성하고 있습니다...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 생성 결과 -->
+                    <div class="row" id="hintGenerationResult" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-success">
+                                <h6 class="mb-2"><i class="fas fa-check-circle me-2"></i>힌트 생성 완료</h6>
+                                <div id="hintGenerationDetails"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 오류 메시지 -->
+                    <div class="row" id="hintGenerationError" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-danger">
+                                <h6 class="mb-2"><i class="fas fa-exclamation-triangle me-2"></i>힌트 생성 실패</h6>
+                                <div id="hintGenerationErrorMessage"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-info" id="generateHintsBtn" onclick="executeHintGeneration()">
+                        <i class="fas fa-lightbulb me-2"></i>힌트 생성
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Bootstrap JS -->
@@ -758,6 +840,9 @@
                                 </button>
                                 <button class="btn btn-sm btn-outline-warning me-1" onclick="openRefinementModal(${row.id})" title="정제">
                                     <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-info me-1" onclick="generateHintsForWord(${row.id}, '${row.word}', '${row.category}')" title="힌트 생성">
+                                    <i class="fas fa-lightbulb"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger" onclick="deactivateWord(${row.id})" title="비활성화">
                                     <i class="fas fa-ban"></i>
@@ -1540,6 +1625,103 @@
             .catch(error => {
                 console.error('Error:', error);
                 showAlert('정제 중 오류가 발생했습니다.', 'danger');
+            });
+        }
+
+        // 힌트 생성 관련 변수
+        let currentWordId = null;
+        let currentWordText = '';
+        let currentWordCategory = '';
+
+        // 힌트 생성 모달 열기
+        function generateHintsForWord(wordId, wordText, wordCategory) {
+            currentWordId = wordId;
+            currentWordText = wordText;
+            currentWordCategory = wordCategory;
+
+            // 모달 내용 초기화
+            document.getElementById('hintWordText').textContent = wordText;
+            document.getElementById('hintWordCategory').textContent = wordCategory;
+            document.getElementById('overwriteExistingHints').checked = true;
+            
+            // 상태 초기화
+            document.getElementById('hintGenerationProgress').style.display = 'none';
+            document.getElementById('hintGenerationResult').style.display = 'none';
+            document.getElementById('hintGenerationError').style.display = 'none';
+            document.getElementById('generateHintsBtn').disabled = false;
+
+            // 모달 표시
+            const modal = new bootstrap.Modal(document.getElementById('hintGenerationModal'));
+            modal.show();
+        }
+
+        // 힌트 생성 실행
+        function executeHintGeneration() {
+            if (!currentWordId) {
+                showAlert('단어 정보가 없습니다.', 'danger');
+                return;
+            }
+
+            const overwrite = document.getElementById('overwriteExistingHints').checked;
+            
+            // UI 상태 변경
+            document.getElementById('generateHintsBtn').disabled = true;
+            document.getElementById('hintGenerationProgress').style.display = 'block';
+            document.getElementById('hintGenerationResult').style.display = 'none';
+            document.getElementById('hintGenerationError').style.display = 'none';
+            document.getElementById('hintGenerationStatus').textContent = '제미나이 API를 호출하여 힌트를 생성하고 있습니다...';
+
+            // API 호출
+            fetch(`/K-CrossWord/admin/api/hint-generator/word/${currentWordId}?overwrite=${overwrite}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 진행 상태 숨기기
+                document.getElementById('hintGenerationProgress').style.display = 'none';
+                document.getElementById('generateHintsBtn').disabled = false;
+
+                if (data.success) {
+                    // 성공 메시지 표시
+                    let detailsHtml = '';
+                    if (data.hints && data.hints.length > 0) {
+                        detailsHtml = '<ul class="mb-0">';
+                        data.hints.forEach((hint, index) => {
+                            const difficultyText = ['', '쉬움', '보통', '어려움', '매우 어려움', '극도 어려움'][hint.difficulty] || '알 수 없음';
+                            detailsHtml += `<li><strong>난이도 ${hint.difficulty} (${difficultyText}):</strong> ${hint.hint_text}</li>`;
+                        });
+                        detailsHtml += '</ul>';
+                    } else {
+                        detailsHtml = '<p class="mb-0">생성된 힌트가 없습니다.</p>';
+                    }
+                    
+                    document.getElementById('hintGenerationDetails').innerHTML = detailsHtml;
+                    document.getElementById('hintGenerationResult').style.display = 'block';
+                    
+                    // 테이블 새로고침
+                    if (wordsTable) {
+                        wordsTable.ajax.reload();
+                    }
+                } else {
+                    // 오류 메시지 표시
+                    document.getElementById('hintGenerationErrorMessage').textContent = data.message || '힌트 생성에 실패했습니다.';
+                    document.getElementById('hintGenerationError').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // 진행 상태 숨기기
+                document.getElementById('hintGenerationProgress').style.display = 'none';
+                document.getElementById('generateHintsBtn').disabled = false;
+                
+                // 오류 메시지 표시
+                document.getElementById('hintGenerationErrorMessage').textContent = '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+                document.getElementById('hintGenerationError').style.display = 'block';
             });
         }
     </script>

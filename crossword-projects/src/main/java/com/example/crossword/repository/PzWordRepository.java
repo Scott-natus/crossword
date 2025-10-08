@@ -163,6 +163,11 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     boolean existsByWord(String word);
     
     /**
+     * 카테고리와 단어 조합으로 존재 여부 확인
+     */
+    boolean existsByCategoryAndWord(String category, String word);
+    
+    /**
      * 단어 검색 (대소문자 무시, 카테고리, 난이도, 활성화 상태 포함)
      */
     @Query("SELECT w FROM PzWord w WHERE LOWER(w.word) LIKE LOWER(:search) AND w.category = :category AND w.difficulty = :difficulty AND w.isActive = :isActive")

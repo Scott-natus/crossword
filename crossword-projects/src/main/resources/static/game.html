@@ -1033,8 +1033,17 @@
                     
                     if (data.hints && data.hints.length > 0) {
                         const primaryHint = data.hints[0];
+                        const category = primaryHint.category || '';
+                        let hintText = primaryHint.hint_text || '힌트가 없습니다.';
+                        
+                        // K-DRAMA, K-POP, K-MOVIE, K-FOOD로 시작하는 카테고리인 경우
+                        if (category && (category.startsWith('K-DRAMA') || category.startsWith('K-POP') || 
+                            category.startsWith('K-MOVIE') || category.startsWith('K-FOOD'))) {
+                            hintText = `(${category}) ${hintText}`;
+                        }
+                        
                         $('#current-hint').html(`
-                            <strong>힌트:</strong> ${primaryHint.hint_text || '힌트가 없습니다.'}
+                            <strong>힌트:</strong> ${hintText}
                         `);
                         baseHintId = primaryHint.id;
                     } else {
@@ -1081,7 +1090,18 @@
                         // 힌트 목록을 초기화하고 새로운 힌트만 표시
                         const hintsList = $('#hints-list');
                         hintsList.empty();
-                        hintsList.append(`<div class="alert alert-info"><strong>추가힌트 :</strong> ${data.hints[0].hint_text}</div>`);
+                        
+                        const additionalHint = data.hints[0];
+                        const category = additionalHint.category || '';
+                        let hintText = additionalHint.hint_text;
+                        
+                        // K-DRAMA, K-POP, K-MOVIE, K-FOOD로 시작하는 카테고리인 경우
+                        if (category && (category.startsWith('K-DRAMA') || category.startsWith('K-POP') || 
+                            category.startsWith('K-MOVIE') || category.startsWith('K-FOOD'))) {
+                            hintText = `(${category}) ${hintText}`;
+                        }
+                        
+                        hintsList.append(`<div class="alert alert-info"><strong>추가힌트 :</strong> ${hintText}</div>`);
                         
                         // 현재 힌트 ID를 새로 받은 힌트의 ID로 업데이트
                         currentHintId = data.hints[0].id;

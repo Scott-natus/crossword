@@ -1,6 +1,7 @@
 package com.example.crossword.service;
 
 import com.example.crossword.entity.PzHint;
+import com.example.crossword.entity.PzWord;
 import com.example.crossword.repository.PzHintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import java.util.Optional;
 public class PzHintService {
     
     private final PzHintRepository pzHintRepository;
+    private final PzWordService pzWordService;
     
     /**
      * ID로 힌트 조회
@@ -91,11 +93,17 @@ public class PzHintService {
     public List<Map<String, Object>> getPrimaryHints(Long wordId) {
         log.debug("기본 힌트 조회: wordId={}", wordId);
         List<PzHint> hints = pzHintRepository.findByWordIdAndIsPrimaryOrderByDifficulty(wordId.intValue(), true);
+        
+        // 단어 정보 조회 (카테고리 포함)
+        PzWord word = pzWordService.getById(wordId);
+        String category = word != null ? word.getCategory() : "";
+        
         return hints.stream().map(hint -> {
             Map<String, Object> hintMap = new HashMap<>();
             hintMap.put("id", hint.getId());
             hintMap.put("hint_text", hint.getHintText());
             hintMap.put("difficulty", hint.getDifficulty());
+            hintMap.put("category", category);
             return hintMap;
         }).collect(java.util.stream.Collectors.toList());
     }
@@ -106,11 +114,17 @@ public class PzHintService {
     public List<Map<String, Object>> getAdditionalHints(Long wordId) {
         log.debug("추가 힌트 조회: wordId={}", wordId);
         List<PzHint> hints = pzHintRepository.findByWordIdAndIsPrimaryOrderByDifficulty(wordId.intValue(), false);
+        
+        // 단어 정보 조회 (카테고리 포함)
+        PzWord word = pzWordService.getById(wordId);
+        String category = word != null ? word.getCategory() : "";
+        
         return hints.stream().map(hint -> {
             Map<String, Object> hintMap = new HashMap<>();
             hintMap.put("id", hint.getId());
             hintMap.put("hint_text", hint.getHintText());
             hintMap.put("difficulty", hint.getDifficulty());
+            hintMap.put("category", category);
             return hintMap;
         }).collect(java.util.stream.Collectors.toList());
     }
