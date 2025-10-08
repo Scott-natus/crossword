@@ -102,7 +102,7 @@ public class PuzzleGridTemplateService {
                     if (intersections.isEmpty()) {
                         // 5. 교차점이 없으면 독립적으로 단어 추출
                         System.out.println("단어 ID " + wordId + " 교차점 없음, 독립 추출");
-                        Map<String, Object> extractedWord = extractIndependentWord(word, level);
+                        Map<String, Object> extractedWord = extractIndependentWord(word, level, confirmedWords);
                         if ("추출 실패".equals(extractedWord.get("word"))) {
                             System.out.println("단어 ID " + wordId + " 독립 추출 실패");
                             extractionFailed = true;
@@ -339,13 +339,21 @@ public class PuzzleGridTemplateService {
     /**
      * 라라벨의 extractIndependentWord와 동일한 로직
      */
-    private Map<String, Object> extractIndependentWord(Map<String, Object> word, PuzzleLevel level) {
+    private Map<String, Object> extractIndependentWord(Map<String, Object> word, PuzzleLevel level, Map<Integer, String> confirmedWords) {
         try {
             String direction = (String) word.get("direction");
             Integer length = (Integer) word.get("length");
             
-            // 조건에 맞는 단어 찾기
-            List<PzWord> words = wordRepository.findByDifficultyAndLength(level.getWordDifficulty(), length);
+            // 이미 사용된 단어들 목록 생성
+            List<String> usedWords = new ArrayList<>(confirmedWords.values());
+            
+            // 조건에 맞는 단어 찾기 (이미 사용된 단어 제외)
+            List<PzWord> words;
+            if (usedWords.isEmpty()) {
+                words = wordRepository.findByDifficultyAndLength(level.getWordDifficulty(), length);
+            } else {
+                words = wordRepository.findByDifficultyAndLengthExcludingUsed(level.getWordDifficulty(), length, usedWords);
+            }
             
             if (words.isEmpty()) {
                 return Map.of("word", "추출 실패");
@@ -384,10 +392,23 @@ public class PuzzleGridTemplateService {
             String direction = (String) word.get("direction");
             Integer length = (Integer) word.get("length");
             
-            // 조건에 맞는 단어들 찾기
-            List<PzWord> words = wordRepository.findByDifficultyAndLength(level.getWordDifficulty(), length);
+            // 이미 사용된 단어들 목록 생성
+            List<String> usedWords = new ArrayList<>(confirmedWords.values());
+            
+            // 조건에 맞는 단어들 찾기 (이미 사용된 단어 제외)
+            List<PzWord> words;
+            if (usedWords.isEmpty()) {
+                words = wordRepository.findByDifficultyAndLength(level.getWordDifficulty(), length);
+            } else {
+                words = wordRepository.findByDifficultyAndLengthExcludingUsed(level.getWordDifficulty(), length, usedWords);
+            }
             
             for (PzWord candidateWord : words) {
+                // 이미 사용된 단어인지 확인
+                if (usedWords.contains(candidateWord.getWord())) {
+                    continue;
+                }
+                
                 boolean matchesAllSyllables = true;
                 
                 // 각 교차점 음절이 매칭되는지 확인

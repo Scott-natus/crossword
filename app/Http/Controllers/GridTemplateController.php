@@ -429,7 +429,7 @@ class GridTemplateController extends Controller
                     
                     // 3-1. 교차점을 가지고 있지 않다면 조건에 따라 데이터베이스에서 쿼리를 해와서 결정한다.
                     if (empty($intersections)) {
-                        $extractedWord = $this->extractIndependentWord($word, $template, $queryLog);
+                        $extractedWord = $this->extractIndependentWord($word, $template, $queryLog, $confirmedWords);
                         if ($extractedWord['word'] === '추출 실패') {
                             $extractionFailed = true;
                             break;
@@ -865,7 +865,7 @@ class GridTemplateController extends Controller
     /**
      * 독립 단어 추출 (교차점이 없는 단어)
      */
-    private function extractIndependentWord($word, $template, &$queryLog)
+    private function extractIndependentWord($word, $template, &$queryLog, $confirmedWords = [])
     {
         $length = $word['length'];
         
@@ -881,8 +881,15 @@ class GridTemplateController extends Controller
             ->select('a.word', 'b.hint_text as hint')
             ->where('a.length', $length)
             ->whereIn('a.difficulty', $allowedDifficulties) // 새로운 난이도 규칙 적용
-            ->where('a.is_active', true)
-            ->orderByRaw('RANDOM()');
+            ->where('a.is_active', true);
+        
+        // 이미 사용된 단어들 제외
+        if (!empty($confirmedWords)) {
+            $excludedWords = array_values($confirmedWords);
+            $query->whereNotIn('a.word', $excludedWords);
+        }
+        
+        $query->orderByRaw('RANDOM()');
         
         // 쿼리 로그 수집
         $allowedDifficultiesText = implode(',', $allowedDifficulties);

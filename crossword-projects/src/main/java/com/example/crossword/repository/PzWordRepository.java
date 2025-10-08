@@ -287,4 +287,10 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     @Query("SELECT w FROM PzWord w WHERE w.difficulty = :difficulty AND w.length = :length AND w.isActive = true")
     List<PzWord> findByDifficultyAndLength(@Param("difficulty") Integer difficulty, @Param("length") Integer length);
 
+    /**
+     * 난이도와 길이로 단어 조회 (퍼즐 생성용) - 이미 사용된 단어 제외
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.difficulty = :difficulty AND w.length = :length AND w.isActive = true AND w.word NOT IN :usedWords")
+    List<PzWord> findByDifficultyAndLengthExcludingUsed(@Param("difficulty") Integer difficulty, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
+
 }

@@ -34,12 +34,12 @@ public class PuzzleGameRecordService {
                 .userId(userId)
                 .levelPlayed(level)
                 .gameStatus("completed")
-                .score((Integer) gameData.getOrDefault("score", 0))
-                .playTime((Integer) gameData.getOrDefault("play_time", 0))
-                .hintsUsed((Integer) gameData.getOrDefault("hints_used", 0))
-                .wordsFound((Integer) gameData.getOrDefault("words_found", 0))
-                .totalWords((Integer) gameData.getOrDefault("total_words", 0))
-                .accuracy((Double) gameData.getOrDefault("accuracy", 0.0))
+                .score(convertToInteger(gameData.getOrDefault("score", 0)))
+                .playTime(convertToInteger(gameData.getOrDefault("play_time", 0)))
+                .hintsUsed(convertToInteger(gameData.getOrDefault("hints_used", 0)))
+                .wordsFound(convertToInteger(gameData.getOrDefault("words_found", 0)))
+                .totalWords(convertToInteger(gameData.getOrDefault("total_words", 0)))
+                .accuracy(convertToDouble(gameData.getOrDefault("accuracy", 0.0)))
                 .levelBefore(level)
                 .levelAfter(level + 1)
                 .levelUp(true)
@@ -90,6 +90,34 @@ public class PuzzleGameRecordService {
         } else {
             return String.format("레벨 %d을 %d회 클리어해야 합니다. (현재: %d회, 남은 횟수: %d회)", 
                     level, puzzleLevel.getClearCondition(), clearCount, remaining);
+        }
+    }
+    
+    /**
+     * Object를 Integer로 안전하게 변환
+     */
+    private Integer convertToInteger(Object value) {
+        if (value == null) return 0;
+        if (value instanceof Integer) return (Integer) value;
+        if (value instanceof Number) return ((Number) value).intValue();
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+    
+    /**
+     * Object를 Double로 안전하게 변환
+     */
+    private Double convertToDouble(Object value) {
+        if (value == null) return 0.0;
+        if (value instanceof Double) return (Double) value;
+        if (value instanceof Number) return ((Number) value).doubleValue();
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException e) {
+            return 0.0;
         }
     }
     
