@@ -72,51 +72,55 @@ public class HintGeneratorManagementService {
             
             log.debug("Pageable 설정: page={}, size={}", start / length, length);
             
-            // 검색 조건에 따른 쿼리 구성 (힌트 개수 포함)
+            // 검색 조건과 힌트 보유 상태에 따른 쿼리 구성
             Page<Object[]> wordPage;
+            
+            log.debug("검색 조건: search='{}', status='{}'", search, status);
             
             if (search != null && !search.trim().isEmpty()) {
                 // 검색어가 있는 경우
-                log.debug("검색어로 조회: {}", search.trim());
-                wordPage = pzWordRepository.findActiveWordsWithSearchAndHintCount(search.trim(), pageable);
+                if ("with_hints".equals(status)) {
+                    log.debug("검색어 + 힌트 보유 조회: {}", search.trim());
+                    wordPage = pzWordRepository.findActiveWordsWithSearchAndHintCountAndHasHints(search.trim(), pageable);
+                } else if ("without_hints".equals(status)) {
+                    log.debug("검색어 + 힌트 없음 조회: {}", search.trim());
+                    wordPage = pzWordRepository.findActiveWordsWithSearchAndHintCountAndNoHints(search.trim(), pageable);
+                } else {
+                    log.debug("검색어로 조회: {}", search.trim());
+                    wordPage = pzWordRepository.findActiveWordsWithSearchAndHintCount(search.trim(), pageable);
+                }
             } else {
                 // 검색어가 없는 경우
-                log.debug("전체 조회");
-                wordPage = pzWordRepository.findActiveWordsWithHintCount(pageable);
+                if ("with_hints".equals(status)) {
+                    log.debug("힌트 보유 조회");
+                    wordPage = pzWordRepository.findActiveWordsWithHintCountAndHasHints(pageable);
+                } else if ("without_hints".equals(status)) {
+                    log.debug("힌트 없음 조회");
+                    wordPage = pzWordRepository.findActiveWordsWithHintCountAndNoHints(pageable);
+                } else {
+                    log.debug("전체 조회");
+                    wordPage = pzWordRepository.findActiveWordsWithHintCount(pageable);
+                }
             }
             
             log.debug("조회된 단어 수: {}", wordPage.getContent().size());
         
-            // 힌트 보유 상태 필터링
+            // 결과에서 PzWord와 힌트 개수 추출
             List<Object[]> filteredResults = wordPage.getContent();
             List<PzWord> filteredWords = new ArrayList<>();
             Map<Integer, Integer> hintCounts = new HashMap<>();
             
-            log.debug("필터링 전 결과 수: {}", filteredResults.size());
-            
-            // 결과에서 PzWord와 힌트 개수 추출
             for (Object[] result : filteredResults) {
                 PzWord word = (PzWord) result[0];
-                Long hintCount = (Long) result[1];
+                // COUNT 결과는 Integer 또는 Long일 수 있으므로 안전하게 처리
+                Number hintCountNumber = (Number) result[1];
+                int hintCount = hintCountNumber.intValue();
                 
                 filteredWords.add(word);
-                hintCounts.put(word.getId(), hintCount.intValue());
+                hintCounts.put(word.getId(), hintCount);
             }
             
             log.debug("힌트 개수 조회 결과: {}", hintCounts);
-            
-            // 힌트 보유 상태 필터링
-            if ("with_hints".equals(status)) {
-                filteredWords = filteredWords.stream()
-                    .filter(word -> hintCounts.getOrDefault(word.getId(), 0) > 0)
-                    .collect(Collectors.toList());
-                log.debug("힌트 보유 필터링 후 단어 수: {}", filteredWords.size());
-            } else if ("without_hints".equals(status)) {
-                filteredWords = filteredWords.stream()
-                    .filter(word -> hintCounts.getOrDefault(word.getId(), 0) == 0)
-                    .collect(Collectors.toList());
-                log.debug("힌트 없음 필터링 후 단어 수: {}", filteredWords.size());
-            }
             
             // 힌트 개수로 정렬하는 경우는 쿼리에서 이미 처리됨 (컬럼 인덱스 5)
             if (orderColumn == 5) {
@@ -503,30 +507,106 @@ public class HintGeneratorManagementService {
     // ========== 헬퍼 메서드들 ==========
     
     /**
-     * 더미 힌트 생성 (실제로는 Gemini API 사용)
+     * Gemini API를 사용한 힌트 생성 (라라벨과 동일한 로직)
      */
     private List<PzHint> createDummyHints(PzWord word) {
         List<PzHint> hints = new ArrayList<>();
         
-        // 3가지 난이도의 힌트 생성
-        for (int difficulty = 1; difficulty <= 3; difficulty++) {
-            PzHint hint = new PzHint();
-            hint.setWord(word);
-            hint.setHintText(generateNewHint(word.getWord(), word.getCategory()));
-            hint.setHintType("text");
-            hint.setDifficulty(difficulty);
-            hint.setIsPrimary(difficulty == 1);
-            hint.setCreatedAt(LocalDateTime.now());
-            hint.setUpdatedAt(LocalDateTime.now());
+        try {
+            // Gemini API를 통해 3가지 난이도의 힌트를 한 번에 생성
+            Map<String, Object> geminiResult = generateHintsWithGemini(word.getWord(), word.getCategory());
             
-            hints.add(pzHintRepository.save(hint));
+            if (geminiResult != null && (Boolean) geminiResult.get("success")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> geminiHints = (Map<String, Object>) geminiResult.get("hints");
+                
+                // 3가지 난이도별로 힌트 생성
+                for (int difficulty = 1; difficulty <= 3; difficulty++) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> hintData = (Map<String, Object>) geminiHints.get(String.valueOf(difficulty));
+                    
+                    if (hintData != null && (Boolean) hintData.get("success")) {
+                        PzHint hint = new PzHint();
+                        hint.setWord(word);
+                        hint.setHintText((String) hintData.get("hint"));
+                        hint.setHintType("text");
+                        hint.setDifficulty(difficulty);
+                        hint.setIsPrimary(difficulty == 1);
+                        hint.setCreatedAt(LocalDateTime.now());
+                        hint.setUpdatedAt(LocalDateTime.now());
+                        
+                        hints.add(pzHintRepository.save(hint));
+                        log.info("힌트 생성 성공: 난이도 {} - {}", difficulty, hint.getHintText());
+                    } else {
+                        // API 실패 시 폴백 힌트 생성
+                        PzHint fallbackHint = createFallbackHint(word, difficulty);
+                        hints.add(pzHintRepository.save(fallbackHint));
+                        log.warn("힌트 생성 실패, 폴백 힌트 사용: 난이도 {}", difficulty);
+                    }
+                }
+            } else {
+                // 전체 API 실패 시 폴백 힌트들 생성
+                log.error("Gemini API 전체 실패, 폴백 힌트들 생성");
+                for (int difficulty = 1; difficulty <= 3; difficulty++) {
+                    PzHint fallbackHint = createFallbackHint(word, difficulty);
+                    hints.add(pzHintRepository.save(fallbackHint));
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("힌트 생성 중 예외 발생: {}", e.getMessage());
+            // 예외 발생 시 폴백 힌트들 생성
+            for (int difficulty = 1; difficulty <= 3; difficulty++) {
+                PzHint fallbackHint = createFallbackHint(word, difficulty);
+                hints.add(pzHintRepository.save(fallbackHint));
+            }
         }
         
         return hints;
     }
     
     /**
-     * 새로운 힌트 생성 (Gemini API 사용)
+     * Gemini API를 사용한 다중 힌트 생성 (라라벨과 동일한 로직)
+     */
+    private Map<String, Object> generateHintsWithGemini(String word, String category) {
+        if (geminiApiKey == null || geminiApiKey.trim().isEmpty()) {
+            log.warn("Gemini API 키가 설정되지 않았습니다");
+            return createFailureResponse("API 키가 설정되지 않았습니다");
+        }
+        
+        try {
+            // 라라벨과 동일한 프롬프트 구성
+            String prompt = buildPrompt(word, category);
+            
+            // 요청 본문 구성 (라라벨과 동일)
+            Map<String, Object> requestBody = createGeminiRequestBody(prompt);
+            
+            // API 호출
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            
+            String url = geminiApiUrl + "?key=" + geminiApiKey;
+            log.info("Gemini API 호출 시작: word={}, category={}", word, category);
+            
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                log.info("Gemini API 응답 성공: word={}", word);
+                return extractMultipleHintsFromResponse(response.getBody(), word, category);
+            } else {
+                log.warn("Gemini API 응답 오류: status={}", response.getStatusCode());
+                return createFailureResponse("API 응답 오류: " + response.getStatusCode());
+            }
+            
+        } catch (Exception e) {
+            log.error("Gemini API 호출 실패: word={}, error={}", word, e.getMessage());
+            return createFailureResponse("API 호출 실패: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 새로운 힌트 생성 (Gemini API 사용) - 기존 메서드 유지
      */
     private String generateNewHint(String word, String category) {
         if (geminiApiKey == null || geminiApiKey.trim().isEmpty()) {
@@ -586,20 +666,18 @@ public class HintGeneratorManagementService {
     private Map<String, Object> createGeminiRequestBody(String prompt) {
         Map<String, Object> requestBody = new HashMap<>();
         
+        // 라라벨과 동일한 구조: contents 배열 안에 직접 parts 배열
         Map<String, Object> content = new HashMap<>();
         content.put("parts", Arrays.asList(Map.of("text", prompt)));
         
-        Map<String, Object> candidate = new HashMap<>();
-        candidate.put("content", content);
-        
-        requestBody.put("contents", Arrays.asList(candidate));
+        requestBody.put("contents", Arrays.asList(content));
         
         // 라라벨과 동일한 생성 설정
         Map<String, Object> generationConfig = new HashMap<>();
         generationConfig.put("temperature", 0.8);
         generationConfig.put("topK", 40);
         generationConfig.put("topP", 0.95);
-        generationConfig.put("maxOutputTokens", 1024);
+        generationConfig.put("maxOutputTokens", 2048);
         requestBody.put("generationConfig", generationConfig);
         
         return requestBody;
@@ -633,7 +711,141 @@ public class HintGeneratorManagementService {
     }
     
     /**
-     * 응답 텍스트에서 힌트 추출 (라라벨과 동일한 방식)
+     * Gemini API 응답에서 다중 힌트 추출 (라라벨과 동일한 로직)
+     */
+    private Map<String, Object> extractMultipleHintsFromResponse(Map<String, Object> response, String word, String category) {
+        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> hints = new HashMap<>();
+        Integer frequency = null;
+        
+        try {
+            log.info("Gemini API 응답 구조 확인: {}", response);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
+            
+            if (candidates != null && !candidates.isEmpty()) {
+                Map<String, Object> candidate = candidates.get(0);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> content = (Map<String, Object>) candidate.get("content");
+                
+                if (content != null) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+                    
+                    if (parts != null && !parts.isEmpty()) {
+                        String text = (String) parts.get(0).get("text");
+                        
+                        if (text != null && !text.trim().isEmpty()) {
+                            // 사용빈도 추출
+                            java.util.regex.Pattern frequencyPattern = java.util.regex.Pattern.compile("의 사용빈도\\s*:\\s*(\\d+)");
+                            java.util.regex.Matcher frequencyMatcher = frequencyPattern.matcher(text);
+                            if (frequencyMatcher.find()) {
+                                frequency = Integer.parseInt(frequencyMatcher.group(1));
+                            }
+                            
+                            // 3가지 난이도별 힌트 추출
+                            String[] difficulties = {"쉬움", "보통", "어려움"};
+                            
+                            for (int i = 0; i < difficulties.length; i++) {
+                                int difficulty = i + 1;
+                                String diffText = difficulties[i];
+                                
+                                // 정규식으로 힌트 추출
+                                String pattern = diffText + "\\s*:\\s*([^\\n\\[\\]]+)";
+                                java.util.regex.Pattern hintPattern = java.util.regex.Pattern.compile(pattern);
+                                java.util.regex.Matcher hintMatcher = hintPattern.matcher(text);
+                                
+                                Map<String, Object> hintData = new HashMap<>();
+                                hintData.put("difficulty", difficulty);
+                                hintData.put("difficulty_text", diffText);
+                                
+                                if (hintMatcher.find()) {
+                                    String hintText = hintMatcher.group(1).trim();
+                                    hintData.put("hint", hintText);
+                                    hintData.put("success", true);
+                                    
+                                    // 사용빈도 정보를 첫 번째 힌트에 포함
+                                    if (frequency != null && difficulty == 1) {
+                                        hintData.put("frequency", frequency);
+                                    }
+                                    
+                                    log.info("힌트 추출 성공: 난이도 {} - {}", difficulty, hintText);
+                                } else {
+                                    hintData.put("hint", "힌트 추출 실패");
+                                    hintData.put("success", false);
+                                    log.warn("힌트 추출 실패: 난이도 {}", difficulty);
+                                }
+                                
+                                hints.put(String.valueOf(difficulty), hintData);
+                            }
+                            
+                            result.put("success", true);
+                            result.put("hints", hints);
+                            result.put("word", word);
+                            result.put("category", category);
+                            result.put("frequency", frequency);
+                            
+                            return result;
+                        }
+                    }
+                }
+            }
+            
+            throw new Exception("Invalid response structure");
+            
+        } catch (Exception e) {
+            log.error("다중 힌트 추출 오류: {}", e.getMessage());
+            return createFailureResponse("힌트 추출 중 오류 발생: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 실패 응답 생성 (라라벨과 동일한 구조)
+     */
+    private Map<String, Object> createFailureResponse(String errorMessage) {
+        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> hints = new HashMap<>();
+        
+        String[] difficulties = {"쉬움", "보통", "어려움"};
+        
+        for (int i = 0; i < difficulties.length; i++) {
+            int difficulty = i + 1;
+            String diffText = difficulties[i];
+            
+            Map<String, Object> hintData = new HashMap<>();
+            hintData.put("difficulty", difficulty);
+            hintData.put("difficulty_text", diffText);
+            hintData.put("hint", "힌트 생성 실패");
+            hintData.put("success", false);
+            hintData.put("error", errorMessage);
+            
+            hints.put(String.valueOf(difficulty), hintData);
+        }
+        
+        result.put("success", false);
+        result.put("hints", hints);
+        result.put("error", errorMessage);
+        
+        return result;
+    }
+    
+    /**
+     * 폴백 힌트 생성
+     */
+    private PzHint createFallbackHint(PzWord word, int difficulty) {
+        PzHint hint = new PzHint();
+        hint.setWord(word);
+        hint.setHintText(generateFallbackHint(word.getWord(), word.getCategory()));
+        hint.setHintType("text");
+        hint.setDifficulty(difficulty);
+        hint.setIsPrimary(difficulty == 1);
+        hint.setCreatedAt(LocalDateTime.now());
+        hint.setUpdatedAt(LocalDateTime.now());
+        return hint;
+    }
+    
+    /**
+     * 응답 텍스트에서 힌트 추출 (라라벨과 동일한 방식) - 기존 메서드 유지
      */
     private String extractHintsFromText(String text) {
         try {

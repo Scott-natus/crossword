@@ -193,6 +193,30 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     org.springframework.data.domain.Page<Object[]> findActiveWordsWithSearchAndHintCount(@Param("search") String search, org.springframework.data.domain.Pageable pageable);
     
     /**
+     * 활성화된 단어 조회 (페이징) - 힌트 보유 단어만
+     */
+    @Query("SELECT w, COUNT(h) FROM PzWord w INNER JOIN w.hints h WHERE w.isActive = true GROUP BY w.id ORDER BY COUNT(h) DESC, w.id DESC")
+    org.springframework.data.domain.Page<Object[]> findActiveWordsWithHintCountAndHasHints(org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 활성화된 단어 조회 (페이징) - 힌트 없는 단어만
+     */
+    @Query("SELECT w, 0 FROM PzWord w WHERE w.isActive = true AND NOT EXISTS (SELECT 1 FROM PzHint h WHERE h.word.id = w.id) ORDER BY w.id DESC")
+    org.springframework.data.domain.Page<Object[]> findActiveWordsWithHintCountAndNoHints(org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 활성화된 단어 검색 (페이징) - 힌트 보유 단어만
+     */
+    @Query("SELECT w, COUNT(h) FROM PzWord w INNER JOIN w.hints h WHERE w.isActive = true AND (LOWER(w.word) LIKE LOWER(:search) OR LOWER(w.category) LIKE LOWER(:search)) GROUP BY w.id ORDER BY COUNT(h) DESC, w.id DESC")
+    org.springframework.data.domain.Page<Object[]> findActiveWordsWithSearchAndHintCountAndHasHints(@Param("search") String search, org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 활성화된 단어 검색 (페이징) - 힌트 없는 단어만
+     */
+    @Query("SELECT w, 0 FROM PzWord w WHERE w.isActive = true AND (LOWER(w.word) LIKE LOWER(:search) OR LOWER(w.category) LIKE LOWER(:search)) AND NOT EXISTS (SELECT 1 FROM PzHint h WHERE h.word.id = w.id) ORDER BY w.id DESC")
+    org.springframework.data.domain.Page<Object[]> findActiveWordsWithSearchAndHintCountAndNoHints(@Param("search") String search, org.springframework.data.domain.Pageable pageable);
+    
+    /**
      * 활성화된 단어 수 조회 (힌트 개수 포함) - 페이징용
      */
     @Query("SELECT COUNT(DISTINCT w.id) FROM PzWord w LEFT JOIN w.hints h WHERE w.isActive = true")

@@ -203,20 +203,18 @@ public class HintGenerationService {
         // 프롬프트 구성
         String prompt = createPrompt(word, hintType);
         
+        // 라라벨과 동일한 구조: contents 배열 안에 직접 parts 배열
         Map<String, Object> content = new HashMap<>();
         content.put("parts", Arrays.asList(Map.of("text", prompt)));
         
-        Map<String, Object> candidate = new HashMap<>();
-        candidate.put("content", content);
-        
-        requestBody.put("contents", Arrays.asList(candidate));
+        requestBody.put("contents", Arrays.asList(content));
         
         // 생성 설정
         Map<String, Object> generationConfig = new HashMap<>();
         generationConfig.put("temperature", 0.7);
         generationConfig.put("topK", 40);
         generationConfig.put("topP", 0.95);
-        generationConfig.put("maxOutputTokens", 1024);
+        generationConfig.put("maxOutputTokens", 2048);
         requestBody.put("generationConfig", generationConfig);
         
         return requestBody;

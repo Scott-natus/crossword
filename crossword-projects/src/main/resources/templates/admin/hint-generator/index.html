@@ -33,6 +33,12 @@
                                     <option value="without_hints">힌트 없음</option>
                                 </select>
                             </div>
+                            <div class="col-md-4">
+                                <input type="text" id="searchInput" class="form-control" placeholder="단어 또는 카테고리 검색..." onkeyup="handleSearch()">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-secondary" onclick="clearSearch()">초기화</button>
+                            </div>
                             <div class="col-md-3">
                                 <button class="btn btn-primary" onclick="testAPI()">API 테스트</button>
                             </div>
@@ -143,7 +149,7 @@
                             draw: d.draw,
                             start: d.start,
                             length: d.length,
-                            search: d.search.value,
+                            search: $('#searchInput').val() || '', // 사용자 입력 검색어 사용
                             orderColumn: d.order[0].column,
                             orderDir: d.order[0].dir,
                             status: $('#hintFilter').val() || ''
@@ -225,6 +231,26 @@
                 wordsTable.ajax.reload();
             } else {
                 initializeDataTable();
+            }
+        }
+        
+        // 검색 처리 (디바운싱 적용)
+        let searchTimeout;
+        function handleSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (wordsTable) {
+                    wordsTable.ajax.reload();
+                }
+            }, 500); // 500ms 지연
+        }
+        
+        // 검색 초기화
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('hintFilter').value = '';
+            if (wordsTable) {
+                wordsTable.ajax.reload();
             }
         }
         
