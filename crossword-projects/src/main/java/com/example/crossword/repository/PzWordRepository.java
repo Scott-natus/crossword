@@ -47,6 +47,11 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     Optional<PzWord> findByWordAndIsActiveTrue(String word);
     
     /**
+     * 단어와 카테고리로 조회 (중복 체크용)
+     */
+    Optional<PzWord> findByWordAndCategory(String word, String category);
+    
+    /**
      * 고유한 카테고리 목록 조회
      */
     @Query("SELECT DISTINCT w.category FROM PzWord w WHERE w.isActive = true ORDER BY w.category")
