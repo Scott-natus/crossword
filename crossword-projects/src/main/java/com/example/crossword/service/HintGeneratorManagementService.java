@@ -37,7 +37,7 @@ public class HintGeneratorManagementService {
     @Value("${gemini.api.key:}")
     private String geminiApiKey;
     
-    @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent}")
+    @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent}")
     private String geminiApiUrl;
     
     /**

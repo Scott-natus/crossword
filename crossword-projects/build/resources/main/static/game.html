@@ -75,6 +75,59 @@
             font-size: 0.875rem;
         }
         
+        /* 레벨 게이지 스타일 */
+        .level-gauge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 10px;
+        }
+        
+        .gauge-container {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .gauge-segments {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .gauge-segment {
+            width: 16px;
+            height: 16px;
+            background: #e9ecef;
+            border: 1px solid #6c757d;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .gauge-segment.filled {
+            background: #00ff00; /* 녹색 형광 */
+            border-color: #00cc00;
+            color: #000;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.6); /* 형광 효과 */
+        }
+        
+        .gauge-segment.empty {
+            background: #e9ecef;
+            border-color: #6c757d;
+            color: #6c757d;
+        }
+        
+        .gauge-text {
+            font-size: 0.75rem;
+            color: #6c757d;
+            white-space: nowrap;
+        }
+        
         .puzzle-cell {
             width: 40px;
             height: 40px;
@@ -223,10 +276,21 @@
                     
                     <div class="card-header d-flex flex-column align-items-center">
                         <div class="w-100 d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                                레벨 <span id="current-level">1</span>
-                                <span class="ms-2 text-secondary" id="level-name">(초급)</span>
-                        </h5>
+                        <div class="d-flex align-items-center">
+                            <h5 class="mb-0">
+                                <span id="level-name">단어발견 <span id="current-level">1</span></span>
+                            </h5>
+                            <div class="level-gauge">
+                                <div class="gauge-container">
+                                    <div class="gauge-segments" id="level-gauge-segments">
+                                        <!-- 게이지 세그먼트들이 동적으로 생성됩니다 -->
+                                    </div>
+                                </div>
+                                <div class="gauge-text">
+                                    <span id="gauge-progress">0</span>/<span id="gauge-total">0</span>
+                                </div>
+                            </div>
+                        </div>
                             <div>
                                 <span class="badge bg-primary me-2">정답: <span id="correct-count">0</span></span>
                                 <span class="badge bg-danger me-2">오답: <span id="wrong-count">0</span></span>
@@ -615,6 +679,9 @@
                     levelData = response.level;
                     templateData = response.template;
                     
+                    // clear_count를 전역 변수로 저장 (최상위 레벨에 있음)
+                    window.clearCount = response.clear_count;
+                    
                     // 게임 정보 표시
                     updateGameInfo();
                     
@@ -646,15 +713,23 @@
         function updateGameInfo() {
             if (gameData && levelData) {
                 $('#current-level').text(gameData.currentLevel || 1);
-                $('#level-name').text(`(${levelData.levelName || '초급'})`);
+                $('#level-name').text(`단어발견 ${gameData.currentLevel || 1}`);
                 $('#correct-count').text(gameData.currentLevelCorrectAnswers || 0);
                 $('#wrong-count').text(gameData.currentLevelWrongAnswers || 0);
+                
+                // 레벨 게이지 초기화 (항상 표시) - 클리어 횟수 기반으로 변경
+                const clearCondition = levelData.clearCondition || levelData.clear_condition || 1;
+                const clearCount = window.clearCount || 0; // 전역 변수에서 클리어 횟수 가져오기
+                console.log('게이지 디버깅:', { clearCondition, clearCount });
+                createLevelGauge(clearCondition);
+                updateLevelGauge(clearCount, clearCondition); // 클리어 횟수 사용
+                $('.level-gauge').show();
                 
                 if (levelData.timeLimit > 0) {
                     timeLeft = levelData.timeLimit;
                     $('#time-left').text(timeLeft);
                     $('#timer').show();
-                    } else {
+                } else {
                     $('#timer').hide();
                 }
             }
@@ -983,6 +1058,8 @@
                         // 게임 상태 업데이트 (라라벨과 동일)
                         answeredWords.add(currentWordId);
                         answeredWordsData.set(currentWordId, data.correct_answer);
+                        
+                        // 레벨 게이지는 퍼즐 완료 시에만 업데이트 (정답 개수와 무관)
                         
                         // 입력값만 초기화하고 입력 영역은 유지
                         $('#answer-input').val('');
@@ -1659,6 +1736,32 @@
             }
         }
 
+        // 레벨 게이지 생성 및 업데이트
+        function createLevelGauge(totalSegments) {
+            const gaugeContainer = $('#level-gauge-segments');
+            gaugeContainer.empty();
+            
+            for (let i = 0; i < totalSegments; i++) {
+                gaugeContainer.append('<div class="gauge-segment"></div>');
+            }
+            
+            $('#gauge-total').text(totalSegments);
+        }
+        
+        function updateLevelGauge(currentProgress, totalSegments) {
+            const segments = $('#level-gauge-segments .gauge-segment');
+            
+            // 모든 세그먼트 초기화
+            segments.removeClass('filled').addClass('empty');
+            
+            // 현재 진행도에 따라 세그먼트 채우기
+            for (let i = 0; i < Math.min(currentProgress, totalSegments); i++) {
+                segments.eq(i).removeClass('empty').addClass('filled');
+            }
+            
+            $('#gauge-progress').text(currentProgress);
+        }
+        
         // 클리어 조건 업데이트 (Laravel과 동일한 로직)
         function updateClearCondition() {
             if (levelData && levelData.clear_condition > 1) {

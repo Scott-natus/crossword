@@ -789,6 +789,9 @@ public class PuzzleGameController {
             if (puzzleData != null && gameState != null) {
                 System.out.println("기존 퍼즐 데이터 복원 성공");
                 
+                // 레벨 클리어 횟수 조회
+                Long clearCount = puzzleGameRecordService.getClearCountByUserAndLevel(game.getUserId(), level.getLevel());
+                
                 Map<String, Object> result = new HashMap<>();
                 result.put("template", puzzleData.get("template"));
                 result.put("level", level);
@@ -796,6 +799,7 @@ public class PuzzleGameController {
                 result.put("game_state", gameState);
                 result.put("answered_words_with_answers", gameState.get("answered_words_with_answers"));
                 result.put("is_restored", true);
+                result.put("clear_count", clearCount); // 레벨 클리어 횟수 추가
                 
                 return result;
             } else {
@@ -846,12 +850,16 @@ public class PuzzleGameController {
             
             System.out.println("새 퍼즐 생성 완료 - 레벨: " + level.getLevel() + ", current_level_correct_answers: " + game.getCurrentLevelCorrectAnswers() + " (새 퍼즐로 초기화)");
                 
+            // 레벨 클리어 횟수 조회
+            Long clearCount = puzzleGameRecordService.getClearCountByUserAndLevel(game.getUserId(), level.getLevel());
+            
             Map<String, Object> result = new HashMap<>();
             result.put("template", extractionResult.get("template"));
             result.put("level", level);
             result.put("game", game);
             result.put("game_state", gameState);
             result.put("answered_words_with_answers", new HashMap<>());
+            result.put("clear_count", clearCount); // 레벨 클리어 횟수 추가
             
             return result;
             
