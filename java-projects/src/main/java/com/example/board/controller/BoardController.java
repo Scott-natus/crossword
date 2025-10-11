@@ -12,6 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -132,38 +133,61 @@ public class BoardController {
                       @PathVariable Long id, 
                       Model model) {
         
-        Optional<Board> boardOpt = boardRepository.findById(id);
-        if (boardOpt.isEmpty()) {
-            return "error/404";
+        System.out.println("=== BoardController.show() 시작 ===");
+        System.out.println("boardType: " + boardType + ", id: " + id);
+        
+        try {
+            Optional<Board> boardOpt = boardRepository.findById(id);
+            if (boardOpt.isEmpty()) {
+                System.out.println("게시물을 찾을 수 없음: " + id);
+                return "error/404";
+            }
+            
+            Board board = boardOpt.get();
+            System.out.println("게시물 찾음: " + board.getTitle());
+            
+            // 게시판 타입 확인
+            if (!board.getBoardType().getSlug().equals(boardType)) {
+                System.out.println("게시판 타입 불일치: " + board.getBoardType().getSlug() + " != " + boardType);
+                return "error/404";
+            }
+            
+            // 인증이 필요한 게시판인지 확인
+            if (board.getBoardType().getRequiresAuth() && !isAuthenticated()) {
+                System.out.println("인증 필요");
+                return "redirect:/login?error=login_required";
+            }
+            
+            // 조회수 증가
+            board.setViews(board.getViews() + 1);
+            boardRepository.save(board);
+            System.out.println("조회수 증가 완료");
+            
+            // 댓글 조회
+            System.out.println("댓글 조회 시작");
+            List<BoardComment> comments = boardCommentRepository.findTopLevelCommentsByBoard(board);
+            System.out.println("댓글 조회 완료: " + comments.size() + "개");
+            
+            // 트리 구조 조회 (원글~답글)
+            System.out.println("트리 구조 조회 시작");
+            List<Board> thread = getThread(board);
+            System.out.println("트리 구조 조회 완료: " + thread.size() + "개");
+            
+            model.addAttribute("board", board);
+            model.addAttribute("comments", comments);
+            model.addAttribute("thread", thread);
+            
+            System.out.println("모델 속성 설정 완료");
+            System.out.println("=== BoardController.show() 성공 ===");
+            
+            return "board/show";
+            
+        } catch (Exception e) {
+            System.out.println("=== BoardController.show() 오류 ===");
+            System.out.println("오류 메시지: " + e.getMessage());
+            e.printStackTrace();
+            return "error/500";
         }
-        
-        Board board = boardOpt.get();
-        
-        // 게시판 타입 확인
-        if (!board.getBoardType().getSlug().equals(boardType)) {
-            return "error/404";
-        }
-        
-        // 인증이 필요한 게시판인지 확인
-        if (board.getBoardType().getRequiresAuth() && !isAuthenticated()) {
-            return "redirect:/login?error=login_required";
-        }
-        
-        // 조회수 증가
-        board.setViews(board.getViews() + 1);
-        boardRepository.save(board);
-        
-        // 댓글 조회
-        List<BoardComment> comments = boardCommentRepository.findTopLevelCommentsByBoard(board);
-        
-        // 트리 구조 조회 (원글~답글)
-        List<Board> thread = getThread(board);
-        
-        model.addAttribute("board", board);
-        model.addAttribute("comments", comments);
-        model.addAttribute("thread", thread);
-        
-        return "board/show";
     }
     
     @GetMapping("/{boardType}/{id}/edit")
@@ -279,6 +303,12 @@ public class BoardController {
     private List<Board> getThread(Board board) {
         // 트리 구조를 평탄화하는 로직
         // 실제 구현에서는 더 복잡한 트리 구조 처리가 필요할 수 있음
-        return boardRepository.findByParentIdOrderByCreatedAtAsc(board.getId());
+        try {
+            List<Board> children = boardRepository.findByParentIdOrderByCreatedAtAsc(board.getId());
+            return children != null ? children : new ArrayList<>();
+        } catch (Exception e) {
+            // 예외 발생 시 빈 리스트 반환
+            return new ArrayList<>();
+        }
     }
 }

@@ -14,6 +14,7 @@ import com.example.crossword.service.PzHintService;
 import com.example.crossword.service.PuzzleGameRecordService;
 import com.example.crossword.service.HintGeneratorManagementService;
 import com.example.crossword.service.WordService;
+import com.example.crossword.service.UserWrongAnswerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -64,6 +65,9 @@ public class PuzzleGameController {
     
     @Autowired
     private WordService wordService;
+    
+    @Autowired
+    private UserWrongAnswerService userWrongAnswerService;
 
     /**
      * 메인 퍼즐게임 페이지 - 라라벨과 동일한 로직
@@ -245,6 +249,22 @@ public class PuzzleGameController {
                 // 오답 처리
                 game.setCurrentLevelWrongAnswers(game.getCurrentLevelWrongAnswers() + 1);
                 int wrongCount = game.getCurrentLevelWrongAnswers();
+                
+                // 오답을 user_wrong_answers 테이블에 저장 (Laravel과 동일)
+                try {
+                    userWrongAnswerService.saveWrongAnswer(
+                        userId, 
+                        wordId.longValue(), 
+                        answer, 
+                        word.getWord(), 
+                        word.getCategory(), 
+                        game.getCurrentLevel()
+                    );
+                    logger.info("오답 기록 저장 완료 - userId={}, wordId={}, userAnswer='{}', correctAnswer='{}', category='{}', level={}", 
+                        userId, wordId, answer, word.getWord(), word.getCategory(), game.getCurrentLevel());
+                } catch (Exception e) {
+                    logger.error("오답 기록 저장 실패 - userId={}, wordId={}, error={}", userId, wordId, e.getMessage());
+                }
                 
                 logger.info("오답 처리 - userId={}, wordId={}, 제출답안='{}', 정답='{}', 현재오답수={}, 레벨={}", 
                     userId, wordId, answer, word.getWord(), wrongCount, game.getCurrentLevel());
@@ -1142,6 +1162,54 @@ public class PuzzleGameController {
         }
     }
     
+    /**
+     * 오답 통계 조회 API
+     */
+    @GetMapping("/wrong-answers/statistics")
+    public ResponseEntity<Map<String, Object>> getWrongAnswerStatistics() {
+        try {
+            Map<String, Object> statistics = userWrongAnswerService.getWrongAnswerStatistics();
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            logger.error("오답 통계 조회 실패: {}", e.getMessage());
+            return ResponseEntity.internalServerError()
+                .body(Map.of("error", "오답 통계 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * 오답으로 자주 등록된 단어들 조회 API
+     */
+    @GetMapping("/wrong-answers/most-wrong")
+    public ResponseEntity<List<Object[]>> getMostWrongAnswers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            org.springframework.data.domain.Pageable pageable = 
+                org.springframework.data.domain.PageRequest.of(page, size);
+            List<Object[]> mostWrongAnswers = userWrongAnswerService.getMostWrongAnswers(pageable);
+            return ResponseEntity.ok(mostWrongAnswers);
+        } catch (Exception e) {
+            logger.error("자주 틀린 단어 조회 실패: {}", e.getMessage());
+            return ResponseEntity.internalServerError().body(null);
+        }
+    }
+    
+    /**
+     * 특정 사용자의 오답 기록 조회 API
+     */
+    @GetMapping("/wrong-answers/user/{userId}")
+    public ResponseEntity<List<com.example.crossword.entity.UserWrongAnswer>> getUserWrongAnswers(@PathVariable Long userId) {
+        try {
+            List<com.example.crossword.entity.UserWrongAnswer> wrongAnswers = 
+                userWrongAnswerService.getUserWrongAnswers(userId);
+            return ResponseEntity.ok(wrongAnswers);
+        } catch (Exception e) {
+            logger.error("사용자 오답 기록 조회 실패: userId={}, error={}", userId, e.getMessage());
+            return ResponseEntity.internalServerError().body(null);
+        }
+    }
+
     /**
      * 오답 초과 시 모든 정답 반환 (보안: wrong_count_exceeded 상태에서만 접근 가능)
      */
