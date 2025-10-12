@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class PuzzleGridTemplateService {
@@ -33,6 +32,9 @@ public class PuzzleGridTemplateService {
     
     @Autowired
     private ObjectMapper objectMapper;
+    
+    @Autowired
+    private FailedWordExtractionService failedWordExtractionService;
 
     /**
      * 라라벨의 extractWords 메서드와 동일한 로직
@@ -105,6 +107,13 @@ public class PuzzleGridTemplateService {
                         Map<String, Object> extractedWord = extractIndependentWord(word, level, confirmedWords);
                         if ("추출 실패".equals(extractedWord.get("word"))) {
                             System.out.println("단어 ID " + wordId + " 독립 추출 실패");
+                            
+                            // 실패한 단어 추출 정보 저장
+                            failedWordExtractionService.saveIndependentWordFailure(
+                                template.getId(), level.getLevel(), level.getWordDifficulty(),
+                                level.getHintDifficulty(), level.getIntersectionCount(),
+                                wordId, word, confirmedWords, retryCount);
+                            
                             extractionFailed = true;
                             break;
                         }
@@ -164,6 +173,16 @@ public class PuzzleGridTemplateService {
                             ));
                             confirmedWords.put(wordId, (String) extractedWord.get("word"));
                         } else {
+                            // 교차점 단어 추출 실패 정보 저장
+                            String failureReason = String.format("교차점 단어 추출 실패 - 길이: %s, 난이도: %s, 교차점 개수: %d", 
+                                word.get("length"), level.getWordDifficulty(), intersections.size());
+                            
+                            failedWordExtractionService.saveIntersectionWordFailure(
+                                template.getId(), level.getLevel(), level.getWordDifficulty(),
+                                level.getHintDifficulty(), level.getIntersectionCount(),
+                                wordId, word, failureReason, confirmedWords,
+                                confirmedIntersectionSyllables, retryCount);
+                            
                             extractionFailed = true;
                             break;
                         }
@@ -183,6 +202,23 @@ public class PuzzleGridTemplateService {
             if (extractionFailed || extractedWords.size() != wordPositions.size()) {
                 System.out.println("단어 추출 최종 실패 - 추출된 단어: " + extractedWords.size() + 
                     ", 필요한 단어: " + wordPositions.size());
+                
+                // 최종 실패 정보 저장 (마지막 시도에서 실패한 단어들)
+                for (Map<String, Object> word : wordPositions) {
+                    Integer wordId = (Integer) word.get("id");
+                    if (!confirmedWords.containsKey(wordId)) {
+                        // 아직 확정되지 않은 단어들에 대해 실패 로그 저장
+                        String failureReason = String.format("5회 시도 후 최종 실패 - 추출된 단어: %d/%d", 
+                            extractedWords.size(), wordPositions.size());
+                        
+                        failedWordExtractionService.saveFailedExtraction(
+                            template.getId(), level.getLevel(), level.getWordDifficulty(),
+                            level.getHintDifficulty(), level.getIntersectionCount(),
+                            wordId, word, failureReason, confirmedWords,
+                            null, maxRetries);
+                    }
+                }
+                
                 return Map.of("success", false, "message", 
                     "단어 추출에 실패했습니다. 모든 단어를 추출할 수 없습니다. (추출된 단어: " + 
                     extractedWords.size() + "/" + wordPositions.size() + ")");
@@ -303,7 +339,7 @@ public class PuzzleGridTemplateService {
     private Map<String, Object> findConnectionPoint(Map<String, Object> word1, Map<String, Object> word2) {
         String direction = (String) word1.get("direction");
         
-        if (direction.equals("horizontal")) {
+        if ("horizontal".equals(direction)) {
             // 가로 단어들 간의 연결점 찾기
             Integer startX1 = (Integer) word1.get("start_x");
             Integer endX1 = (Integer) word1.get("end_x");
@@ -317,7 +353,7 @@ public class PuzzleGridTemplateService {
                 Integer connectX = endX1 + 1 == startX2 ? endX1 + 1 : endX2 + 1;
                 return Map.of("x", connectX, "y", y1);
             }
-        } else if (direction.equals("vertical")) {
+        } else if ("vertical".equals(direction)) {
             // 세로 단어들 간의 연결점 찾기
             Integer startY1 = (Integer) word1.get("start_y");
             Integer endY1 = (Integer) word1.get("end_y");
@@ -341,7 +377,6 @@ public class PuzzleGridTemplateService {
      */
     private Map<String, Object> extractIndependentWord(Map<String, Object> word, PuzzleLevel level, Map<Integer, String> confirmedWords) {
         try {
-            String direction = (String) word.get("direction");
             Integer length = (Integer) word.get("length");
             
             // 이미 사용된 단어들 목록 생성
@@ -389,7 +424,6 @@ public class PuzzleGridTemplateService {
             Map<Integer, String> confirmedWords) {
         
         try {
-            String direction = (String) word.get("direction");
             Integer length = (Integer) word.get("length");
             
             // 이미 사용된 단어들 목록 생성
@@ -490,24 +524,4 @@ public class PuzzleGridTemplateService {
         return "●".repeat(word.length());
     }
 
-    /**
-     * JSON 파싱 헬퍼 메서드들
-     */
-    private List<Map<String, Object>> parseWordPositions(String wordPositionsJson) {
-        try {
-            return objectMapper.readValue(wordPositionsJson, new TypeReference<List<Map<String, Object>>>() {});
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new ArrayList<>();
-        }
-    }
-
-    private List<List<Integer>> parseGridPattern(String gridPatternJson) {
-        try {
-            return objectMapper.readValue(gridPatternJson, new TypeReference<List<List<Integer>>>() {});
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new ArrayList<>();
-        }
-    }
 }

@@ -100,3 +100,6 @@ public interface UserWrongAnswerRepository extends JpaRepository<UserWrongAnswer
      */
     List<UserWrongAnswer> findByUserIdAndLevelOrderByCreatedAtDesc(Long userId, Integer level);
 }
+
+
+

@@ -313,18 +313,15 @@ public class WordExtractionService {
         // 새로운 난이도 규칙 적용
         List<Integer> allowedDifficulties = getAllowedDifficulties(wordDifficulty);
         
-        // 랜덤 단어 추출
-        List<PzWord> words = pzWordRepository.findByLengthAndDifficultyInAndIsActiveTrue(length, allowedDifficulties);
+        // 랜덤 단어 추출 (DB에서 직접 랜덤 1개 선택)
+        PzWord selectedWord = pzWordRepository.findByLengthAndDifficultyInAndIsActiveTrueRandom(length, allowedDifficulties);
         
-        if (words.isEmpty()) {
+        if (selectedWord == null) {
             return Map.of(
                     "word", "추출 실패",
                     "hint", "조건에 맞는 단어를 찾을 수 없습니다."
             );
         }
-        
-        // 랜덤 선택
-        PzWord selectedWord = words.get(new Random().nextInt(words.size()));
         
         // 힌트 조회
         List<PzHint> hints = pzHintRepository.findByWordIdOrderById(selectedWord.getId());
@@ -368,56 +365,94 @@ public class WordExtractionService {
         // 새로운 난이도 규칙 적용
         List<Integer> allowedDifficulties = getAllowedDifficulties(wordDifficulty);
         
-        // 확정된 음절들을 기반으로 조건 생성
-        List<PzWord> candidates = pzWordRepository.findByLengthAndDifficultyInAndIsActiveTrue(length, allowedDifficulties);
+        // 이미 사용된 단어들 목록 생성
+        List<String> usedWords = new ArrayList<>(confirmedWords.values());
         
-        // 교차점을 공유하는 다른 단어들과 같은 단어 제외
-        if (!confirmedWords.isEmpty()) {
-            candidates = candidates.stream()
-                    .filter(w -> !confirmedWords.containsValue(w.getWord()))
-                    .collect(Collectors.toList());
-        }
-        
-        // 각 확정된 음절에 대한 조건 추가
-        List<PzWord> filteredCandidates = new ArrayList<>();
-        for (PzWord candidate : candidates) {
-            boolean matchesAllSyllables = true;
+        // 교차점이 1개인 경우
+        if (intersections.size() == 1) {
+            Map<String, Object> intersection = intersections.get(0);
+            Map<String, Object> position = (Map<String, Object>) intersection.get("position");
+            Integer syllablePos = getSyllablePosition(word, position);
+            String requiredSyllable = getConfirmedSyllable(intersection, confirmedWords, allWordPositions);
             
-            for (Map<String, Object> intersection : intersections) {
-                Map<String, Object> position = (Map<String, Object>) intersection.get("position");
-                Integer syllablePos = getSyllablePosition(word, position);
-                String requiredSyllable = getConfirmedSyllable(intersection, confirmedWords, allWordPositions);
-                
-                if (syllablePos > candidate.getWord().length() || 
-                    !candidate.getWord().substring(syllablePos - 1, syllablePos).equals(requiredSyllable)) {
-                    matchesAllSyllables = false;
-                    break;
-                }
+            // DB에서 직접 교차점 음절 조건으로 조회
+            PzWord selectedWord;
+            if (usedWords.isEmpty()) {
+                // 사용된 단어가 없으면 제외 조건 없는 쿼리 사용
+                selectedWord = pzWordRepository.findByLengthAndDifficultyWithSyllableNoExclude(
+                        length, allowedDifficulties, syllablePos, requiredSyllable);
+            } else {
+                // 사용된 단어가 있으면 제외 조건 있는 쿼리 사용
+                selectedWord = pzWordRepository.findByLengthAndDifficultyWithSyllable(
+                        length, allowedDifficulties, usedWords, syllablePos, requiredSyllable);
             }
             
-            if (matchesAllSyllables) {
-                filteredCandidates.add(candidate);
+            if (selectedWord == null) {
+                return Map.of(
+                        "success", false,
+                        "message", "확정된 음절과 매칭되는 단어를 찾을 수 없습니다."
+                );
             }
-        }
-        
-        if (filteredCandidates.isEmpty()) {
+            
+            // 힌트 조회
+            List<PzHint> hints = pzHintRepository.findByWordIdOrderById(selectedWord.getId());
+            String hint = hints.isEmpty() ? "힌트 없음" : hints.get(0).getHintText();
+            
             return Map.of(
-                    "success", false,
-                    "message", "확정된 음절들과 매칭되는 단어를 찾을 수 없습니다."
+                    "success", true,
+                    "word", selectedWord.getWord(),
+                    "hint", hint
             );
         }
         
-        // 랜덤 선택
-        PzWord selectedWord = filteredCandidates.get(new Random().nextInt(filteredCandidates.size()));
+        // 교차점이 2개인 경우
+        if (intersections.size() == 2) {
+            Map<String, Object> intersection1 = intersections.get(0);
+            Map<String, Object> intersection2 = intersections.get(1);
+            
+            Map<String, Object> position1 = (Map<String, Object>) intersection1.get("position");
+            Map<String, Object> position2 = (Map<String, Object>) intersection2.get("position");
+            
+            Integer syllablePos1 = getSyllablePosition(word, position1);
+            Integer syllablePos2 = getSyllablePosition(word, position2);
+            String requiredSyllable1 = getConfirmedSyllable(intersection1, confirmedWords, allWordPositions);
+            String requiredSyllable2 = getConfirmedSyllable(intersection2, confirmedWords, allWordPositions);
+            
+            // DB에서 직접 두 교차점 음절 조건으로 조회
+            PzWord selectedWord;
+            if (usedWords.isEmpty()) {
+                // 사용된 단어가 없으면 제외 조건 없는 쿼리 사용
+                selectedWord = pzWordRepository.findByLengthAndDifficultyWithTwoSyllablesNoExclude(
+                        length, allowedDifficulties, syllablePos1, requiredSyllable1, syllablePos2, requiredSyllable2);
+            } else {
+                // 사용된 단어가 있으면 제외 조건 있는 쿼리 사용
+                selectedWord = pzWordRepository.findByLengthAndDifficultyWithTwoSyllables(
+                        length, allowedDifficulties, usedWords, 
+                        syllablePos1, requiredSyllable1, syllablePos2, requiredSyllable2);
+            }
+            
+            if (selectedWord == null) {
+                return Map.of(
+                        "success", false,
+                        "message", "확정된 음절들과 매칭되는 단어를 찾을 수 없습니다."
+                );
+            }
+            
+            // 힌트 조회
+            List<PzHint> hints = pzHintRepository.findByWordIdOrderById(selectedWord.getId());
+            String hint = hints.isEmpty() ? "힌트 없음" : hints.get(0).getHintText();
+            
+            return Map.of(
+                    "success", true,
+                    "word", selectedWord.getWord(),
+                    "hint", hint
+            );
+        }
         
-        // 힌트 조회
-        List<PzHint> hints = pzHintRepository.findByWordIdOrderById(selectedWord.getId());
-        String hint = hints.isEmpty() ? "힌트 없음" : hints.get(0).getHintText();
-        
+        // 교차점이 3개 이상인 경우는 기존 방식 유지 (복잡도가 높아서)
         return Map.of(
-                "success", true,
-                "word", selectedWord.getWord(),
-                "hint", hint
+                "success", false,
+                "message", "3개 이상의 교차점은 아직 지원하지 않습니다."
         );
     }
 

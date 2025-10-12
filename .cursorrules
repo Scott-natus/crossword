@@ -151,6 +151,16 @@
 - 서비스 권한 문제로 시작 실패, www-data 사용자 권한 설정 필요
 - 빌드 파일(`index.html`, `bundle.js`) 정상 생성 확인
 
+# 2025-10-12 작업 내역 (실패한 단어 추출 로깅 시스템 구축)
+- 템플릿 로드 실패 시 실패한 단어 추출 정보 저장 시스템 구현
+- `failed_word_extractions` 테이블 생성 및 JPA 엔티티 구현
+- `FailedWordExtractionService` 및 `FailedWordExtractionController` 구현
+- PuzzleGridTemplateService에 실패 로깅 로직 추가
+- 독립 단어 추출 실패, 교차점 단어 추출 실패, 5회 시도 후 최종 실패 로깅
+- 실패 통계 조회 API 엔드포인트 구현
+- 실패 패턴 분석을 위한 다양한 조회 메서드 제공
+- docs/FAILED_WORD_EXTRACTION_LOGGING.md 문서화 완료
+
 # 2025-07-10 작업 내역 (React Native 웹앱 인증 시스템 구축)
 - React Native 웹앱 인증 시스템 구축 (토큰 기반)
 - API 서버 8080 포트로 분리 (기존 라라벨 웹서비스와 독립)

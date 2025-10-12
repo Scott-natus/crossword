@@ -284,7 +284,7 @@ public class CrosswordGeneratorService {
     }
     
     /**
-     * 퍼즐 레벨에 맞는 단어들을 선택
+     * 퍼즐 레벨에 맞는 단어들을 선택 (최적화된 쿼리 사용)
      */
     private List<Word> selectWordsForPuzzle(PuzzleLevel puzzleLevel) {
         log.debug("퍼즐 레벨에 맞는 단어 선택: {}", puzzleLevel.getLevelName());
@@ -293,7 +293,8 @@ public class CrosswordGeneratorService {
         int targetWordCount = puzzleLevel.getWordCount();
         int minIntersectionCount = puzzleLevel.getIntersectionCount();
         
-        // 1단계: 난이도에 맞는 단어들 가져오기
+        // 최적화된 쿼리를 사용하여 단어 선택
+        // 1단계: 난이도에 맞는 단어들을 최적화된 쿼리로 가져오기
         List<Word> candidateWords = wordService.getWordsByDifficultyRange(
             puzzleLevel.getWordDifficulty(), 
             puzzleLevel.getWordDifficulty()
@@ -308,18 +309,19 @@ public class CrosswordGeneratorService {
         Map<Integer, List<Word>> wordsByLength = candidateWords.stream()
             .collect(Collectors.groupingBy(Word::getLength));
         
-        // 3단계: 다양한 길이의 단어 선택
+        // 3단계: 다양한 길이의 단어 선택 (최적화된 랜덤 쿼리 사용)
         List<Integer> lengths = new ArrayList<>(wordsByLength.keySet());
         Collections.shuffle(lengths);
         
         for (Integer length : lengths) {
             if (selectedWords.size() >= targetWordCount) break;
             
-            List<Word> wordsOfLength = wordsByLength.get(length);
+            // 최적화된 랜덤 쿼리 사용: 특정 길이의 랜덤 단어 조회
+            List<Word> wordsOfLength = wordService.getRandomWordsByLength(length, 2);
+            
             if (wordsOfLength != null && !wordsOfLength.isEmpty()) {
                 // 랜덤하게 1-2개 선택
                 int selectCount = Math.min(2, Math.min(wordsOfLength.size(), targetWordCount - selectedWords.size()));
-                Collections.shuffle(wordsOfLength);
                 
                 for (int i = 0; i < selectCount; i++) {
                     selectedWords.add(wordsOfLength.get(i));

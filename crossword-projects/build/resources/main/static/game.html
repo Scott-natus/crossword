@@ -261,6 +261,37 @@
                 font-size: 8px;
             }
         }
+        
+        /* 모바일 친화적 게임종료 모달 스타일 */
+        @media screen and (max-width: 768px) {
+            #wrongAnswerModal .modal-dialog {
+                margin: 0;
+                max-height: 40vh;
+                overflow-y: auto;
+            }
+            
+            #wrongAnswerModal .modal-content {
+                border-radius: 10px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            }
+            
+            #wrongAnswerModal .modal-body {
+                padding: 1rem;
+                max-height: 25vh;
+                overflow-y: auto;
+            }
+            
+            #wrongAnswerModal .modal-footer {
+                padding: 0.75rem 1rem;
+                border-top: 1px solid #dee2e6;
+                background-color: #f8f9fa;
+            }
+            
+            #wrongAnswerModal .btn {
+                min-height: 44px; /* 터치 친화적 버튼 크기 */
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1551,7 +1582,8 @@
                 messageDiv.text(message).removeClass().addClass('mb-0 text-danger');
             }
             
-            // 모달 표시
+            // aria-hidden 속성 제거 후 모달 표시
+            modal.removeAttr('aria-hidden');
             modal.modal('show');
             
             // 자동으로 모달 닫기
@@ -1560,6 +1592,11 @@
                 // 포커스 제거 후 모달 닫기
                 modal.find('*').blur();
                 modal.modal('hide');
+                
+                // 모달 숨김 후 aria-hidden 속성 복원
+                setTimeout(function() {
+                    modal.attr('aria-hidden', 'true');
+                }, 300);
             }, duration);
         }
 
@@ -1884,6 +1921,9 @@
             // Bootstrap Modal로 표시
             const modalElement = document.getElementById('wrongAnswerModal');
             if (modalElement) {
+                // aria-hidden 속성 제거 후 모달 표시
+                modalElement.removeAttribute('aria-hidden');
+                
                 const modal = new bootstrap.Modal(modalElement);
                 modal.show();
                 
@@ -1958,25 +1998,43 @@
             });
         }
         
-        // word-input-section 영역 위에 모달 덮어쓰기
+        // 모달을 그리드 아래쪽에 위치시키기 (그리드 가리지 않음)
         function positionModalAtHintArea() {
-            const wordInputSection = $('#word-input-section');
-            if (wordInputSection.length > 0) {
-                const sectionOffset = wordInputSection.offset();
-                const sectionWidth = wordInputSection.outerWidth();
-                const sectionHeight = wordInputSection.outerHeight();
-                
-                // 모달을 word-input-section 영역 위에 덮어쓰기
-                const modalDialog = $('#wrongAnswerModal .modal-dialog');
+            const modalDialog = $('#wrongAnswerModal .modal-dialog');
+            
+            // 모바일 환경 감지
+            const isMobile = window.innerWidth <= 768;
+            
+            if (isMobile) {
+                // 모바일: 화면 하단에 위치, 그리드 가리지 않음
                 modalDialog.css({
-                    'top': sectionOffset.top + 'px',
-                    'left': sectionOffset.left + 'px',
-                    'width': sectionWidth + 'px',
                     'position': 'fixed',
+                    'bottom': '20px',
+                    'left': '50%',
+                    'transform': 'translateX(-50%)',
+                    'width': '90%',
+                    'max-width': '400px',
                     'margin': '0',
-                    'z-index': '1055'
+                    'z-index': '1055',
+                    'max-height': '40vh',
+                    'overflow-y': 'auto'
                 });
-                
+            } else {
+                // 데스크톱: 기존 로직 유지 (word-input-section 위에)
+                const wordInputSection = $('#word-input-section');
+                if (wordInputSection.length > 0) {
+                    const sectionOffset = wordInputSection.offset();
+                    const sectionWidth = wordInputSection.outerWidth();
+                    
+                    modalDialog.css({
+                        'top': sectionOffset.top + 'px',
+                        'left': sectionOffset.left + 'px',
+                        'width': sectionWidth + 'px',
+                        'position': 'fixed',
+                        'margin': '0',
+                        'z-index': '1055'
+                    });
+                }
             }
         }
 
@@ -2015,6 +2073,10 @@
                 const modal = bootstrap.Modal.getInstance(modalElement);
                 if (modal) {
                     modal.hide();
+                    // aria-hidden 속성 복원
+                    setTimeout(() => {
+                        modalElement.setAttribute('aria-hidden', 'true');
+                    }, 300);
                 }
             }
             window.location.href = '/K-CrossWord/';
@@ -2027,6 +2089,10 @@
                 const modal = bootstrap.Modal.getInstance(modalElement);
                 if (modal) {
                     modal.hide();
+                    // aria-hidden 속성 복원
+                    setTimeout(() => {
+                        modalElement.setAttribute('aria-hidden', 'true');
+                    }, 300);
                 }
             }
             window.location.href = '/K-CrossWord/';
@@ -2039,6 +2105,10 @@
                 const modal = bootstrap.Modal.getInstance(modalElement);
                 if (modal) {
                     modal.hide();
+                    // aria-hidden 속성 복원
+                    setTimeout(() => {
+                        modalElement.setAttribute('aria-hidden', 'true');
+                    }, 300);
                 }
             }
             // 서버에서 이미 정오답 개수 초기화와 단어/힌트 재생성이 완료되었으므로

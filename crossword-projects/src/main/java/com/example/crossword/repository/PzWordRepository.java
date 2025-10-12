@@ -257,7 +257,13 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     List<Object[]> getCategoryStats();
 
     /**
-     * 길이와 난이도 리스트로 단어 조회 (단어 추출용)
+     * 길이와 난이도 리스트로 단어 조회 (단어 추출용) - 랜덤 1개
+     */
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthAndDifficultyInAndIsActiveTrueRandom(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties);
+
+    /**
+     * 길이와 난이도 리스트로 단어 조회 (단어 추출용) - 기존 방식 (호환성)
      */
     @Query("SELECT w FROM PzWord w WHERE w.length = :length AND w.difficulty IN :difficulties AND w.isActive = true")
     List<PzWord> findByLengthAndDifficultyInAndIsActiveTrue(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties);
@@ -297,5 +303,29 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
      */
     @Query("SELECT w FROM PzWord w WHERE w.difficulty = :difficulty AND w.length = :length AND w.isActive = true AND w.word NOT IN :usedWords")
     List<PzWord> findByDifficultyAndLengthExcludingUsed(@Param("difficulty") Integer difficulty, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
+
+    /**
+     * 교차점 음절 조건을 포함한 단어 조회 (성능 최적화) - 사용된 단어 제외
+     */
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true AND word NOT IN :usedWords AND SUBSTRING(word, :position, 1) = :syllable ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthAndDifficultyWithSyllable(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties, @Param("usedWords") List<String> usedWords, @Param("position") Integer position, @Param("syllable") String syllable);
+
+    /**
+     * 교차점 음절 조건을 포함한 단어 조회 (여러 교차점 지원) - 사용된 단어 제외
+     */
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true AND word NOT IN :usedWords AND SUBSTRING(word, :position1, 1) = :syllable1 AND SUBSTRING(word, :position2, 1) = :syllable2 ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthAndDifficultyWithTwoSyllables(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties, @Param("usedWords") List<String> usedWords, @Param("position1") Integer position1, @Param("syllable1") String syllable1, @Param("position2") Integer position2, @Param("syllable2") String syllable2);
+
+    /**
+     * 교차점 음절 조건을 포함한 단어 조회 (성능 최적화) - 사용된 단어 제외 없음
+     */
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true AND SUBSTRING(word, :position, 1) = :syllable ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthAndDifficultyWithSyllableNoExclude(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties, @Param("position") Integer position, @Param("syllable") String syllable);
+
+    /**
+     * 교차점 음절 조건을 포함한 단어 조회 (여러 교차점 지원) - 사용된 단어 제외 없음
+     */
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true AND SUBSTRING(word, :position1, 1) = :syllable1 AND SUBSTRING(word, :position2, 1) = :syllable2 ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthAndDifficultyWithTwoSyllablesNoExclude(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties, @Param("position1") Integer position1, @Param("syllable1") String syllable1, @Param("position2") Integer position2, @Param("syllable2") String syllable2);
 
 }

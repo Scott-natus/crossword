@@ -194,6 +194,42 @@ public class WebController {
     }
 
     /**
+     * Font Awesome 웹폰트 파일 서빙
+     */
+    @GetMapping({"/admin/webfonts/{filename}", "/K-CrossWord/admin/webfonts/{filename}"})
+    public ResponseEntity<byte[]> webfonts(@PathVariable String filename) {
+        try {
+            Resource resource = new ClassPathResource("static/admin/webfonts/" + filename);
+            byte[] content = resource.getInputStream().readAllBytes();
+            
+            HttpHeaders headers = new HttpHeaders();
+            
+            // 파일 확장자에 따른 MIME 타입 설정
+            if (filename.endsWith(".woff2")) {
+                headers.setContentType(MediaType.valueOf("font/woff2"));
+            } else if (filename.endsWith(".woff")) {
+                headers.setContentType(MediaType.valueOf("font/woff"));
+            } else if (filename.endsWith(".ttf")) {
+                headers.setContentType(MediaType.valueOf("font/ttf"));
+            } else if (filename.endsWith(".eot")) {
+                headers.setContentType(MediaType.valueOf("application/vnd.ms-fontobject"));
+            } else {
+                headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            }
+            
+            headers.setContentLength(content.length);
+            headers.setCacheControl("public, max-age=31536000"); // 1년 캐시
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            log.warn("웹폰트 파일을 찾을 수 없음: {}", filename);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
      * Favicon 서빙 (Mixed Content 문제 해결)
      */
     @GetMapping("/favicon.ico")
