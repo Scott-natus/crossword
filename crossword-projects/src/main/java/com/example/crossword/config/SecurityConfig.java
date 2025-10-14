@@ -31,6 +31,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/puzzle-game/**").permitAll() // 퍼즐게임 API 허용
                 .requestMatchers("/api/auth/**").permitAll() // 인증 상태 확인 API 허용
                 .requestMatchers("/admin/api/**").permitAll() // API는 임시로 인증 제외 (테스트용)
+                .requestMatchers("/admin/custom-word-collection/**").permitAll() // 커스텀 단어 수집 API 인증 제외
                 .requestMatchers("/admin/**").authenticated() // 관리자 페이지는 인증 필수
                 .anyRequest().permitAll() // 나머지 모든 요청 허용
             )

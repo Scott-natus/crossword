@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -35,6 +37,8 @@ public class PuzzleGridTemplateService {
     
     @Autowired
     private FailedWordExtractionService failedWordExtractionService;
+    
+    private static final Logger log = LoggerFactory.getLogger(PuzzleGridTemplateService.class);
 
     /**
      * 라라벨의 extractWords 메서드와 동일한 로직
@@ -106,13 +110,22 @@ public class PuzzleGridTemplateService {
                         System.out.println("단어 ID " + wordId + " 교차점 없음, 독립 추출");
                         Map<String, Object> extractedWord = extractIndependentWord(word, level, confirmedWords);
                         if ("추출 실패".equals(extractedWord.get("word"))) {
-                            System.out.println("단어 ID " + wordId + " 독립 추출 실패");
+                            log.error("=== 독립 단어 추출 실패 ===");
+                            log.error("단어 ID: {}, 길이: {}, 위치: {}", wordId, word.get("length"), word.get("position"));
+                            log.error("레벨: {}, 단어 난이도: {}, 힌트 난이도: {}", 
+                                level.getLevel(), level.getWordDifficulty(), level.getHintDifficulty());
+                            log.error("시도 횟수: {}", retryCount);
                             
                             // 실패한 단어 추출 정보 저장
-                            failedWordExtractionService.saveIndependentWordFailure(
-                                template.getId(), level.getLevel(), level.getWordDifficulty(),
-                                level.getHintDifficulty(), level.getIntersectionCount(),
-                                wordId, word, confirmedWords, retryCount);
+                            try {
+                                failedWordExtractionService.saveIndependentWordFailure(
+                                    template.getId(), level.getLevel(), level.getWordDifficulty(),
+                                    level.getHintDifficulty(), level.getIntersectionCount(),
+                                    wordId, word, confirmedWords, retryCount);
+                                log.info("독립 단어 추출 실패 로그 저장 완료");
+                            } catch (Exception e) {
+                                log.error("독립 단어 추출 실패 로그 저장 중 오류", e);
+                            }
                             
                             extractionFailed = true;
                             break;
@@ -173,15 +186,27 @@ public class PuzzleGridTemplateService {
                             ));
                             confirmedWords.put(wordId, (String) extractedWord.get("word"));
                         } else {
-                            // 교차점 단어 추출 실패 정보 저장
-                            String failureReason = String.format("교차점 단어 추출 실패 - 길이: %s, 난이도: %s, 교차점 개수: %d", 
-                                word.get("length"), level.getWordDifficulty(), intersections.size());
+                            log.error("=== 교차점 단어 추출 실패 ===");
+                            log.error("단어 ID: {}, 길이: {}, 위치: {}", wordId, word.get("length"), word.get("position"));
+                            log.error("레벨: {}, 단어 난이도: {}, 힌트 난이도: {}", 
+                                level.getLevel(), level.getWordDifficulty(), level.getHintDifficulty());
+                            log.error("교차점 개수: {}, 확정된 교차점 음절: {}", intersections.size(), confirmedIntersectionSyllables);
+                            log.error("시도 횟수: {}", retryCount);
                             
-                            failedWordExtractionService.saveIntersectionWordFailure(
-                                template.getId(), level.getLevel(), level.getWordDifficulty(),
-                                level.getHintDifficulty(), level.getIntersectionCount(),
-                                wordId, word, failureReason, confirmedWords,
-                                confirmedIntersectionSyllables, retryCount);
+                            // 교차점 단어 추출 실패 정보 저장
+                            try {
+                                String failureReason = String.format("교차점 단어 추출 실패 - 길이: %s, 난이도: %s, 교차점 개수: %d", 
+                                    word.get("length"), level.getWordDifficulty(), intersections.size());
+                                
+                                failedWordExtractionService.saveIntersectionWordFailure(
+                                    template.getId(), level.getLevel(), level.getWordDifficulty(),
+                                    level.getHintDifficulty(), level.getIntersectionCount(),
+                                    wordId, word, failureReason, confirmedWords,
+                                    confirmedIntersectionSyllables, retryCount);
+                                log.info("교차점 단어 추출 실패 로그 저장 완료");
+                            } catch (Exception e) {
+                                log.error("교차점 단어 추출 실패 로그 저장 중 오류", e);
+                            }
                             
                             extractionFailed = true;
                             break;
@@ -200,28 +225,51 @@ public class PuzzleGridTemplateService {
             
             // 5회 시도 후에도 실패한 경우 (라라벨과 동일한 방어 로직)
             if (extractionFailed || extractedWords.size() != wordPositions.size()) {
-                System.out.println("단어 추출 최종 실패 - 추출된 단어: " + extractedWords.size() + 
-                    ", 필요한 단어: " + wordPositions.size());
+                log.error("=== 퍼즐 템플릿 로드 실패 ===");
+                log.error("템플릿 ID: {}", template.getId());
+                log.error("레벨: {}", level.getLevel());
+                log.error("단어 난이도: {}, 힌트 난이도: {}, 교차점 수: {}", 
+                    level.getWordDifficulty(), level.getHintDifficulty(), level.getIntersectionCount());
+                log.error("추출된 단어: {}/{}", extractedWords.size(), wordPositions.size());
+                log.error("확정된 단어: {}", confirmedWords.keySet());
                 
-                // 최종 실패 정보 저장 (마지막 시도에서 실패한 단어들)
+                // 실패한 단어들 상세 로깅
+                List<Integer> failedWordIds = new ArrayList<>();
                 for (Map<String, Object> word : wordPositions) {
                     Integer wordId = (Integer) word.get("id");
                     if (!confirmedWords.containsKey(wordId)) {
-                        // 아직 확정되지 않은 단어들에 대해 실패 로그 저장
-                        String failureReason = String.format("5회 시도 후 최종 실패 - 추출된 단어: %d/%d", 
-                            extractedWords.size(), wordPositions.size());
-                        
-                        failedWordExtractionService.saveFailedExtraction(
-                            template.getId(), level.getLevel(), level.getWordDifficulty(),
-                            level.getHintDifficulty(), level.getIntersectionCount(),
-                            wordId, word, failureReason, confirmedWords,
-                            null, maxRetries);
+                        failedWordIds.add(wordId);
+                        log.error("실패한 단어 ID: {}, 위치: {}", wordId, word.get("position"));
                     }
+                }
+                log.error("실패한 단어 ID 목록: {}", failedWordIds);
+                
+                // 최종 실패 정보 저장 (마지막 시도에서 실패한 단어들)
+                try {
+                    for (Map<String, Object> word : wordPositions) {
+                        Integer wordId = (Integer) word.get("id");
+                        if (!confirmedWords.containsKey(wordId)) {
+                            // 아직 확정되지 않은 단어들에 대해 실패 로그 저장
+                            String failureReason = String.format("5회 시도 후 최종 실패 - 추출된 단어: %d/%d, 실패한 단어 ID: %s", 
+                                extractedWords.size(), wordPositions.size(), failedWordIds);
+                            
+                            log.info("실패 로그 저장 시도 - 단어 ID: {}, 이유: {}", wordId, failureReason);
+                            
+                            failedWordExtractionService.saveFailedExtraction(
+                                template.getId(), level.getLevel(), level.getWordDifficulty(),
+                                level.getHintDifficulty(), level.getIntersectionCount(),
+                                wordId, word, failureReason, confirmedWords,
+                                null, maxRetries);
+                        }
+                    }
+                    log.info("실패 로그 저장 완료");
+                } catch (Exception e) {
+                    log.error("실패 로그 저장 중 오류 발생", e);
                 }
                 
                 return Map.of("success", false, "message", 
                     "단어 추출에 실패했습니다. 모든 단어를 추출할 수 없습니다. (추출된 단어: " + 
-                    extractedWords.size() + "/" + wordPositions.size() + ")");
+                    extractedWords.size() + "/" + wordPositions.size() + ", 실패한 단어 ID: " + failedWordIds + ")");
             }
             
             // 8. 결과 반환

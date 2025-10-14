@@ -400,10 +400,30 @@ public class WebController {
         try {
             Resource resource = new ClassPathResource("static/admin/grid-templates/index.html");
             String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-
+            
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 
+    /**
+     * 자음-모음 배치 관리 페이지
+     */
+    @GetMapping({"/admin/consonant-vowel-batch"})
+    public ResponseEntity<String> adminConsonantVowelBatch() {
+        try {
+            Resource resource = new ClassPathResource("static/admin/consonant-vowel-batch/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(content);
