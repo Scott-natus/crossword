@@ -70,6 +70,6 @@ public interface TmpForMakeWordsRepository extends JpaRepository<TmpForMakeWords
      * @param limit 조회할 개수
      * @return 최근 등록된 단어 목록
      */
-    @Query("SELECT t FROM TmpForMakeWords t ORDER BY t.regdt DESC")
+    @Query(value = "SELECT * FROM tmp_for_make_words ORDER BY regdt DESC LIMIT ?1", nativeQuery = true)
     List<TmpForMakeWords> findTopNByOrderByRegdtDesc(int limit);
 }

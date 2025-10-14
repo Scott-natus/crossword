@@ -128,7 +128,7 @@ public class PuzzleGridTemplateService {
                             }
                             
                             extractionFailed = true;
-                            break;
+                            continue;
                         }
                         
                         extractedWords.add(Map.of(
@@ -209,7 +209,7 @@ public class PuzzleGridTemplateService {
                             }
                             
                             extractionFailed = true;
-                            break;
+                            continue;
                         }
                     }
                 }

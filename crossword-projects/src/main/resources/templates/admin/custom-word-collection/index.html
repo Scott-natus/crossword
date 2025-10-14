@@ -79,13 +79,7 @@
                             <div class="mb-3">
                                 <label for="promptTemplate" class="form-label">프롬프트</label>
                                 <textarea class="form-control prompt-template" id="promptTemplate" name="promptTemplate" 
-                                          rows="8" placeholder="프롬프트를 입력하세요...">한글 단어를 추천해줘
-
-2,3,4,5,6 음절의 단어를 세개이상 다양하게 추천해줘
-
-명사,대명사, 외래어를 포함해줘
-
-설명없이 한줄에 한단어만</textarea>
+                                          rows="8" placeholder="프롬프트를 입력하세요..."></textarea>
                                 <div class="form-text">
                                     <small class="text-muted">원하는 분야의 단어를 수집할 수 있도록 프롬프트를 작성하세요</small>
                                 </div>
@@ -383,7 +377,7 @@
                 </div>
             `;
 
-            fetch('/K-CrossWord/admin/custom-word-collection/recent-words?limit=20')
+            fetch('/K-CrossWord/admin/custom-word-collection/recent-words?limit=100')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {

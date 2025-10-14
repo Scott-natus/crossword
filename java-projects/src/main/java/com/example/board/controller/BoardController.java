@@ -2,6 +2,8 @@ package com.example.board.controller;
 
 import com.example.board.entity.*;
 import com.example.board.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,6 +21,8 @@ import java.util.Optional;
 @Controller
 @RequestMapping("/board")
 public class BoardController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(BoardController.class);
     
     @Autowired
     private BoardRepository boardRepository;
@@ -133,59 +137,63 @@ public class BoardController {
                       @PathVariable Long id, 
                       Model model) {
         
-        System.out.println("=== BoardController.show() 시작 ===");
-        System.out.println("boardType: " + boardType + ", id: " + id);
+        logger.info("=== BoardController.show() 시작 ===");
+        logger.info("boardType: {}, id: {}", boardType, id);
         
         try {
             Optional<Board> boardOpt = boardRepository.findById(id);
             if (boardOpt.isEmpty()) {
-                System.out.println("게시물을 찾을 수 없음: " + id);
+                logger.warn("게시물을 찾을 수 없음: {}", id);
                 return "error/404";
             }
             
             Board board = boardOpt.get();
-            System.out.println("게시물 찾음: " + board.getTitle());
+            logger.info("게시물 찾음: {}", board.getTitle());
+            logger.info("게시물 내용 길이: {}", (board.getContent() != null ? board.getContent().length() : "null"));
+            logger.info("게시물 내용 미리보기: {}", (board.getContent() != null ? board.getContent().substring(0, Math.min(100, board.getContent().length())) : "null"));
             
             // 게시판 타입 확인
             if (!board.getBoardType().getSlug().equals(boardType)) {
-                System.out.println("게시판 타입 불일치: " + board.getBoardType().getSlug() + " != " + boardType);
+                logger.warn("게시판 타입 불일치: {} != {}", board.getBoardType().getSlug(), boardType);
                 return "error/404";
             }
             
             // 인증이 필요한 게시판인지 확인
             if (board.getBoardType().getRequiresAuth() && !isAuthenticated()) {
-                System.out.println("인증 필요");
+                logger.info("인증 필요");
                 return "redirect:/login?error=login_required";
             }
             
             // 조회수 증가
             board.setViews(board.getViews() + 1);
             boardRepository.save(board);
-            System.out.println("조회수 증가 완료");
+            logger.info("조회수 증가 완료");
             
             // 댓글 조회
-            System.out.println("댓글 조회 시작");
+            logger.info("댓글 조회 시작");
             List<BoardComment> comments = boardCommentRepository.findTopLevelCommentsByBoard(board);
-            System.out.println("댓글 조회 완료: " + comments.size() + "개");
+            logger.info("댓글 조회 완료: {}개", comments.size());
             
             // 트리 구조 조회 (원글~답글)
-            System.out.println("트리 구조 조회 시작");
+            logger.info("트리 구조 조회 시작");
             List<Board> thread = getThread(board);
-            System.out.println("트리 구조 조회 완료: " + thread.size() + "개");
+            logger.info("트리 구조 조회 완료: {}개", thread.size());
             
             model.addAttribute("board", board);
             model.addAttribute("comments", comments);
             model.addAttribute("thread", thread);
             
-            System.out.println("모델 속성 설정 완료");
-            System.out.println("=== BoardController.show() 성공 ===");
+            logger.info("모델 속성 설정 완료");
+            logger.info("board 객체: {}", (board != null ? "OK" : "NULL"));
+            logger.info("comments 객체: {}", (comments != null ? "OK" : "NULL"));
+            logger.info("thread 객체: {}", (thread != null ? "OK" : "NULL"));
+            logger.info("=== BoardController.show() 성공 ===");
             
             return "board/show";
             
         } catch (Exception e) {
-            System.out.println("=== BoardController.show() 오류 ===");
-            System.out.println("오류 메시지: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("=== BoardController.show() 오류 ===");
+            logger.error("오류 메시지: {}", e.getMessage(), e);
             return "error/500";
         }
     }

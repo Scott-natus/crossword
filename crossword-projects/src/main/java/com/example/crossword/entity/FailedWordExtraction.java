@@ -3,6 +3,10 @@ package com.example.crossword.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "failed_word_extractions")
@@ -30,16 +34,19 @@ public class FailedWordExtraction {
     @Column(name = "failed_word_id")
     private Integer failedWordId;
     
-    @Column(name = "failed_word_position", columnDefinition = "jsonb")
+    @Column(name = "failed_word_position")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String failedWordPosition;
     
     @Column(name = "failure_reason", length = 1000)
     private String failureReason;
     
-    @Column(name = "confirmed_words", columnDefinition = "jsonb")
+    @Column(name = "confirmed_words")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String confirmedWords;
     
-    @Column(name = "intersection_requirements", columnDefinition = "jsonb")
+    @Column(name = "intersection_requirements")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String intersectionRequirements;
     
     @Column(name = "retry_count")
@@ -66,10 +73,10 @@ public class FailedWordExtraction {
         this.hintDifficulty = hintDifficulty;
         this.intersectionCount = intersectionCount;
         this.failedWordId = failedWordId;
-        this.failedWordPosition = failedWordPosition != null ? failedWordPosition.toString() : null;
+        this.failedWordPosition = failedWordPosition != null ? convertMapToJson(failedWordPosition) : null;
         this.failureReason = failureReason;
-        this.confirmedWords = confirmedWords != null ? confirmedWords.toString() : null;
-        this.intersectionRequirements = intersectionRequirements != null ? intersectionRequirements.toString() : null;
+        this.confirmedWords = confirmedWords != null ? convertMapToJson(confirmedWords) : null;
+        this.intersectionRequirements = intersectionRequirements != null ? convertObjectToJson(intersectionRequirements) : null;
         this.retryCount = retryCount;
     }
     
@@ -176,6 +183,25 @@ public class FailedWordExtraction {
     
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    // JSON 변환 메서드들
+    private String convertMapToJson(Map<?, ?> map) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.writeValueAsString(map);
+        } catch (JsonProcessingException e) {
+            return "{}"; // 빈 JSON 객체 반환
+        }
+    }
+    
+    private String convertObjectToJson(Object obj) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            return "null"; // null 값 반환
+        }
     }
     
     @Override
