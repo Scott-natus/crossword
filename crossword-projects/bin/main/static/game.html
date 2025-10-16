@@ -444,6 +444,31 @@
         </div>
     </div>
 
+    <!-- 퍼즐 생성 실패 모달 -->
+    <div class="modal fade" id="puzzleGenerationFailedModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>퍼즐 생성 실패</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-puzzle-piece fa-3x text-danger mb-3"></i>
+                    </div>
+                    <h6 id="puzzle-generation-failed-message" class="mb-2">퍼즐 생성에 실패했습니다.</h6>
+                    <p id="puzzle-generation-failed-sub-message" class="text-muted mb-0">서버에서 적절한 단어를 찾지 못했습니다. 다시 시도해보세요.</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">메인으로</button>
+                    <button type="button" class="btn btn-primary" id="retry-puzzle-generation-btn">
+                        <i class="fas fa-redo me-2"></i>퍼즐 생성 재시도
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 단어정제 모달 -->
     <div class="modal fade" id="wordRefinementModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
@@ -735,7 +760,11 @@
                 },
                 error: function(xhr, status, error) {
                     console.error('템플릿 로드 실패:', error);
-                    alert('게임을 불러올 수 없습니다.');
+                    console.log('xhr.status:', xhr.status);
+                    console.log('xhr.responseJSON:', xhr.responseJSON);
+                    
+                    // 퍼즐 생성 실패 모달 표시
+                    showPuzzleGenerationFailedModal(guestId);
                 }
             });
         }
@@ -2061,9 +2090,31 @@
             $('#gameOverModal').modal('show');
         }
 
+        // 퍼즐 생성 실패 모달 표시
+        function showPuzzleGenerationFailedModal(guestId) {
+            $('#puzzle-generation-failed-message').text('퍼즐 생성에 실패했습니다.');
+            $('#puzzle-generation-failed-sub-message').text('서버에서 적절한 단어를 찾지 못했습니다. 다시 시도해보세요.');
+            
+            // 재시도 버튼에 게스트 ID 저장
+            $('#retry-puzzle-generation-btn').data('guest-id', guestId);
+            
+            $('#puzzleGenerationFailedModal').modal('show');
+        }
+
         // 메인으로 이동
         $('#go-to-main-btn').click(function() {
             window.location.href = '/K-CrossWord/';
+        });
+
+        // 퍼즐 생성 재시도 버튼 클릭
+        $('#retry-puzzle-generation-btn').click(function() {
+            const guestId = $(this).data('guest-id');
+            $('#puzzleGenerationFailedModal').modal('hide');
+            
+            // 잠시 후 퍼즐 재생성 시도
+            setTimeout(function() {
+                loadTemplate(guestId);
+            }, 500);
         });
 
         // 모달 닫기 버튼 클릭 (메인으로 이동)

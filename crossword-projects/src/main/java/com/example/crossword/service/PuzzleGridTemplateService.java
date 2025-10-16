@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.Arrays;
 
 @Service
 public class PuzzleGridTemplateService {
@@ -58,29 +59,17 @@ public class PuzzleGridTemplateService {
                 return Map.of("success", false, "message", "조건에 맞는 템플릿을 찾을 수 없습니다.");
             }
             
-            // 랜덤하게 템플릿 선택
-            PuzzleGridTemplate template = templates.get(new Random().nextInt(templates.size()));
-            
-            // 레벨 정보에서 난이도 가져오기
-            PuzzleLevel level = levelRepository.findByLevel(template.getLevelId()).orElse(null);
-            if (level == null) {
-                return Map.of("success", false, "message", "레벨 정보를 찾을 수 없습니다.");
-            }
-            
-            // 2. word_positions를 id 순서대로 정렬 (라라벨과 동일)
-            List<Map<String, Object>> wordPositions = new ArrayList<>(template.getWordPositions());
-            wordPositions.sort((a, b) -> {
-                Integer idA = (Integer) a.get("id");
-                Integer idB = (Integer) b.get("id");
-                return idA.compareTo(idB);
-            });
-            
-            // 3. 최대 5회 재시도
+            // 3. 최대 5회 재시도 (매번 새로운 템플릿 선택)
             int maxRetries = 5;
             int retryCount = 0;
             List<Map<String, Object>> extractedWords = new ArrayList<>();
             Map<Integer, String> confirmedWords = new HashMap<>(); // word_id => word
             boolean extractionFailed = false;
+            
+            // 변수들을 루프 밖에서 선언
+            PuzzleGridTemplate template = null;
+            PuzzleLevel level = null;
+            List<Map<String, Object>> wordPositions = null;
             
             while (retryCount < maxRetries) {
                 retryCount++;
@@ -88,7 +77,24 @@ public class PuzzleGridTemplateService {
                 confirmedWords.clear();
                 extractionFailed = false;
                 
-                System.out.println("단어 추출 시도 #" + retryCount + " 시작");
+                // 1. 랜덤하게 템플릿 선택 (매번 새로운 템플릿)
+                template = templates.get(new Random().nextInt(templates.size()));
+                
+                // 레벨 정보에서 난이도 가져오기
+                level = levelRepository.findByLevel(template.getLevelId()).orElse(null);
+                if (level == null) {
+                    return Map.of("success", false, "message", "레벨 정보를 찾을 수 없습니다.");
+                }
+                
+                // 2. word_positions를 id 순서대로 정렬 (라라벨과 동일)
+                wordPositions = new ArrayList<>(template.getWordPositions());
+                wordPositions.sort((a, b) -> {
+                    Integer idA = (Integer) a.get("id");
+                    Integer idB = (Integer) b.get("id");
+                    return idA.compareTo(idB);
+                });
+                
+                System.out.println("템플릿 로드 시도 #" + retryCount + " 시작 - 템플릿 ID: " + template.getId());
                 System.out.println("총 단어 개수: " + wordPositions.size());
                 
                 for (Map<String, Object> word : wordPositions) {
@@ -430,12 +436,15 @@ public class PuzzleGridTemplateService {
             // 이미 사용된 단어들 목록 생성
             List<String> usedWords = new ArrayList<>(confirmedWords.values());
             
-            // 조건에 맞는 단어 찾기 (이미 사용된 단어 제외)
+            // 새로운 난이도 규칙 적용
+            List<Integer> allowedDifficulties = getAllowedDifficulties(level.getWordDifficulty());
+            
+            // 조건에 맞는 단어 찾기 (이미 사용된 단어 제외) - 퍼즐 게임 생성 전용
             List<PzWord> words;
             if (usedWords.isEmpty()) {
-                words = wordRepository.findByDifficultyAndLength(level.getWordDifficulty(), length);
+                words = wordRepository.findForPuzzleGenerationByDifficultyInAndLength(allowedDifficulties, length);
             } else {
-                words = wordRepository.findByDifficultyAndLengthExcludingUsed(level.getWordDifficulty(), length, usedWords);
+                words = wordRepository.findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(allowedDifficulties, length, usedWords);
             }
             
             if (words.isEmpty()) {
@@ -477,12 +486,15 @@ public class PuzzleGridTemplateService {
             // 이미 사용된 단어들 목록 생성
             List<String> usedWords = new ArrayList<>(confirmedWords.values());
             
-            // 조건에 맞는 단어들 찾기 (이미 사용된 단어 제외)
+            // 새로운 난이도 규칙 적용
+            List<Integer> allowedDifficulties = getAllowedDifficulties(level.getWordDifficulty());
+            
+            // 조건에 맞는 단어들 찾기 (이미 사용된 단어 제외) - 퍼즐 게임 생성 전용
             List<PzWord> words;
             if (usedWords.isEmpty()) {
-                words = wordRepository.findByDifficultyAndLength(level.getWordDifficulty(), length);
+                words = wordRepository.findForPuzzleGenerationByDifficultyInAndLength(allowedDifficulties, length);
             } else {
-                words = wordRepository.findByDifficultyAndLengthExcludingUsed(level.getWordDifficulty(), length, usedWords);
+                words = wordRepository.findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(allowedDifficulties, length, usedWords);
             }
             
             for (PzWord candidateWord : words) {
@@ -570,6 +582,20 @@ public class PuzzleGridTemplateService {
             return "";
         }
         return "●".repeat(word.length());
+    }
+
+    /**
+     * 새로운 난이도 규칙에 따른 허용 난이도 반환
+     */
+    private List<Integer> getAllowedDifficulties(Integer levelDifficulty) {
+        return switch (levelDifficulty) {
+            case 1 -> Arrays.asList(1, 2); // 레벨 1: 난이도 1,2
+            case 2 -> Arrays.asList(1, 2, 3); // 레벨 2: 난이도 1,2,3
+            case 3 -> Arrays.asList(2, 3, 4); // 레벨 3: 난이도 2,3,4
+            case 4 -> Arrays.asList(3, 4, 5); // 레벨 4: 난이도 3,4,5
+            case 5 -> Arrays.asList(4, 5); // 레벨 5: 난이도 4,5
+            default -> Arrays.asList(1, 2, 3, 4, 5); // 기본값: 모든 난이도
+        };
     }
 
 }

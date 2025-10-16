@@ -49,15 +49,17 @@ public class WordManagementController {
             @RequestParam(defaultValue = "25") int length,
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "") String difficulty_filter,
-            @RequestParam(defaultValue = "") String refinement) {
+            @RequestParam(defaultValue = "") String refinement,
+            @RequestParam(defaultValue = "") String active_filter) {
         
         logger.info("=== API 호출됨 ===");
         logger.info("draw: {}, start: {}, length: {}", draw, start, length);
-        logger.info("search: '{}', difficulty_filter: '{}', refinement: '{}'", search, difficulty_filter, refinement);
+        logger.info("search: '{}', difficulty_filter: '{}', refinement: '{}', active_filter: '{}'", 
+            search, difficulty_filter, refinement, active_filter);
         
         try {
             Map<String, Object> data = wordManagementService.getWordsData(
-                draw, start, length, search, difficulty_filter, refinement);
+                draw, start, length, search, difficulty_filter, refinement, active_filter);
             logger.info("응답 데이터: recordsTotal={}, recordsFiltered={}", 
                 data.get("recordsTotal"), data.get("recordsFiltered"));
             return ResponseEntity.ok(data);

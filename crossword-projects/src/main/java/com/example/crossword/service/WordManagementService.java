@@ -74,7 +74,7 @@ public class WordManagementService {
     /**
      * 단어 목록 조회 (DataTables용)
      */
-    public Map<String, Object> getWordsData(int draw, int start, int length, String search, String difficultyFilter, String refinement) {
+    public Map<String, Object> getWordsData(int draw, int start, int length, String search, String difficultyFilter, String refinement, String activeFilter) {
         Map<String, Object> response = new HashMap<>();
         response.put("draw", draw);
         
@@ -83,6 +83,7 @@ public class WordManagementService {
         logger.info("search: '{}'", search);
         logger.info("difficultyFilter: '{}'", difficultyFilter);
         logger.info("refinement: '{}'", refinement);
+        logger.info("activeFilter: '{}'", activeFilter);
         
         try {
             // 정렬 설정 (생성일자 내림차순)
@@ -91,49 +92,92 @@ public class WordManagementService {
             
             Page<PzWord> page;
             
-            // 검색어, 난이도 필터, 정제상태 필터에 따른 조회
+            // 검색어, 난이도 필터, 정제상태 필터, 활성화 필터에 따른 조회
             // null 체크와 빈 문자열 체크를 모두 고려
             boolean hasSearch = search != null && !search.trim().isEmpty();
             boolean hasDifficulty = difficultyFilter != null && !difficultyFilter.trim().isEmpty();
             boolean hasRefinement = refinement != null && !refinement.trim().isEmpty();
+            boolean hasActiveFilter = activeFilter != null && !activeFilter.trim().isEmpty();
             
-            logger.info("필터 조건 체크 - search: '{}', difficulty: '{}', refinement: '{}'", search, difficultyFilter, refinement);
-            logger.info("필터 존재 여부 - hasSearch: {}, hasDifficulty: {}, hasRefinement: {}", hasSearch, hasDifficulty, hasRefinement);
+            logger.info("필터 조건 체크 - search: '{}', difficulty: '{}', refinement: '{}', active: '{}'", 
+                search, difficultyFilter, refinement, activeFilter);
+            logger.info("필터 존재 여부 - hasSearch: {}, hasDifficulty: {}, hasRefinement: {}, hasActiveFilter: {}", 
+                hasSearch, hasDifficulty, hasRefinement, hasActiveFilter);
             
-            if (hasSearch && hasDifficulty && hasRefinement) {
-                // 검색어 + 난이도 필터 + 정제상태 필터
+            // activeFilter를 포함한 조건부 조회
+            Boolean isActive = hasActiveFilter ? Boolean.parseBoolean(activeFilter) : null;
+            logger.info("activeFilter 파싱 결과: '{}' -> {}", activeFilter, isActive);
+            
+            if (hasSearch && hasDifficulty && hasRefinement && hasActiveFilter) {
+                // 검색어 + 난이도 + 정제상태 + 활성화상태
+                logger.info("조건: 검색어 + 난이도 + 정제상태 + 활성화상태");
+                Integer difficulty = parseDifficulty(difficultyFilter);
+                page = pzWordRepository.findByWordContainingIgnoreCaseAndDifficultyAndConfYnAndIsActive(search, difficulty, refinement, isActive, pageable);
+            } else if (hasSearch && hasDifficulty && hasActiveFilter) {
+                // 검색어 + 난이도 + 활성화상태
+                logger.info("조건: 검색어 + 난이도 + 활성화상태");
+                Integer difficulty = parseDifficulty(difficultyFilter);
+                page = pzWordRepository.findByWordContainingIgnoreCaseAndDifficultyAndIsActive(search, difficulty, isActive, pageable);
+            } else if (hasSearch && hasRefinement && hasActiveFilter) {
+                // 검색어 + 정제상태 + 활성화상태
+                logger.info("조건: 검색어 + 정제상태 + 활성화상태");
+                page = pzWordRepository.findByWordContainingIgnoreCaseAndConfYnAndIsActive(search, refinement, isActive, pageable);
+            } else if (hasDifficulty && hasRefinement && hasActiveFilter) {
+                // 난이도 + 정제상태 + 활성화상태
+                logger.info("조건: 난이도 + 정제상태 + 활성화상태");
+                Integer difficulty = parseDifficulty(difficultyFilter);
+                page = pzWordRepository.findByDifficultyAndConfYnAndIsActive(difficulty, refinement, isActive, pageable);
+            } else if (hasSearch && hasActiveFilter) {
+                // 검색어 + 활성화상태
+                logger.info("조건: 검색어 + 활성화상태");
+                page = pzWordRepository.findByWordContainingIgnoreCaseAndIsActive(search, isActive, pageable);
+            } else if (hasDifficulty && hasActiveFilter) {
+                // 난이도 + 활성화상태
+                logger.info("조건: 난이도 + 활성화상태");
+                Integer difficulty = parseDifficulty(difficultyFilter);
+                page = pzWordRepository.findByDifficultyAndIsActive(difficulty, isActive, pageable);
+            } else if (hasRefinement && hasActiveFilter) {
+                // 정제상태 + 활성화상태
+                logger.info("조건: 정제상태 + 활성화상태");
+                page = pzWordRepository.findByConfYnAndIsActive(refinement, isActive, pageable);
+            } else if (hasActiveFilter) {
+                // 활성화상태만
+                logger.info("조건: 활성화상태만");
+                page = pzWordRepository.findByIsActive(isActive, pageable);
+            } else if (hasSearch && hasDifficulty && hasRefinement) {
+                // 검색어 + 난이도 + 정제상태 (기존)
                 logger.info("조건: 검색어 + 난이도 + 정제상태");
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByWordContainingIgnoreCaseAndDifficultyAndConfYn(search, difficulty, refinement, pageable);
             } else if (hasSearch && hasDifficulty) {
-                // 검색어 + 난이도 필터
+                // 검색어 + 난이도 (기존)
                 logger.info("조건: 검색어 + 난이도");
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByWordContainingIgnoreCaseAndDifficulty(search, difficulty, pageable);
             } else if (hasSearch && hasRefinement) {
-                // 검색어 + 정제상태 필터
+                // 검색어 + 정제상태 (기존)
                 logger.info("조건: 검색어 + 정제상태");
                 page = pzWordRepository.findByWordContainingIgnoreCaseAndConfYn(search, refinement, pageable);
             } else if (hasDifficulty && hasRefinement) {
-                // 난이도 필터 + 정제상태 필터
+                // 난이도 + 정제상태 (기존)
                 logger.info("조건: 난이도 + 정제상태");
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByDifficultyAndConfYn(difficulty, refinement, pageable);
             } else if (hasSearch) {
-                // 검색어만
+                // 검색어만 (기존)
                 logger.info("조건: 검색어만");
                 page = pzWordRepository.findByWordContainingIgnoreCase(search, pageable);
             } else if (hasDifficulty) {
-                // 난이도 필터만
+                // 난이도만 (기존)
                 logger.info("조건: 난이도만");
                 Integer difficulty = parseDifficulty(difficultyFilter);
                 page = pzWordRepository.findByDifficulty(difficulty, pageable);
             } else if (hasRefinement) {
-                // 정제상태 필터만
+                // 정제상태만 (기존)
                 logger.info("조건: 정제상태만");
                 page = pzWordRepository.findByConfYn(refinement, pageable);
             } else {
-                // 전체 조회
+                // 전체 조회 (기존)
                 logger.info("조건: 전체 조회");
                 page = pzWordRepository.findAll(pageable);
             }

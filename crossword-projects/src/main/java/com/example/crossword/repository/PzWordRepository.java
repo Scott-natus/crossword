@@ -299,10 +299,46 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     List<PzWord> findByDifficultyAndLength(@Param("difficulty") Integer difficulty, @Param("length") Integer length);
 
     /**
+     * 정제상태와 활성화상태별 단어 조회 (페이징)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.confYn = :confYn AND w.isActive = :isActive")
+    org.springframework.data.domain.Page<PzWord> findByConfYnAndIsActive(@Param("confYn") String confYn, @Param("isActive") Boolean isActive, org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 단어 검색 (대소문자 무시, 정제상태, 활성화상태 포함)
+     */
+    @Query("SELECT w FROM PzWord w WHERE LOWER(w.word) LIKE LOWER(:search) AND w.confYn = :confYn AND w.isActive = :isActive")
+    org.springframework.data.domain.Page<PzWord> findByWordContainingIgnoreCaseAndConfYnAndIsActive(@Param("search") String search, @Param("confYn") String confYn, @Param("isActive") Boolean isActive, org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 난이도와 정제상태, 활성화상태별 단어 조회 (페이징)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.difficulty = :difficulty AND w.confYn = :confYn AND w.isActive = :isActive")
+    org.springframework.data.domain.Page<PzWord> findByDifficultyAndConfYnAndIsActive(@Param("difficulty") Integer difficulty, @Param("confYn") String confYn, @Param("isActive") Boolean isActive, org.springframework.data.domain.Pageable pageable);
+    
+    /**
+     * 단어 검색 (대소문자 무시, 난이도, 정제상태, 활성화상태 포함)
+     */
+    @Query("SELECT w FROM PzWord w WHERE LOWER(w.word) LIKE LOWER(:search) AND w.difficulty = :difficulty AND w.confYn = :confYn AND w.isActive = :isActive")
+    org.springframework.data.domain.Page<PzWord> findByWordContainingIgnoreCaseAndDifficultyAndConfYnAndIsActive(@Param("search") String search, @Param("difficulty") Integer difficulty, @Param("confYn") String confYn, @Param("isActive") Boolean isActive, org.springframework.data.domain.Pageable pageable);
+
+    /**
      * 난이도와 길이로 단어 조회 (퍼즐 생성용) - 이미 사용된 단어 제외
      */
     @Query("SELECT w FROM PzWord w WHERE w.difficulty = :difficulty AND w.length = :length AND w.isActive = true AND w.word NOT IN :usedWords")
     List<PzWord> findByDifficultyAndLengthExcludingUsed(@Param("difficulty") Integer difficulty, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
+
+    /**
+     * 퍼즐 게임 생성 전용 - 난이도 범위와 길이로 단어 조회 (getAllowedDifficulties 사용)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true")
+    List<PzWord> findForPuzzleGenerationByDifficultyInAndLength(@Param("difficulties") List<Integer> difficulties, @Param("length") Integer length);
+
+    /**
+     * 퍼즐 게임 생성 전용 - 난이도 범위와 길이로 단어 조회 (이미 사용된 단어 제외)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true AND w.word NOT IN :usedWords")
+    List<PzWord> findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(@Param("difficulties") List<Integer> difficulties, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
 
     /**
      * 교차점 음절 조건을 포함한 단어 조회 (성능 최적화) - 사용된 단어 제외

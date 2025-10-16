@@ -328,7 +328,7 @@
 
                     <!-- 검색 및 필터 -->
                     <div class="row mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="input-group">
                                 <input type="text" class="form-control" id="keywordSearch" placeholder="단어 검색...">
                                 <button class="btn btn-outline-secondary" type="button" onclick="performSearch()">
@@ -336,7 +336,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <select class="form-select" id="difficultyFilter" onchange="performSearch()">
                                 <option value="">전체 난이도</option>
                                 <option value="1">쉬움</option>
@@ -346,11 +346,18 @@
                                 <option value="5">극도 어려움</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <select class="form-select" id="refinementFilter" onchange="performSearch()">
                                 <option value="">전체 정제상태</option>
                                 <option value="Y">정제완료</option>
                                 <option value="N">정제대기</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="activeFilter" onchange="performSearch()">
+                                <option value="">전체 사용여부</option>
+                                <option value="true">활성화</option>
+                                <option value="false">비활성화</option>
                             </select>
                         </div>
                     </div>
@@ -774,6 +781,7 @@
                         d.difficulty_filter = $('#difficultyFilter').val();
                         d.search = $('#keywordSearch').val();
                         d.refinement = $('#refinementFilter').val();
+                        d.active_filter = $('#activeFilter').val();
                     }
                 },
                 columns: [
