@@ -1,9 +1,9 @@
 package com.example.crossword.service;
 
-import com.example.crossword.entity.PzWords;
-import com.example.crossword.entity.PzHints;
-import com.example.crossword.repository.PzWordsRepository;
-import com.example.crossword.repository.PzHintsRepository;
+import com.example.crossword.entity.PzWord;
+import com.example.crossword.entity.PzHint;
+import com.example.crossword.repository.PzWordRepository;
+import com.example.crossword.repository.PzHintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,8 +20,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ThemePuzzleGeneratorService {
     
-    private final PzWordsRepository pzWordsRepository;
-    private final PzHintsRepository pzHintsRepository;
+    private final PzWordRepository pzWordRepository;
+    private final PzHintRepository pzHintRepository;
     
     /**
      * 테마별 퍼즐 생성
@@ -32,7 +32,7 @@ public class ThemePuzzleGeneratorService {
             log.info("테마별 퍼즐 생성 시작: {}", theme);
             
             // 테마별 단어 조회
-            List<PzWords> themeWords = pzWordsRepository.findByCat2AndIsApproved(theme, true);
+            List<PzWord> themeWords = pzWordRepository.findByCat2AndIsApproved(theme, true);
             
             if (themeWords.isEmpty()) {
                 log.warn("{} 테마의 승인된 단어가 없습니다.", theme);
@@ -43,7 +43,7 @@ public class ThemePuzzleGeneratorService {
             }
             
             // 퍼즐에 사용할 단어 선택 (난이도별)
-            List<PzWords> selectedWords = selectWordsForPuzzle(themeWords);
+            List<PzWord> selectedWords = selectWordsForPuzzle(themeWords);
             
             if (selectedWords.isEmpty()) {
                 log.warn("{} 테마의 적합한 단어를 찾을 수 없습니다.", theme);
@@ -68,7 +68,6 @@ public class ThemePuzzleGeneratorService {
                     .map(word -> Map.of(
                         "id", word.getId(),
                         "word", word.getWord(),
-                        "meaning", word.getMeaning(),
                         "difficulty", word.getDifficulty()
                     ))
                     .collect(Collectors.toList()),
@@ -129,19 +128,19 @@ public class ThemePuzzleGeneratorService {
     /**
      * 퍼즐에 사용할 단어 선택
      */
-    private List<PzWords> selectWordsForPuzzle(List<PzWords> themeWords) {
+    private List<PzWord> selectWordsForPuzzle(List<PzWord> themeWords) {
         try {
             log.info("퍼즐용 단어 선택 시작: {}개 중에서", themeWords.size());
             
             // 난이도별 단어 분류
-            Map<Integer, List<PzWords>> wordsByDifficulty = themeWords.stream()
-                .collect(Collectors.groupingBy(PzWords::getDifficulty));
+            Map<Integer, List<PzWord>> wordsByDifficulty = themeWords.stream()
+                .collect(Collectors.groupingBy(PzWord::getDifficulty));
             
-            List<PzWords> selectedWords = new ArrayList<>();
+            List<PzWord> selectedWords = new ArrayList<>();
             
             // 각 난이도에서 2-3개씩 선택
             for (int difficulty = 1; difficulty <= 5; difficulty++) {
-                List<PzWords> difficultyWords = wordsByDifficulty.getOrDefault(difficulty, new ArrayList<>());
+                List<PzWord> difficultyWords = wordsByDifficulty.getOrDefault(difficulty, new ArrayList<>());
                 if (!difficultyWords.isEmpty()) {
                     Collections.shuffle(difficultyWords);
                     int selectCount = Math.min(3, difficultyWords.size());
@@ -167,7 +166,7 @@ public class ThemePuzzleGeneratorService {
     /**
      * 퍼즐 그리드 생성
      */
-    private Map<String, Object> generatePuzzleGrid(List<PzWords> words) {
+    private Map<String, Object> generatePuzzleGrid(List<PzWord> words) {
         try {
             log.info("퍼즐 그리드 생성 시작: {}개 단어", words.size());
             
@@ -186,7 +185,7 @@ public class ThemePuzzleGeneratorService {
             List<Map<String, Object>> placedWords = new ArrayList<>();
             int wordIndex = 0;
             
-            for (PzWords word : words) {
+            for (PzWord word : words) {
                 if (wordIndex >= 10) break; // 최대 10개 단어만 배치
                 
                 Map<String, Object> placedWord = Map.of(
@@ -228,16 +227,16 @@ public class ThemePuzzleGeneratorService {
     /**
      * 단어들의 힌트 조회
      */
-    private List<Map<String, Object>> getHintsForWords(List<PzWords> words) {
+    private List<Map<String, Object>> getHintsForWords(List<PzWord> words) {
         try {
             log.info("단어별 힌트 조회 시작: {}개 단어", words.size());
             
             List<Map<String, Object>> hints = new ArrayList<>();
             
-            for (PzWords word : words) {
-                List<PzHints> wordHints = pzHintsRepository.findByWordIdAndLanguageCode(word.getId(), "ko");
+            for (PzWord word : words) {
+                List<PzHint> wordHints = pzHintRepository.findByWordIdAndLanguageCode(word.getId(), "ko");
                 
-                for (PzHints hint : wordHints) {
+                for (PzHint hint : wordHints) {
                     Map<String, Object> hintData = Map.of(
                         "wordId", word.getId(),
                         "word", word.getWord(),

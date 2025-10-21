@@ -71,4 +71,10 @@ public interface PzHintRepository extends JpaRepository<PzHint, Integer> {
     @Query("SELECT h FROM PzHint h WHERE h.word.id = :wordId AND h.difficulty = :difficulty ORDER BY h.id ASC")
     List<PzHint> findByWordIdAndDifficulty(@Param("wordId") Integer wordId, @Param("difficulty") Integer difficulty);
     
+    /**
+     * 단어 ID와 언어 코드로 힌트 조회 (다국어 힌트용)
+     */
+    @Query("SELECT h FROM PzHint h WHERE h.word.id = :wordId AND h.languageCode = :languageCode ORDER BY h.id ASC")
+    List<PzHint> findByWordIdAndLanguageCode(@Param("wordId") Integer wordId, @Param("languageCode") String languageCode);
+    
 }

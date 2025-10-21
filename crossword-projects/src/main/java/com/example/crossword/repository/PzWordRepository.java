@@ -257,6 +257,12 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     List<Object[]> getCategoryStats();
 
     /**
+     * 테마별 승인된 단어 조회 (K-POP 테마용)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.cat2 = :theme AND w.isApproved = :isApproved")
+    List<PzWord> findByCat2AndIsApproved(@Param("theme") String theme, @Param("isApproved") Boolean isApproved);
+    
+    /**
      * 길이와 난이도 리스트로 단어 조회 (단어 추출용) - 랜덤 1개
      */
     @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true ORDER BY RANDOM() LIMIT 1", nativeQuery = true)

@@ -76,14 +76,16 @@ public class ThemePuzzleService {
             
             // 랭킹 데이터 생성
             List<Map<String, Object>> ranking = completions.stream()
-                .map(completion -> Map.of(
-                    "rank", completions.indexOf(completion) + 1,
-                    "userId", completion.getUserId(),
-                    "completionTime", completion.getCompletionTime(),
-                    "hintsUsed", completion.getHintsUsed(),
-                    "wrongAttempts", completion.getWrongAttempts(),
-                    "completedAt", completion.getCompletedAt()
-                ))
+                .map(completion -> {
+                    Map<String, Object> rankData = new HashMap<>();
+                    rankData.put("rank", completions.indexOf(completion) + 1);
+                    rankData.put("userId", completion.getUserId());
+                    rankData.put("completionTime", completion.getCompletionTime());
+                    rankData.put("hintsUsed", completion.getHintsUsed());
+                    rankData.put("wrongAttempts", completion.getWrongAttempts());
+                    rankData.put("completedAt", completion.getCompletedAt());
+                    return rankData;
+                })
                 .collect(Collectors.toList());
             
             log.info("테마별 랭킹 조회 완료: {} - {}명", theme, ranking.size());
@@ -173,13 +175,13 @@ public class ThemePuzzleService {
                         .mapToInt(UserPuzzleCompletion::getWrongAttempts)
                         .sum();
                     
-                    return Map.of(
-                        "userId", userId,
-                        "avgCompletionTime", Math.round(avgTime),
-                        "totalGames", userComps.size(),
-                        "totalHints", totalHints,
-                        "totalWrongAttempts", totalWrongAttempts
-                    );
+                    Map<String, Object> rankData = new HashMap<>();
+                    rankData.put("userId", userId);
+                    rankData.put("avgCompletionTime", Math.round(avgTime));
+                    rankData.put("totalGames", userComps.size());
+                    rankData.put("totalHints", totalHints);
+                    rankData.put("totalWrongAttempts", totalWrongAttempts);
+                    return rankData;
                 })
                 .sorted((a, b) -> Integer.compare(
                     (Integer) a.get("avgCompletionTime"), 

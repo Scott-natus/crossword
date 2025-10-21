@@ -48,6 +48,12 @@ public class PzWord {
     @Column(name = "conf_yn", length = 1)
     private String confYn = "N";
     
+    @Column(name = "cat2", length = 50)
+    private String cat2;
+    
+    @Column(name = "is_approved")
+    private Boolean isApproved = false;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     

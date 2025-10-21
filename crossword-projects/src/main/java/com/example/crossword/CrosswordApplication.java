@@ -3,6 +3,7 @@ package com.example.crossword;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
 
 /**
@@ -14,6 +15,7 @@ import org.springframework.session.data.redis.config.annotation.web.http.EnableR
  */
 @SpringBootApplication
 @EnableJpaRepositories
+@EnableScheduling
 @EnableRedisHttpSession(
     maxInactiveIntervalInSeconds = 1800 // 30분
     // redisNamespace는 application.properties에서 설정
