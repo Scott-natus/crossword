@@ -8,7 +8,12 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+/**
+ * 사용자 엔티티
+ * 8080 포트 게시판 서비스와 동일한 구조로 통합
+ */
 @Entity
 @Table(name = "users")
 @EntityListeners(AuditingEntityListener.class)
@@ -36,6 +41,15 @@ public class User {
     @Column(name = "profile_image")
     private String profileImage;
     
+    @Column(name = "is_admin")
+    private Boolean isAdmin = false;
+    
+    @Column(name = "guest_id")
+    private UUID guestId;
+    
+    @Column(name = "is_guest")
+    private Boolean isGuest = false;
+    
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -43,12 +57,6 @@ public class User {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Board> boards = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<BoardComment> comments = new ArrayList<>();
     
     // Constructors
     public User() {}
@@ -116,6 +124,30 @@ public class User {
         this.profileImage = profileImage;
     }
     
+    public Boolean getIsAdmin() {
+        return isAdmin;
+    }
+    
+    public void setIsAdmin(Boolean isAdmin) {
+        this.isAdmin = isAdmin;
+    }
+    
+    public UUID getGuestId() {
+        return guestId;
+    }
+    
+    public void setGuestId(UUID guestId) {
+        this.guestId = guestId;
+    }
+    
+    public Boolean getIsGuest() {
+        return isGuest;
+    }
+    
+    public void setIsGuest(Boolean isGuest) {
+        this.isGuest = isGuest;
+    }
+    
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -131,21 +163,4 @@ public class User {
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
-    
-    public List<Board> getBoards() {
-        return boards;
-    }
-    
-    public void setBoards(List<Board> boards) {
-        this.boards = boards;
-    }
-    
-    public List<BoardComment> getComments() {
-        return comments;
-    }
-    
-    public void setComments(List<BoardComment> comments) {
-        this.comments = comments;
-    }
 }
-

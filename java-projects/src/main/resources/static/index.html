@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-CrossWord</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- CSS로 초기 상태 설정하여 깜빡임 완전 방지 -->
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* 깜빡임 방지를 위한 초기 숨김 처리 */
+        #guestButtons, #userButtons {
+            display: none !important;
+        }
+        
+        #loadingButtons {
+            display: flex !important;
+        }
+        .main-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .game-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 0;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+            padding: 20px;
+        }
+        .game-title {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0;
+        }
+        .game-subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .btn-custom {
+            padding: 12px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            border: none;
+            min-width: 150px;
+        }
+        .btn-primary-custom {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        .btn-outline-custom {
+            border: 2px solid #667eea;
+            color: #667eea;
+            background: transparent;
+        }
+        .btn-outline-custom:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        .btn-secondary-custom {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary-custom:hover {
+            background: #5a6268;
+            color: white;
+            transform: translateY(-2px);
+        }
+        .icon-large {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+        .feature-list {
+            text-align: left;
+            margin: 30px 0;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            color: #555;
+        }
+        .feature-item i {
+            color: #667eea;
+            margin-right: 10px;
+            width: 20px;
+        }
+        .login-form {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+            display: none;
+        }
+        .form-control-custom {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .form-control-custom:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .register-form {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+            display: none;
+        }
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            display: none;
+        }
+        .spinner-border-custom {
+            color: #667eea;
+        }
+        .btn-lg {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .btn-lg:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .fa-3x {
+            color: #6c757d;
+            opacity: 0.7;
+        }
+        .card-body {
+            padding: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="game-card">
+            <!-- 메인 안내 화면 -->
+            <div id="mainScreen">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-puzzle-piece me-2"></i>크로스워드 퍼즐 게임
+                    </h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-puzzle-piece fa-3x text-primary mb-3"></i>
+                        <h5>십자낱말 맞추기, K-Crossword 게임을 즐기세요!</h5>
+                        <p class="text-muted">
+                            다양한 난이도의 퍼즐과 힌트 시스템으로<br>
+                            즐거운 시간을 보내보세요.
+                        </p>
+                    </div>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>다양한 난이도의 퍼즐</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>힌트 시스템</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>레벨별 진행</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>게스트 모드 지원</span>
+                    </div>
+                </div>
+                
+                    <!-- 비로그인 사용자용 버튼 -->
+                    <div id="guestButtons" class="d-flex justify-content-center gap-3" style="display: none !important;">
+                        <button class="btn btn-primary btn-lg" onclick="showRegisterForm()">
+                            <i class="fas fa-user-plus me-2"></i>회원가입
+                        </button>
+                        <button class="btn btn-success btn-lg" onclick="showLoginForm()">
+                            <i class="fas fa-sign-in-alt me-2"></i>로그인
+                        </button>
+                        <button class="btn btn-warning btn-lg" onclick="startAsGuest()">
+                            <i class="fas fa-user-secret me-2"></i>게스트로 시작
+                        </button>
+                    </div>
+                    
+                    <!-- 로그인 사용자용 버튼 -->
+                    <div id="userButtons" class="d-flex justify-content-center gap-3" style="display: none !important;">
+                        <button class="btn btn-primary btn-lg" onclick="startGame()">
+                            <i class="fas fa-play me-2"></i>게임 시작
+                        </button>
+                        <button class="btn btn-outline-danger btn-lg" onclick="logout()">
+                            <i class="fas fa-sign-out-alt me-2"></i>로그아웃
+                        </button>
+                    </div>
+                    
+                    <!-- 로딩 상태 표시 -->
+                    <div id="loadingButtons" class="d-flex justify-content-center gap-3" style="display: flex !important;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">로딩 중...</span>
+                        </div>
+                        <span class="text-muted ms-2">인증 상태 확인 중...</span>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button class="btn btn-outline-secondary" onclick="goToMain()">
+                            <i class="fas fa-arrow-left me-2"></i>메인으로 돌아가기
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 로그인 폼 -->
+            <div id="loginForm" class="login-form">
+                <h3 class="mb-4">로그인</h3>
+                <div id="loginAlert"></div>
+                <form id="loginFormElement">
+                    <div class="mb-3">
+                        <input type="email" class="form-control form-control-custom" id="loginEmail" 
+                               placeholder="이메일 주소" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" class="form-control form-control-custom" id="loginPassword" 
+                               placeholder="비밀번호" required>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="hideLoginForm()">
+                            취소
+                        </button>
+                        <button type="submit" class="btn btn-primary-custom">
+                            <span class="loading spinner-border spinner-border-sm spinner-border-custom" role="status"></span>
+                            로그인
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- 회원가입 폼 -->
+            <div id="registerForm" class="register-form">
+                <h3 class="mb-4">회원가입</h3>
+                <div id="registerAlert"></div>
+                <form id="registerFormElement">
+                    <div class="mb-3">
+                        <input type="text" class="form-control form-control-custom" id="registerName" 
+                               placeholder="이름" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="email" class="form-control form-control-custom" id="registerEmail" 
+                               placeholder="이메일 주소" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" class="form-control form-control-custom" id="registerPassword" 
+                               placeholder="비밀번호" required>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" onclick="hideRegisterForm()">
+                            취소
+                        </button>
+                        <button type="submit" class="btn btn-primary-custom">
+                            <span class="loading spinner-border spinner-border-sm spinner-border-custom" role="status"></span>
+                            회원가입
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // API 기본 URL
+        const API_BASE_URL = '/api';
+        
+        // 로그인 폼 표시 - 8080 서비스로 리다이렉트
+        function showLoginForm() {
+            window.location.href = 'https://natus250601.viewdns.net/login';
+        }
+        
+        // 로그인 폼 숨기기
+        function hideLoginForm() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'block';
+            clearAlerts();
+        }
+        
+        // 회원가입 폼 표시
+        function showRegisterForm() {
+            document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('registerName').focus();
+        }
+        
+        // 회원가입 폼 숨기기
+        function hideRegisterForm() {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'block';
+            clearAlerts();
+        }
+        
+        // 게스트로 시작 (기존 게스트 ID 우선 사용)
+        function startAsGuest() {
+            // localStorage에서 기존 게스트 ID 확인
+            let guestId = localStorage.getItem('crossword_guest_id');
+            
+            if (guestId) {
+                // 기존 게스트 - URL 파라미터 없이 이동 (localStorage에서 읽음)
+                console.log('기존 게스트 ID 사용:', guestId);
+                localStorage.setItem('crossword_user_type', 'guest');
+                window.location.href = '/Korean/game';
+            } else {
+                // 최초 게스트 - 새 ID 생성 후 URL 파라미터와 함께 이동
+                if (window.crypto && window.crypto.randomUUID) {
+                    guestId = 'guest_' + crypto.randomUUID();
+                } else {
+                    guestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                }
+                localStorage.setItem('crossword_guest_id', guestId);
+                localStorage.setItem('crossword_user_type', 'guest');
+                console.log('새 게스트 ID 생성:', guestId);
+                
+                // 최초 진입 시에만 URL 파라미터 사용
+                window.location.href = '/Korean/game?guest_id=' + guestId;
+            }
+        }
+        
+        // 메인으로 돌아가기
+        function goToMain() {
+            window.location.href = '/';
+        }
+        
+        // 알림 메시지 표시
+        function showAlert(elementId, message, type = 'danger') {
+            const alertDiv = document.getElementById(elementId);
+            alertDiv.innerHTML = `
+                <div class="alert alert-${type} alert-custom" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                    ${message}
+                </div>
+            `;
+        }
+        
+        // 알림 메시지 지우기
+        function clearAlerts() {
+            document.getElementById('loginAlert').innerHTML = '';
+            document.getElementById('registerAlert').innerHTML = '';
+        }
+        
+        // 로딩 상태 표시/숨기기
+        function setLoading(button, isLoading) {
+            const spinner = button.querySelector('.loading');
+            if (isLoading) {
+                spinner.style.display = 'inline-block';
+                button.disabled = true;
+            } else {
+                spinner.style.display = 'none';
+                button.disabled = false;
+            }
+        }
+        
+        // 로그인 처리
+        document.getElementById('loginFormElement').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            
+            setLoading(submitButton, true);
+            clearAlerts();
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include', // 쿠키 포함
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 로그인 성공
+                    localStorage.setItem('user_token', data.data.authorization.token);
+                    localStorage.setItem('user_info', JSON.stringify(data.data.user));
+                    localStorage.setItem('user_type', 'user');
+                    
+                    showAlert('loginAlert', '로그인 성공! 게임을 시작합니다.', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/Korean/game';
+                    }, 1000);
+                } else {
+                    showAlert('loginAlert', data.message || '로그인에 실패했습니다.', 'danger');
+                }
+            } catch (error) {
+                console.error('로그인 오류:', error);
+                showAlert('loginAlert', '로그인 중 오류가 발생했습니다.', 'danger');
+            } finally {
+                setLoading(submitButton, false);
+            }
+        });
+        
+        // 회원가입 처리
+        document.getElementById('registerFormElement').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            
+            setLoading(submitButton, true);
+            clearAlerts();
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include', // 쿠키 포함
+                    body: JSON.stringify({ name, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 회원가입 성공
+                    localStorage.setItem('user_token', data.data.authorization.token);
+                    localStorage.setItem('user_info', JSON.stringify(data.data.user));
+                    localStorage.setItem('user_type', 'user');
+                    
+                    showAlert('registerAlert', '회원가입 성공! 게임을 시작합니다.', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/Korean/game';
+                    }, 1000);
+                } else {
+                    showAlert('registerAlert', data.message || '회원가입에 실패했습니다.', 'danger');
+                }
+            } catch (error) {
+                console.error('회원가입 오류:', error);
+                showAlert('registerAlert', '회원가입 중 오류가 발생했습니다.', 'danger');
+            } finally {
+                setLoading(submitButton, false);
+            }
+        });
+        
+        // 중복 함수 정의 제거 - 위에서 이미 정의됨
+        
+        // 게임 시작 (인증된 사용자용)
+        function startGame() {
+            window.location.href = '/Korean/game';
+        }
+        
+        // 로그아웃 기능
+        function logout() {
+            // localStorage 정리
+            localStorage.removeItem('user_token');
+            localStorage.removeItem('crossword_user_type');
+            localStorage.removeItem('user_email');
+            
+            // 8080 서비스의 로그아웃 API 호출 후 메인으로 이동
+            window.location.href = 'https://natus250601.viewdns.net/logout';
+        }
+        
+        // 인증 상태 확인 및 UI 업데이트
+        function checkAuthStatus() {
+            const loadingButtons = document.getElementById('loadingButtons');
+            const guestButtons = document.getElementById('guestButtons');
+            const userButtons = document.getElementById('userButtons');
+            
+            // 서버 API를 통해 실제 인증 상태 확인
+            fetch('/api/auth/status', {
+                method: 'GET',
+                credentials: 'include' // 쿠키 포함
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('인증 상태 응답:', data);
+                
+                // 로딩 상태 숨기기
+                loadingButtons.style.setProperty('display', 'none', 'important');
+                
+                if (data.authenticated && data.userType === 'user') {
+                    // 인증된 사용자 - 게임시작/로그아웃 버튼 표시
+                    userButtons.style.setProperty('display', 'flex', 'important');
+                    
+                    console.log('✅ 인증된 사용자 UI 표시:', data.user?.name);
+                    console.log('관리자 여부:', data.user?.is_admin);
+                    console.log('userButtons 표시:', userButtons.style.display);
+                    
+                    // localStorage에도 저장 (선택적)
+                    localStorage.setItem('crossword_user_type', 'user');
+                    localStorage.setItem('user_email', data.user?.email || '');
+                    localStorage.setItem('user_name', data.user?.name || '');
+                    localStorage.setItem('is_admin', data.user?.is_admin ? 'true' : 'false');
+                    
+                } else {
+                    // 비인증 사용자 - 기본 버튼 표시
+                    guestButtons.style.setProperty('display', 'flex', 'important');
+                    
+                    console.log('❌ 비인증 사용자 UI 표시');
+                    console.log('guestButtons 표시:', guestButtons.style.display);
+                    
+                    // localStorage 정리
+                    localStorage.removeItem('crossword_user_type');
+                    localStorage.removeItem('user_email');
+                }
+            })
+            .catch(error => {
+                console.error('인증 상태 확인 오류:', error);
+                
+                // 로딩 상태 숨기기
+                loadingButtons.style.setProperty('display', 'none', 'important');
+                
+                // 오류 발생 시 기본적으로 비인증 상태로 처리
+                guestButtons.style.setProperty('display', 'flex', 'important');
+                
+                console.log('🚨 오류로 인한 비인증 상태 처리');
+            });
+        }
+        
+        // DOM이 준비되자마자 즉시 실행 (페이지 로드 전)
+        document.addEventListener('DOMContentLoaded', function() {
+            // 인증 상태에 따른 UI 업데이트
+            checkAuthStatus();
+            
+            const userToken = localStorage.getItem('user_token');
+            const userType = localStorage.getItem('crossword_user_type');
+            
+            console.log('사용자 타입:', userType, '토큰 존재:', !!userToken);
+        });
+    </script>
+</body>
+</html>
