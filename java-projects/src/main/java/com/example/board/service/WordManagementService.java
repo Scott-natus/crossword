@@ -342,7 +342,7 @@ public class WordManagementService {
         wordMap.put("length", word.getLength());
         wordMap.put("category", word.getCategory());
         wordMap.put("difficulty", word.getDifficulty());
-        wordMap.put("difficulty_text", word.getDifficultyText());
+            wordMap.put("difficulty_text", word.getDifficultyText());
         wordMap.put("is_active", word.getIsActive());
         wordMap.put("conf_yn", word.getConfYn());
         wordMap.put("created_at", word.getCreatedAt());

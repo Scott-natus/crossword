@@ -256,6 +256,7 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     @Query("SELECT w.category, COUNT(w) FROM PzWord w WHERE w.isActive = true GROUP BY w.category ORDER BY COUNT(w) DESC")
     List<Object[]> getCategoryStats();
 
+    
     /**
      * 테마별 승인된 단어 조회 (K-POP 테마용)
      */

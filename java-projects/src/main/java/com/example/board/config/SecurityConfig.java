@@ -26,6 +26,8 @@ public class SecurityConfig {
                 .requestMatchers("/Korean/**", "/K-pop/**", "/K-movie/**", "/K-Drama/**", "/K-Culture/**").permitAll()
                 .requestMatchers("/board/**").permitAll()
                 .requestMatchers("/api/puzzle/**", "/api/auth/**").permitAll()
+                .requestMatchers("/admin/api/**").permitAll() // 관리자 API는 인증 제외
+                .requestMatchers("/admin/**").authenticated() // 관리자 페이지는 인증 필수
                 .requestMatchers("/K-CrossWord/admin/**").authenticated()
                 .anyRequest().permitAll()
             )

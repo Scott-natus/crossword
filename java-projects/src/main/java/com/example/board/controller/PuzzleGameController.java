@@ -12,7 +12,7 @@ import com.example.board.service.PuzzleLevelService;
 import com.example.board.service.PzWordService;
 import com.example.board.service.PzHintService;
 import com.example.board.service.PuzzleGameRecordService;
-import com.example.board.service.HintGeneratorManagementService;
+// import com.example.board.service.HintGeneratorManagementService;
 import com.example.board.service.WordService;
 import com.example.board.service.UserWrongAnswerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1144,9 +1144,8 @@ public class PuzzleGameController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "필수 파라미터가 누락되었습니다."));
             }
             
-            // 단어정제 실행 - 임시 비활성화
-            // boolean success = wordService.refineWord(wordId, difficulty, hints);
-            boolean success = false; // 임시로 false 반환
+            // 단어정제 실행
+            boolean success = pzWordService.refineWord(wordId, difficulty, hints);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", success);
@@ -1158,6 +1157,27 @@ public class PuzzleGameController {
             System.err.println("단어정제 중 오류: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "서버 오류가 발생했습니다."));
+        }
+    }
+    
+    /**
+     * 단어 비활성화 API
+     */
+    @PostMapping("/admin/api/words/deactivate/{wordId}")
+    public ResponseEntity<Map<String, Object>> deactivateWord(@PathVariable Integer wordId) {
+        try {
+            pzWordService.deactivateWord(wordId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "단어가 성공적으로 비활성화되었습니다.");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            System.err.println("단어 비활성화 중 오류: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "단어 비활성화 중 오류가 발생했습니다."));
         }
     }
     

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매일 갱신 퍼즐 관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .status-card {
+            border-left: 4px solid #28a745;
+            transition: all 0.3s ease;
+        }
+        
+        .status-card.not-ready {
+            border-left-color: #dc3545;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .theme-badge {
+            font-size: 0.8rem;
+            padding: 0.5rem 1rem;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-action {
+            min-width: 120px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .loading {
+            display: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .alert-auto-dismiss {
+            animation: fadeOut 3s ease-in-out forwards;
+        }
+        
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 대시보드 헤더 -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-calendar-day"></i> 매일 갱신 퍼즐 관리</h1>
+                    <p class="mb-0">테마별 일일 퍼즐 생성 및 관리</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light" onclick="refreshStatus()">
+                        <i class="fas fa-sync-alt"></i> 새로고침
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 통계 카드 -->
+    <div class="container">
+        <div class="stats-grid" id="statsGrid">
+            <!-- 통계 카드들이 여기에 동적으로 생성됩니다 -->
+        </div>
+        
+        <!-- 테마별 상태 카드 -->
+        <div class="row" id="themeCards">
+            <!-- 테마별 상태 카드들이 여기에 동적으로 생성됩니다 -->
+        </div>
+        
+        <!-- 액션 버튼 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-tools"></i> 관리자 액션</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="action-buttons">
+                            <button class="btn btn-primary btn-action" onclick="generateAllPuzzles()">
+                                <i class="fas fa-magic"></i> 모든 테마 퍼즐 생성
+                            </button>
+                            <button class="btn btn-success btn-action" onclick="checkStatus()">
+                                <i class="fas fa-check-circle"></i> 상태 확인
+                            </button>
+                            <button class="btn btn-info btn-action" onclick="showUnreadyThemes()">
+                                <i class="fas fa-exclamation-triangle"></i> 미준비 테마 확인
+                            </button>
+                            <button class="btn btn-warning btn-action" onclick="generateForDate()">
+                                <i class="fas fa-calendar-plus"></i> 특정 날짜 생성
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 로딩 인디케이터 -->
+        <div class="loading text-center mt-4" id="loadingIndicator">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">로딩 중...</span>
+            </div>
+            <p class="mt-2">처리 중입니다...</p>
+        </div>
+    </div>
+
+    <!-- 특정 날짜 생성 모달 -->
+    <div class="modal fade" id="dateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">특정 날짜 퍼즐 생성</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="targetDate" class="form-label">생성할 날짜</label>
+                        <input type="date" class="form-control" id="targetDate">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmGenerateForDate()">생성</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboard();
+        });
+        
+        // 대시보드 데이터 로드
+        function loadDashboard() {
+            showLoading(true);
+            
+            // 상태 확인
+            checkStatus()
+                .then(() => {
+                    // 통계 로드
+                    loadStats();
+                })
+                .finally(() => {
+                    showLoading(false);
+                });
+        }
+        
+        // 상태 확인
+        async function checkStatus() {
+            try {
+                const response = await fetch('/K-CrossWord/admin/daily-puzzles/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayThemeStatus(data.data);
+                } else {
+                    showAlert('상태 확인에 실패했습니다: ' + data.message, 'danger');
+                }
+            } catch (error) {
+                console.error('상태 확인 오류:', error);
+                showAlert('상태 확인 중 오류가 발생했습니다.', 'danger');
+            }
+        }
+        
+        // 테마별 상태 표시
+        function displayThemeStatus(statusData) {
+            const themeCards = document.getElementById('themeCards');
+            const themes = ['K-POP', 'K-DRAMA', 'K-MOVIE', 'K-CULTURE', 'Korean'];
+            
+            themeCards.innerHTML = themes.map(theme => {
+                const isReady = statusData[theme] || false;
+                const statusClass = isReady ? 'status-card' : 'status-card not-ready';
+                const statusIcon = isReady ? 'fa-check-circle text-success' : 'fa-times-circle text-danger';
+                const statusText = isReady ? '준비 완료' : '준비 안됨';
+                
+                return `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card ${statusClass}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-title">${theme}</h6>
+                                        <p class="card-text mb-0">
+                                            <i class="fas ${statusIcon}"></i> ${statusText}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="generateThemePuzzle('${theme}')">
+                                            <i class="fas fa-play"></i> 생성
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 통계 로드
+        async function loadStats() {
+            try {
+                const response = await fetch('/K-CrossWord/admin/daily-puzzles/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayStats(data.data);
+                }
+            } catch (error) {
+                console.error('통계 로드 오류:', error);
+            }
+        }
+        
+        // 통계 표시
+        function displayStats(statsData) {
+            const statsGrid = document.getElementById('statsGrid');
+            
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${statsData.totalThemes || 0}</div>
+                    <div class="text-muted">총 테마</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${statsData.readyThemes || 0}</div>
+                    <div class="text-muted">준비된 테마</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${(statsData.totalThemes || 0) - (statsData.readyThemes || 0)}</div>
+                    <div class="text-muted">미준비 테마</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${statsData.date || 'N/A'}</div>
+                    <div class="text-muted">오늘 날짜</div>
+                </div>
+            `;
+        }
+        
+        // 모든 테마 퍼즐 생성
+        async function generateAllPuzzles() {
+            if (!confirm('모든 테마의 퍼즐을 생성하시겠습니까?')) return;
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/K-CrossWord/admin/daily-puzzles/generate-all', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('모든 테마의 퍼즐이 성공적으로 생성되었습니다.', 'success');
+                    loadDashboard();
+                } else {
+                    showAlert('퍼즐 생성에 실패했습니다: ' + data.message, 'danger');
+                }
+            } catch (error) {
+                console.error('퍼즐 생성 오류:', error);
+                showAlert('퍼즐 생성 중 오류가 발생했습니다.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // 특정 테마 퍼즐 생성
+        async function generateThemePuzzle(theme) {
+            if (!confirm(`${theme} 테마의 퍼즐을 생성하시겠습니까?`)) return;
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`/K-CrossWord/admin/daily-puzzles/generate/${theme}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(`${theme} 테마의 퍼즐이 성공적으로 생성되었습니다.`, 'success');
+                    loadDashboard();
+                } else {
+                    showAlert('테마별 퍼즐 생성에 실패했습니다: ' + data.message, 'danger');
+                }
+            } catch (error) {
+                console.error('테마별 퍼즐 생성 오류:', error);
+                showAlert('테마별 퍼즐 생성 중 오류가 발생했습니다.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // 미준비 테마 확인
+        async function showUnreadyThemes() {
+            try {
+                const response = await fetch('/K-CrossWord/admin/daily-puzzles/unready-themes');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const unreadyThemes = data.unreadyThemes;
+                    if (unreadyThemes.length === 0) {
+                        showAlert('모든 테마가 준비되었습니다!', 'success');
+                    } else {
+                        showAlert(`미준비 테마: ${unreadyThemes.join(', ')}`, 'warning');
+                    }
+                } else {
+                    showAlert('미준비 테마 확인에 실패했습니다: ' + data.message, 'danger');
+                }
+            } catch (error) {
+                console.error('미준비 테마 확인 오류:', error);
+                showAlert('미준비 테마 확인 중 오류가 발생했습니다.', 'danger');
+            }
+        }
+        
+        // 특정 날짜 생성
+        function generateForDate() {
+            const modal = new bootstrap.Modal(document.getElementById('dateModal'));
+            modal.show();
+        }
+        
+        // 특정 날짜 생성 확인
+        async function confirmGenerateForDate() {
+            const targetDate = document.getElementById('targetDate').value;
+            if (!targetDate) {
+                showAlert('날짜를 선택해주세요.', 'warning');
+                return;
+            }
+            
+            if (!confirm(`${targetDate} 날짜의 퍼즐을 생성하시겠습니까?`)) return;
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`/K-CrossWord/admin/daily-puzzles/generate-for-date?date=${targetDate}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('지정된 날짜의 퍼즐이 성공적으로 생성되었습니다.', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('dateModal')).hide();
+                    loadDashboard();
+                } else {
+                    showAlert('특정 날짜 퍼즐 생성에 실패했습니다: ' + data.message, 'danger');
+                }
+            } catch (error) {
+                console.error('특정 날짜 퍼즐 생성 오류:', error);
+                showAlert('특정 날짜 퍼즐 생성 중 오류가 발생했습니다.', 'danger');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // 상태 새로고침
+        function refreshStatus() {
+            loadDashboard();
+        }
+        
+        // 로딩 표시
+        function showLoading(show) {
+            const loading = document.getElementById('loadingIndicator');
+            if (show) {
+                loading.classList.add('show');
+            } else {
+                loading.classList.remove('show');
+            }
+        }
+        
+        // 알림 표시
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show alert-auto-dismiss`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // 3초 후 자동 제거
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

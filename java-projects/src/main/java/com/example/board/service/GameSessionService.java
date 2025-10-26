@@ -28,6 +28,22 @@ public class GameSessionService {
     private final GameSessionRepository gameSessionRepository;
     
     /**
+     * 전체 게임 세션 수 조회
+     */
+    public long getTotalSessionCount() {
+        return gameSessionRepository.count();
+    }
+    
+    /**
+     * 오늘 게임 세션 수 조회
+     */
+    public long getTodaySessionCount() {
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        return gameSessionRepository.countByCreatedAtBetween(startOfDay, endOfDay);
+    }
+    
+    /**
      * ID로 게임 세션 조회
      */
     public Optional<GameSession> getGameSessionById(Long id) {

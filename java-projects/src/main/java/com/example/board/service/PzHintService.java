@@ -56,6 +56,13 @@ public class PzHintService {
     }
     
     /**
+     * 전체 힌트 수 조회
+     */
+    public long getTotalHintCount() {
+        return pzHintRepository.count();
+    }
+    
+    /**
      * 단어 ID와 is_primary 조건으로 힌트 조회 (Laravel과 동일한 로직)
      */
     public List<PzHint> getHintsByWordIdAndIsPrimary(Integer wordId, Boolean isPrimary) {

@@ -1,7 +1,9 @@
 package com.example.board.service;
 
 import com.example.board.entity.PzWord;
+import com.example.board.entity.PzHint;
 import com.example.board.repository.PzWordRepository;
+import com.example.board.repository.PzHintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -9,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +26,7 @@ import java.util.Optional;
 public class PzWordService {
     
     private final PzWordRepository pzWordRepository;
+    private final PzHintRepository pzHintRepository;
     
     /**
      * ID로 단어 조회
@@ -195,6 +199,120 @@ public class PzWordService {
      */
     public long getWordsWithHintsCount() {
         return pzWordRepository.countWordsWithHints();
+    }
+    
+    /**
+     * 힌트가 없는 단어 수 조회
+     */
+    public long getWordsWithoutHintsCount() {
+        return pzWordRepository.countWordsWithoutHints();
+    }
+    
+    /**
+     * 단어정제 실행 (8081 서비스와 동일한 로직)
+     */
+    @Transactional
+    public boolean refineWord(Integer wordId, Integer difficulty, List<Map<String, Object>> hints) {
+        log.debug("단어 정제 시작: wordId={}, difficulty={}, hints={}", wordId, difficulty, hints);
+        
+        try {
+            Optional<PzWord> wordOpt = pzWordRepository.findById(wordId);
+            if (wordOpt.isEmpty()) {
+                log.error("단어를 찾을 수 없습니다: {}", wordId);
+                return false;
+            }
+            
+            PzWord word = wordOpt.get();
+            
+            // 단어 난이도 업데이트
+            word.setDifficulty(difficulty);
+            
+            // 정제 완료 상태로 변경 (8081과 동일)
+            word.setConfYn("Y");
+            
+            // 단어 저장
+            pzWordRepository.save(word);
+            
+            // 힌트 정보 업데이트
+            updateHintsForWord(wordId, hints);
+            
+            log.info("단어 정제 완료: wordId={}", wordId);
+            return true;
+            
+        } catch (Exception e) {
+            log.error("단어 정제 중 오류 발생: wordId={}, error={}", wordId, e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 단어의 힌트 정보 업데이트 (8081 서비스와 동일한 로직)
+     */
+    @Transactional
+    private void updateHintsForWord(Integer wordId, List<Map<String, Object>> hints) {
+        log.debug("힌트 업데이트 시작: wordId={}, hints={}", wordId, hints);
+        
+        try {
+            // 기존 힌트 조회
+            List<PzHint> existingHints = pzHintRepository.findByWordId(wordId);
+            
+            // 기존 힌트 삭제
+            if (!existingHints.isEmpty()) {
+                pzHintRepository.deleteAll(existingHints);
+                log.debug("기존 힌트 삭제 완료: {}개", existingHints.size());
+            }
+            
+            // 새 힌트 추가
+            if (hints != null && !hints.isEmpty()) {
+                PzWord word = pzWordRepository.findById(wordId).orElse(null);
+                if (word != null) {
+                    for (Map<String, Object> hintData : hints) {
+                        PzHint hint = new PzHint();
+                        hint.setWord(word);
+                        hint.setHintText((String) hintData.get("hint_text"));
+                        hint.setDifficulty((Integer) hintData.get("difficulty"));
+                        hint.setIsPrimary((Boolean) hintData.get("is_primary"));
+                        hint.setHintType("TEXT");
+                        hint.setCreatedAt(LocalDateTime.now());
+                        hint.setUpdatedAt(LocalDateTime.now());
+                        
+                        pzHintRepository.save(hint);
+                    }
+                    log.debug("새 힌트 추가 완료: {}개", hints.size());
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("힌트 업데이트 중 오류 발생: wordId={}, error={}", wordId, e.getMessage());
+            throw e;
+        }
+    }
+    
+    
+    /**
+     * 단어 비활성화
+     */
+    @Transactional
+    public void deactivateWord(Integer wordId) {
+        try {
+            log.info("단어 비활성화: wordId={}", wordId);
+            
+            Optional<PzWord> wordOpt = pzWordRepository.findById(wordId);
+            if (!wordOpt.isPresent()) {
+                log.error("단어를 찾을 수 없습니다: {}", wordId);
+                throw new IllegalArgumentException("단어를 찾을 수 없습니다: " + wordId);
+            }
+            
+            PzWord word = wordOpt.get();
+            word.setIsActive(false);
+            pzWordRepository.save(word);
+            
+            log.info("단어 비활성화 완료: wordId={}", wordId);
+            
+        } catch (Exception e) {
+            log.error("단어 비활성화 중 오류 발생: wordId={}, error={}", wordId, e.getMessage(), e);
+            throw e;
+        }
     }
     
     /**
