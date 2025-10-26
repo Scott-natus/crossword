@@ -51,30 +51,50 @@ public class GridTemplateService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         // 검색 조건이 있는 경우 필터링된 조회, 없는 경우 전체 조회
-        if (levelId != null || (templateName != null && !templateName.trim().isEmpty()) || 
+        if (levelId != null || (templateName != null && !templateName.trim().isEmpty()) ||
             minWordCount != null || maxWordCount != null || 
             minIntersectionCount != null || maxIntersectionCount != null) {
             
-            log.info("검색 조건이 있음 - 필터링된 조회 실행");
-            List<PzGridTemplate> filteredTemplates = pzGridTemplateRepository.findTemplatesWithFilters(
-                    levelId, templateName, minWordCount, maxWordCount,
-                    minIntersectionCount, maxIntersectionCount
-            );
-            
-            // List를 Page로 변환
-            int start = (int) pageable.getOffset();
-            int end = Math.min((start + pageable.getPageSize()), filteredTemplates.size());
-            List<PzGridTemplate> pageContent = filteredTemplates.subList(start, end);
-            
-            log.info("필터링 결과: 총 {}개, 현재 페이지: {}개", filteredTemplates.size(), pageContent.size());
-            
-            return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, filteredTemplates.size());
+            return pzGridTemplateRepository.findBySearchCriteria(
+                levelId, templateName, minWordCount, maxWordCount, 
+                minIntersectionCount, maxIntersectionCount, pageable);
         } else {
-            log.info("검색 조건이 없음 - 전체 조회 실행");
-            Page<PzGridTemplate> result = pzGridTemplateRepository.findByIsActiveTrue(pageable);
-            log.info("전체 조회 결과: 총 {}개", result.getTotalElements());
-            return result;
+            return pzGridTemplateRepository.findByIsActiveTrue(pageable);
         }
+    }
+
+    /**
+     * 템플릿 통계 정보 조회
+     */
+    public Map<String, Object> getTemplateStats() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        try {
+            // 기본 통계
+            stats.put("totalTemplates", pzGridTemplateRepository.countActiveTemplates());
+            stats.put("averageWordCount", pzGridTemplateRepository.findAverageWordCount());
+            stats.put("maxWordCount", pzGridTemplateRepository.findMaxWordCount());
+            stats.put("minWordCount", pzGridTemplateRepository.findMinWordCount());
+            stats.put("averageIntersectionCount", pzGridTemplateRepository.findAverageIntersectionCount());
+            stats.put("maxIntersectionCount", pzGridTemplateRepository.findMaxIntersectionCount());
+            stats.put("minIntersectionCount", pzGridTemplateRepository.findMinIntersectionCount());
+            
+            // 레벨별 통계
+            List<Object[]> levelStats = pzGridTemplateRepository.countTemplatesByLevel();
+            Map<Integer, Long> templatesByLevel = new HashMap<>();
+            for (Object[] stat : levelStats) {
+                templatesByLevel.put((Integer) stat[0], (Long) stat[1]);
+            }
+            stats.put("templatesByLevel", templatesByLevel);
+            
+            log.info("템플릿 통계 조회 완료: {}", stats);
+            
+        } catch (Exception e) {
+            log.error("템플릿 통계 조회 중 오류 발생", e);
+            stats.put("error", "통계 조회 중 오류가 발생했습니다: " + e.getMessage());
+        }
+        
+        return stats;
     }
 
     /**
@@ -136,195 +156,72 @@ public class GridTemplateService {
     }
 
     /**
-     * 템플릿 수정
+     * 템플릿 저장
      */
     @Transactional
-    public Optional<PzGridTemplate> updateTemplate(Long id, PzGridTemplate updatedTemplate) {
-        return pzGridTemplateRepository.findById(id).map(template -> {
-            template.setLevelId(updatedTemplate.getLevelId());
-            template.setTemplateName(updatedTemplate.getTemplateName());
-            template.setGridWidth(updatedTemplate.getGridWidth());
-            template.setGridHeight(updatedTemplate.getGridHeight());
-            template.setWordCount(updatedTemplate.getWordCount());
-            template.setIntersectionCount(updatedTemplate.getIntersectionCount());
-            template.setGridPattern(updatedTemplate.getGridPattern());
-            template.setWordPositions(updatedTemplate.getWordPositions());
-            template.setDifficultyRating(updatedTemplate.getDifficultyRating());
-            template.setDescription(updatedTemplate.getDescription());
-            template.setIsActive(updatedTemplate.getIsActive());
-            template.setUpdatedAt(LocalDateTime.now());
-            return pzGridTemplateRepository.save(template);
-        });
+    public PzGridTemplate saveTemplate(PzGridTemplate template) {
+        if (template.getCreatedAt() == null) {
+            template.setCreatedAt(LocalDateTime.now());
+        }
+        template.setUpdatedAt(LocalDateTime.now());
+        return pzGridTemplateRepository.save(template);
     }
 
     /**
-     * 템플릿 삭제 (논리 삭제)
+     * 템플릿 삭제
      */
     @Transactional
     public boolean deleteTemplate(Long id) {
-        return pzGridTemplateRepository.findById(id).map(template -> {
-            template.setIsActive(false);
-            template.setUpdatedAt(LocalDateTime.now());
-            pzGridTemplateRepository.save(template);
-            return true;
-        }).orElse(false);
-    }
-
-    /**
-     * 템플릿 물리 삭제
-     */
-    @Transactional
-    public boolean hardDeleteTemplate(Long id) {
-        if (pzGridTemplateRepository.existsById(id)) {
-            pzGridTemplateRepository.deleteById(id);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * 통계 정보 조회
-     */
-    public Map<String, Object> getTemplateStats() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalTemplates", pzGridTemplateRepository.countActiveTemplates());
-        stats.put("averageWordCount", pzGridTemplateRepository.findAverageWordCount());
-        stats.put("maxWordCount", pzGridTemplateRepository.findMaxWordCount());
-        stats.put("minWordCount", pzGridTemplateRepository.findMinWordCount());
-        stats.put("maxIntersectionCount", pzGridTemplateRepository.findMaxIntersectionCount());
-        stats.put("minIntersectionCount", pzGridTemplateRepository.findMinIntersectionCount());
-
-        // 레벨별 통계
-        Map<Integer, Long> levelStats = new HashMap<>();
-        pzGridTemplateRepository.countTemplatesByLevel().forEach(obj ->
-                levelStats.put((Integer) obj[0], (Long) obj[1])
-        );
-        stats.put("levelStats", levelStats);
-
-        // 그리드 크기별 통계
-        Map<String, Long> gridSizeStats = new HashMap<>();
-        pzGridTemplateRepository.countTemplatesByGridSize().forEach(obj ->
-                gridSizeStats.put((String) obj[0], (Long) obj[1])
-        );
-        stats.put("gridSizeStats", gridSizeStats);
-
-        // 카테고리별 통계는 제거됨
-        Map<String, Long> categoryStats = new HashMap<>();
-        stats.put("categoryStats", categoryStats);
-
-        return stats;
-    }
-
-    /**
-     * 레벨별 샘플 템플릿 조회
-     */
-    public List<PzGridTemplate> getSampleTemplatesByLevel() {
-        // 활성화된 모든 템플릿들을 레벨별로 가져오기 (제한 없음)
-        return pzGridTemplateRepository.findByIsActiveTrueOrderByLevelIdAscCreatedAtDesc();
-    }
-
-    /**
-     * 특정 레벨의 샘플 템플릿 조회
-     */
-    public List<PzGridTemplate> getSampleTemplatesBySpecificLevel(Integer levelId) {
-        return pzGridTemplateRepository.findSampleTemplatesBySpecificLevel(levelId);
-    }
-
-    /**
-     * 복잡한 검색 조건으로 템플릿 조회
-     */
-    public List<PzGridTemplate> searchTemplatesWithFilters(Integer levelId, String templateName,
-                                                           Integer minWordCount, Integer maxWordCount,
-                                                           Integer minIntersectionCount, Integer maxIntersectionCount,
-                                                           String category) {
-        return pzGridTemplateRepository.findTemplatesWithFilters(
-                levelId, templateName, minWordCount, maxWordCount,
-                minIntersectionCount, maxIntersectionCount
-        );
-    }
-
-    /**
-     * 템플릿 복사
-     */
-    @Transactional
-    public Optional<PzGridTemplate> copyTemplate(Long id, String newTemplateName) {
-        return pzGridTemplateRepository.findById(id).map(originalTemplate -> {
-            PzGridTemplate newTemplate = new PzGridTemplate();
-            newTemplate.setLevelId(originalTemplate.getLevelId());
-            newTemplate.setTemplateName(newTemplateName);
-            newTemplate.setGridWidth(originalTemplate.getGridWidth());
-            newTemplate.setGridHeight(originalTemplate.getGridHeight());
-            newTemplate.setWordCount(originalTemplate.getWordCount());
-            newTemplate.setIntersectionCount(originalTemplate.getIntersectionCount());
-            newTemplate.setGridPattern(originalTemplate.getGridPattern());
-            newTemplate.setWordPositions(originalTemplate.getWordPositions());
-            newTemplate.setDifficultyRating(originalTemplate.getDifficultyRating());
-            newTemplate.setDescription(originalTemplate.getDescription());
-            newTemplate.setIsActive(true);
-            newTemplate.setCreatedAt(LocalDateTime.now());
-            newTemplate.setUpdatedAt(LocalDateTime.now());
-            
-            return pzGridTemplateRepository.save(newTemplate);
-        });
-    }
-
-    /**
-     * 선택된 템플릿들 일괄 삭제
-     */
-    @Transactional
-    public int bulkDeleteTemplates(List<Long> ids) {
-        int deletedCount = 0;
-        for (Long id : ids) {
-            if (deleteTemplate(id)) {
-                deletedCount++;
+        try {
+            if (pzGridTemplateRepository.existsById(id)) {
+                pzGridTemplateRepository.deleteById(id);
+                log.info("템플릿 삭제 완료: id={}", id);
+                return true;
+            } else {
+                log.warn("삭제할 템플릿을 찾을 수 없습니다: id={}", id);
+                return false;
             }
+        } catch (Exception e) {
+            log.error("템플릿 삭제 중 오류 발생: id={}", id, e);
+            return false;
         }
-        return deletedCount;
     }
 
     /**
-     * 선택된 템플릿들 일괄 수정
+     * 템플릿 활성화/비활성화
      */
     @Transactional
-    public int bulkUpdateTemplates(List<Long> templateIds, Map<String, Object> updateData) {
-        int updatedCount = 0;
-        for (Long templateId : templateIds) {
-            Optional<PzGridTemplate> templateOpt = pzGridTemplateRepository.findById(templateId);
+    public boolean toggleTemplateStatus(Long id) {
+        try {
+            Optional<PzGridTemplate> templateOpt = pzGridTemplateRepository.findById(id);
             if (templateOpt.isPresent()) {
                 PzGridTemplate template = templateOpt.get();
-                
-                // 업데이트할 필드들 적용
-                if (updateData.containsKey("levelId")) {
-                    template.setLevelId((Integer) updateData.get("levelId"));
-                }
-                if (updateData.containsKey("difficultyRating")) {
-                    template.setDifficultyRating((Integer) updateData.get("difficultyRating"));
-                }
-                if (updateData.containsKey("description")) {
-                    template.setDescription((String) updateData.get("description"));
-                }
-                
+                template.setIsActive(!template.getIsActive());
                 template.setUpdatedAt(LocalDateTime.now());
                 pzGridTemplateRepository.save(template);
-                updatedCount++;
+                log.info("템플릿 상태 변경 완료: id={}, isActive={}", id, template.getIsActive());
+                return true;
+            } else {
+                log.warn("상태를 변경할 템플릿을 찾을 수 없습니다: id={}", id);
+                return false;
             }
+        } catch (Exception e) {
+            log.error("템플릿 상태 변경 중 오류 발생: id={}", id, e);
+            return false;
         }
-        return updatedCount;
     }
 
     /**
-     * 샘플 템플릿 조회 (모든 레벨)
+     * 레벨별 템플릿 조회
      */
-    public List<PzGridTemplate> getSampleTemplates() {
+    public List<PzGridTemplate> getTemplatesByLevel(Integer levelId) {
+        return pzGridTemplateRepository.findByLevelIdAndIsActiveTrueOrderByCreatedAtDesc(levelId);
+    }
+
+    /**
+     * 모든 활성화된 템플릿 조회
+     */
+    public List<PzGridTemplate> getAllActiveTemplates() {
         return pzGridTemplateRepository.findByIsActiveTrueOrderByLevelIdAscCreatedAtDesc();
     }
-
-    /**
-     * 특정 레벨의 샘플 템플릿 조회
-     */
-    public List<PzGridTemplate> getSampleTemplatesByLevel(Long levelId) {
-        return pzGridTemplateRepository.findByLevelIdAndIsActiveTrueOrderByCreatedAtDesc(levelId.intValue());
-    }
-
-
 }

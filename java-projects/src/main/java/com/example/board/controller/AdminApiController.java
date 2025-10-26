@@ -4,12 +4,14 @@ import com.example.board.service.PzWordService;
 import com.example.board.service.PzHintService;
 import com.example.board.service.PuzzleLevelService;
 import com.example.board.service.GameSessionService;
+import com.example.board.service.LevelManagementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,6 +29,7 @@ public class AdminApiController {
     private final PzHintService pzHintService;
     private final PuzzleLevelService puzzleLevelService;
     private final GameSessionService gameSessionService;
+    private final LevelManagementService levelManagementService;
     
     /**
      * 시스템 통계 조회
@@ -112,6 +115,112 @@ public class AdminApiController {
         }
     }
     
+    /**
+     * 레벨 목록 조회 (DataTables 형식) - 실제 데이터베이스에서 조회
+     */
+    @GetMapping("/level-management/levels-ajax")
+    public ResponseEntity<Map<String, Object>> getLevelsAjax(
+            @RequestParam(defaultValue = "0") int start,
+            @RequestParam(defaultValue = "100") int length,
+            @RequestParam(defaultValue = "level") String orderColumn,
+            @RequestParam(defaultValue = "asc") String orderDir,
+            @RequestParam(defaultValue = "1") int draw) {
+        try {
+            log.info("레벨 목록 조회 요청 (DataTables 형식)");
+            
+            // 실제 데이터베이스에서 레벨 데이터 조회
+            int page = start / length;
+            var levels = levelManagementService.getAllLevels(page, length, orderColumn, orderDir);
+            
+            // 레벨 데이터를 Map으로 변환
+            var levelList = levels.getContent().stream()
+                .map(level -> {
+                    Map<String, Object> levelMap = new HashMap<>();
+                    levelMap.put("id", level.getId());
+                    levelMap.put("level", level.getLevel());
+                    levelMap.put("levelName", level.getLevelName());
+                    levelMap.put("wordDifficulty", level.getWordDifficulty());
+                    levelMap.put("hintDifficulty", level.getHintDifficulty());
+                    levelMap.put("intersectionCount", level.getIntersectionCount());
+                    levelMap.put("wordCount", level.getWordCount());
+                    levelMap.put("timeLimit", level.getTimeLimit());
+                    levelMap.put("clearCondition", level.getClearCondition());
+                    levelMap.put("createdAt", level.getCreatedAt());
+                    levelMap.put("updatedAt", level.getUpdatedAt());
+                    return levelMap;
+                })
+                .toList();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("draw", draw);
+            response.put("recordsTotal", levels.getTotalElements());
+            response.put("recordsFiltered", levels.getTotalElements());
+            response.put("data", levelList);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("레벨 목록 조회 중 오류 발생: {}", e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("draw", draw);
+            response.put("recordsTotal", 0);
+            response.put("recordsFiltered", 0);
+            response.put("data", new Object[0]);
+            response.put("error", e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 특정 레벨 조회 (8081 형식) - 실제 데이터베이스에서 조회
+     */
+    @GetMapping("/level-management/level/{id}")
+    public ResponseEntity<Map<String, Object>> getLevel(@PathVariable Integer id) {
+        try {
+            log.info("레벨 조회 요청: id={}", id);
+            
+            // 실제 데이터베이스에서 레벨 조회
+            var levelOpt = levelManagementService.getLevelByLevelNumber(id);
+            if (levelOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "레벨을 찾을 수 없습니다: " + id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            var level = levelOpt.get();
+            Map<String, Object> levelMap = new HashMap<>();
+            levelMap.put("id", level.getId());
+            levelMap.put("level", level.getLevel());
+            levelMap.put("levelName", level.getLevelName());
+            levelMap.put("wordDifficulty", level.getWordDifficulty());
+            levelMap.put("hintDifficulty", level.getHintDifficulty());
+            levelMap.put("intersectionCount", level.getIntersectionCount());
+            levelMap.put("wordCount", level.getWordCount());
+            levelMap.put("timeLimit", level.getTimeLimit());
+            levelMap.put("clearCondition", level.getClearCondition());
+            levelMap.put("createdAt", level.getCreatedAt());
+            levelMap.put("updatedAt", level.getUpdatedAt());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", levelMap);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("레벨 조회 중 오류 발생: id={}, error={}", id, e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "레벨 조회 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
     /**
      * 시스템 상태 확인
      */

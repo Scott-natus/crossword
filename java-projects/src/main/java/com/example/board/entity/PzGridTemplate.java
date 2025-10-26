@@ -84,26 +84,16 @@ public class PzGridTemplate {
      * 그리드 크기를 문자열로 반환 (예: "5×5")
      */
     public String getGridSize() {
-        return gridWidth + "×" + gridHeight;
+        if (gridWidth != null && gridHeight != null) {
+            return gridWidth + "×" + gridHeight;
+        }
+        return "N/A";
     }
     
     /**
-     * 레벨 이름을 반환 (예: "레벨 1 실마리 발견자 (Clue Spotter)")
+     * 템플릿이 활성화되어 있는지 확인
      */
-    public String getLevelName() {
-        if (levelId == null) return "미지정";
-        
-        String levelType;
-        if (levelId <= 10) {
-            levelType = "실마리 발견자 (Clue Spotter)";
-        } else if (levelId <= 20) {
-            levelType = "단서 수집가 (Clue Collector)";
-        } else if (levelId <= 30) {
-            levelType = "퍼즐 마스터 (Puzzle Master)";
-        } else {
-            levelType = "크로스워드 전문가 (Crossword Expert)";
-        }
-        
-        return "레벨 " + levelId + " " + levelType;
+    public boolean isTemplateActive() {
+        return isActive != null && isActive;
     }
 }

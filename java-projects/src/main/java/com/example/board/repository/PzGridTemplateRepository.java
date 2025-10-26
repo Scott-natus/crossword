@@ -55,55 +55,33 @@ public interface PzGridTemplateRepository extends JpaRepository<PzGridTemplate, 
     @Query("SELECT MIN(p.wordCount) FROM PzGridTemplate p WHERE p.isActive = true")
     Integer findMinWordCount();
     
+    @Query("SELECT AVG(p.intersectionCount) FROM PzGridTemplate p WHERE p.isActive = true")
+    Double findAverageIntersectionCount();
+    
     @Query("SELECT MAX(p.intersectionCount) FROM PzGridTemplate p WHERE p.isActive = true")
     Integer findMaxIntersectionCount();
     
     @Query("SELECT MIN(p.intersectionCount) FROM PzGridTemplate p WHERE p.isActive = true")
     Integer findMinIntersectionCount();
     
-    // 레벨별 템플릿 수 통계
-    @Query("SELECT p.levelId, COUNT(p.id) FROM PzGridTemplate p WHERE p.isActive = true GROUP BY p.levelId ORDER BY p.levelId")
+    // 레벨별 템플릿 개수
+    @Query("SELECT p.levelId, COUNT(p) FROM PzGridTemplate p WHERE p.isActive = true GROUP BY p.levelId ORDER BY p.levelId")
     List<Object[]> countTemplatesByLevel();
     
-    // 그리드 크기별 템플릿 수 통계
-    @Query("SELECT CONCAT(p.gridWidth, '×', p.gridHeight), COUNT(p.id) FROM PzGridTemplate p WHERE p.isActive = true GROUP BY p.gridWidth, p.gridHeight ORDER BY p.gridWidth, p.gridHeight")
-    List<Object[]> countTemplatesByGridSize();
-    
-    
-    // 레벨별 샘플 템플릿 조회 (각 레벨당 최대 3개)
-    @Query(value = """
-        SELECT * FROM (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY level_id ORDER BY created_at DESC) as rn
-            FROM puzzle_grid_templates 
-            WHERE is_active = true
-        ) t 
-        WHERE t.rn <= 3 
-        ORDER BY level_id, created_at DESC
-        """, nativeQuery = true)
-    List<Object[]> findSampleTemplatesByLevelRaw();
-    
-    // 특정 레벨의 샘플 템플릿 조회
-    @Query("SELECT p FROM PzGridTemplate p WHERE p.levelId = :levelId AND p.isActive = true ORDER BY p.createdAt DESC")
-    List<PzGridTemplate> findSampleTemplatesBySpecificLevel(@Param("levelId") Integer levelId);
-    
-    // 복잡한 검색 쿼리 (다중 조건)
-    @Query("""
-        SELECT p FROM PzGridTemplate p 
-        WHERE p.isActive = true 
-        AND (:levelId IS NULL OR p.levelId = :levelId)
-        AND (:templateName IS NULL OR LOWER(p.templateName) LIKE LOWER(CONCAT('%', :templateName, '%')))
-        AND (:minWordCount IS NULL OR p.wordCount >= :minWordCount)
-        AND (:maxWordCount IS NULL OR p.wordCount <= :maxWordCount)
-        AND (:minIntersectionCount IS NULL OR p.intersectionCount >= :minIntersectionCount)
-        AND (:maxIntersectionCount IS NULL OR p.intersectionCount <= :maxIntersectionCount)
-        ORDER BY p.levelId ASC, p.createdAt DESC
-        """)
-    List<PzGridTemplate> findTemplatesWithFilters(
-        @Param("levelId") Integer levelId,
-        @Param("templateName") String templateName,
-        @Param("minWordCount") Integer minWordCount,
-        @Param("maxWordCount") Integer maxWordCount,
-        @Param("minIntersectionCount") Integer minIntersectionCount,
-        @Param("maxIntersectionCount") Integer maxIntersectionCount
-    );
+    // 복합 검색 쿼리
+    @Query("SELECT p FROM PzGridTemplate p WHERE " +
+           "(:levelId IS NULL OR p.levelId = :levelId) AND " +
+           "(:templateName IS NULL OR LOWER(p.templateName) LIKE LOWER(CONCAT('%', :templateName, '%'))) AND " +
+           "(:minWordCount IS NULL OR p.wordCount >= :minWordCount) AND " +
+           "(:maxWordCount IS NULL OR p.wordCount <= :maxWordCount) AND " +
+           "(:minIntersectionCount IS NULL OR p.intersectionCount >= :minIntersectionCount) AND " +
+           "(:maxIntersectionCount IS NULL OR p.intersectionCount <= :maxIntersectionCount)")
+    Page<PzGridTemplate> findBySearchCriteria(
+            @Param("levelId") Integer levelId,
+            @Param("templateName") String templateName,
+            @Param("minWordCount") Integer minWordCount,
+            @Param("maxWordCount") Integer maxWordCount,
+            @Param("minIntersectionCount") Integer minIntersectionCount,
+            @Param("maxIntersectionCount") Integer maxIntersectionCount,
+            Pageable pageable);
 }

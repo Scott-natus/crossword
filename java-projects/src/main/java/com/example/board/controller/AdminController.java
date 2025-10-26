@@ -146,6 +146,52 @@ public class AdminController {
     }
     
     /**
+     * 템플릿 관리 페이지
+     */
+    @GetMapping("/templates")
+    public ResponseEntity<String> templates() {
+        try {
+            log.info("템플릿 관리 페이지 접근");
+            
+            Resource resource = new ClassPathResource("static/admin/templates/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            log.error("템플릿 관리 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    /**
+     * 새 템플릿 생성 페이지
+     */
+    @GetMapping("/templates/create")
+    public ResponseEntity<String> createTemplate() {
+        try {
+            log.info("새 템플릿 생성 페이지 접근");
+            
+            Resource resource = new ClassPathResource("static/admin/templates/create.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            log.error("새 템플릿 생성 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    /**
      * 레벨 관리 페이지
      */
     @GetMapping("/levels")
@@ -168,19 +214,6 @@ public class AdminController {
         }
     }
     
-    /**
-     * 템플릿 관리 페이지
-     */
-    @GetMapping("/templates")
-    public String templateManagement(Model model) {
-        try {
-            log.info("템플릿 관리 페이지 접근");
-            return "admin/templates";
-        } catch (Exception e) {
-            log.error("템플릿 관리 페이지 접근 중 오류 발생: {}", e.getMessage());
-            return "error";
-        }
-    }
     
     /**
      * 사용자 관리 페이지

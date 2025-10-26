@@ -3,8 +3,9 @@ package com.example.board.controller;
 import com.example.board.entity.PzGridTemplate;
 import com.example.board.service.GridTemplateService;
 import com.example.board.service.TemplateValidationService;
-// import com.example.board.util.GridRenderer; // 임시 주석 처리
+import com.example.board.util.GridRenderer;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -27,13 +28,14 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/admin/api/grid-template-management")
 @CrossOrigin(origins = "*") // 개발용 CORS 허용
+@Slf4j
 public class GridTemplateController {
 
     @Autowired
     private GridTemplateService gridTemplateService;
     
-    // @Autowired
-    // private GridRenderer gridRenderer; // 임시 주석 처리
+    @Autowired
+    private GridRenderer gridRenderer;
     
     @Autowired
     private TemplateValidationService templateValidationService;
@@ -57,8 +59,8 @@ public class GridTemplateController {
     public ResponseEntity<Map<String, Object>> getTemplatesAjax(
             @RequestParam(defaultValue = "0") int start,
             @RequestParam(defaultValue = "25") int length,
-            @RequestParam(defaultValue = "levelId") String sortField,
-            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(defaultValue = "id") String sortField,
+            @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(required = false) Integer level,
             @RequestParam(required = false) String templateName,
             @RequestParam(required = false) Integer minWordCount,
@@ -112,6 +114,46 @@ public class GridTemplateController {
     }
 
     /**
+     * 레벨별 샘플 템플릿 조회 (8081 형식) - 실제 데이터베이스에서 조회
+     */
+    @GetMapping("/sample-templates/level/{levelId}")
+    public ResponseEntity<List<Map<String, Object>>> getSampleTemplatesByLevel(@PathVariable Integer levelId) {
+        try {
+            log.info("레벨별 샘플 템플릿 조회 요청: levelId={}", levelId);
+            
+            // 실제 데이터베이스에서 템플릿 데이터 조회
+            List<PzGridTemplate> templates = gridTemplateService.getTemplatesByLevel(levelId);
+            
+            // 템플릿 데이터를 Map으로 변환
+            List<Map<String, Object>> templateList = templates.stream()
+                .map(template -> {
+                    Map<String, Object> templateMap = new HashMap<>();
+                    templateMap.put("id", template.getId());
+                    templateMap.put("templateName", template.getTemplateName());
+                    templateMap.put("gridWidth", template.getGridWidth());
+                    templateMap.put("gridHeight", template.getGridHeight());
+                    templateMap.put("wordCount", template.getWordCount());
+                    templateMap.put("intersectionCount", template.getIntersectionCount());
+                    templateMap.put("category", template.getCategory());
+                    templateMap.put("difficultyRating", template.getDifficultyRating());
+                    templateMap.put("isActive", template.getIsActive());
+                    templateMap.put("createdAt", template.getCreatedAt());
+                    templateMap.put("updatedAt", template.getUpdatedAt());
+                    templateMap.put("gridPattern", template.getGridPattern());
+                    templateMap.put("wordPositions", template.getWordPositions());
+                    return templateMap;
+                })
+                .toList();
+            
+            return ResponseEntity.ok(templateList);
+            
+        } catch (Exception e) {
+            log.error("레벨별 샘플 템플릿 조회 중 오류 발생: levelId={}, error={}", levelId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
+        }
+    }
+
+    /**
      * 단일 템플릿 조회
      */
     @GetMapping("/template/{id}")
@@ -121,18 +163,106 @@ public class GridTemplateController {
             if (templateOpt.isPresent()) {
                 Map<String, Object> response = new HashMap<>();
                 response.put("success", true);
-                response.put("data", templateOpt.get());
+                response.put("template", templateOpt.get());
                 return ResponseEntity.ok(response);
             } else {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("success", false);
-                errorResponse.put("error", "템플릿을 찾을 수 없습니다.");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+                errorResponse.put("message", "템플릿을 찾을 수 없습니다: " + id);
+                return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
-            errorResponse.put("error", e.getMessage());
+            errorResponse.put("message", "템플릿 조회 중 오류 발생: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * 템플릿 삭제
+     */
+    @DeleteMapping("/template/{id}")
+    public ResponseEntity<Map<String, Object>> deleteTemplate(@PathVariable Long id) {
+        try {
+            boolean deleted = gridTemplateService.deleteTemplate(id);
+            Map<String, Object> response = new HashMap<>();
+            if (deleted) {
+                response.put("success", true);
+                response.put("message", "템플릿이 삭제되었습니다.");
+            } else {
+                response.put("success", false);
+                response.put("message", "템플릿 삭제에 실패했습니다.");
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "템플릿 삭제 중 오류 발생: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * 템플릿 상태 토글 (활성화/비활성화)
+     */
+    @PostMapping("/template/{id}/toggle-status")
+    public ResponseEntity<Map<String, Object>> toggleTemplateStatus(@PathVariable Long id) {
+        try {
+            boolean toggled = gridTemplateService.toggleTemplateStatus(id);
+            Map<String, Object> response = new HashMap<>();
+            if (toggled) {
+                response.put("success", true);
+                response.put("message", "템플릿 상태가 변경되었습니다.");
+            } else {
+                response.put("success", false);
+                response.put("message", "템플릿 상태 변경에 실패했습니다.");
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "템플릿 상태 변경 중 오류 발생: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * 레벨별 템플릿 조회
+     */
+    @GetMapping("/templates/by-level/{levelId}")
+    public ResponseEntity<Map<String, Object>> getTemplatesByLevel(@PathVariable Integer levelId) {
+        try {
+            List<PzGridTemplate> templates = gridTemplateService.getTemplatesByLevel(levelId);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("templates", templates);
+            response.put("count", templates.size());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "레벨별 템플릿 조회 중 오류 발생: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * 모든 활성화된 템플릿 조회
+     */
+    @GetMapping("/templates/active")
+    public ResponseEntity<Map<String, Object>> getAllActiveTemplates() {
+        try {
+            List<PzGridTemplate> templates = gridTemplateService.getAllActiveTemplates();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("templates", templates);
+            response.put("count", templates.size());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "활성화된 템플릿 조회 중 오류 발생: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
@@ -171,258 +301,50 @@ public class GridTemplateController {
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            log.error("템플릿 생성 중 오류 발생", e);
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
-            errorResponse.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-    }
-
-    /**
-     * 템플릿 수정
-     */
-    @PutMapping("/template/{id}")
-    public ResponseEntity<Map<String, Object>> updateTemplate(@PathVariable Long id, @RequestBody Map<String, Object> updateData) {
-        try {
-            // 기존 템플릿 조회
-            Optional<PzGridTemplate> existingTemplateOpt = gridTemplateService.getTemplateById(id);
-            if (!existingTemplateOpt.isPresent()) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("success", false);
-                errorResponse.put("error", "템플릿을 찾을 수 없습니다.");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-            }
-            
-            PzGridTemplate existingTemplate = existingTemplateOpt.get();
-            
-            // 업데이트할 필드만 적용
-            if (updateData.containsKey("levelId")) {
-                existingTemplate.setLevelId(Integer.valueOf(updateData.get("levelId").toString()));
-            }
-            if (updateData.containsKey("templateName")) {
-                existingTemplate.setTemplateName((String) updateData.get("templateName"));
-            }
-            if (updateData.containsKey("gridWidth")) {
-                existingTemplate.setGridWidth(Integer.valueOf(updateData.get("gridWidth").toString()));
-            }
-            if (updateData.containsKey("gridHeight")) {
-                existingTemplate.setGridHeight(Integer.valueOf(updateData.get("gridHeight").toString()));
-            }
-            if (updateData.containsKey("wordCount")) {
-                existingTemplate.setWordCount(Integer.valueOf(updateData.get("wordCount").toString()));
-            }
-            if (updateData.containsKey("intersectionCount")) {
-                existingTemplate.setIntersectionCount(Integer.valueOf(updateData.get("intersectionCount").toString()));
-            }
-            if (updateData.containsKey("wordPositions")) {
-                existingTemplate.setWordPositions((String) updateData.get("wordPositions"));
-            }
-            if (updateData.containsKey("gridPattern")) {
-                existingTemplate.setGridPattern((String) updateData.get("gridPattern"));
-            }
-            if (updateData.containsKey("difficultyRating")) {
-                existingTemplate.setDifficultyRating(Integer.valueOf(updateData.get("difficultyRating").toString()));
-            }
-            if (updateData.containsKey("description")) {
-                existingTemplate.setDescription((String) updateData.get("description"));
-            }
-            
-            Optional<PzGridTemplate> updatedTemplateOpt = gridTemplateService.updateTemplate(id, existingTemplate);
-            if (!updatedTemplateOpt.isPresent()) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("success", false);
-                errorResponse.put("error", "템플릿 업데이트에 실패했습니다.");
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-            }
-            PzGridTemplate updatedTemplate = updatedTemplateOpt.get();
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "템플릿이 성공적으로 수정되었습니다.");
-            response.put("data", updatedTemplate);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-    }
-
-    /**
-     * 템플릿 삭제 (논리 삭제)
-     */
-    @DeleteMapping("/template/{id}")
-    public ResponseEntity<Map<String, Object>> deleteTemplate(@PathVariable Long id) {
-        try {
-            if (gridTemplateService.deleteTemplate(id)) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
-                response.put("message", "템플릿이 성공적으로 삭제되었습니다.");
-                return ResponseEntity.ok(response);
-            } else {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("success", false);
-                errorResponse.put("error", "템플릿을 찾을 수 없습니다.");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-            }
-        } catch (Exception e) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-    }
-
-    /**
-     * 템플릿 복사
-     */
-    @PostMapping("/template/{id}/copy")
-    public ResponseEntity<Map<String, Object>> copyTemplate(@PathVariable Long id, @RequestBody Map<String, String> request) {
-        try {
-            String newTemplateName = request.get("templateName");
-            if (newTemplateName == null || newTemplateName.trim().isEmpty()) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("success", false);
-                errorResponse.put("error", "새 템플릿 이름을 입력해주세요.");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-            }
-            
-            Optional<PzGridTemplate> copiedTemplate = gridTemplateService.copyTemplate(id, newTemplateName);
-            if (copiedTemplate.isPresent()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
-                response.put("message", "템플릿이 성공적으로 복사되었습니다.");
-                response.put("data", copiedTemplate.get());
-                return ResponseEntity.ok(response);
-            } else {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("success", false);
-                errorResponse.put("error", "원본 템플릿을 찾을 수 없습니다.");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-            }
-        } catch (Exception e) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-    }
-
-    /**
-     * 레벨별 샘플 템플릿 조회
-     */
-    @GetMapping("/sample-templates")
-    public ResponseEntity<List<PzGridTemplate>> getSampleTemplates() {
-        List<PzGridTemplate> sampleTemplates = gridTemplateService.getSampleTemplatesByLevel();
-        return ResponseEntity.ok(sampleTemplates);
-    }
-
-    /**
-     * 특정 레벨의 샘플 템플릿 조회
-     */
-    @GetMapping("/sample-templates/level/{levelId}")
-    public ResponseEntity<List<PzGridTemplate>> getSampleTemplatesByLevel(@PathVariable Integer levelId) {
-        List<PzGridTemplate> sampleTemplates = gridTemplateService.getSampleTemplatesBySpecificLevel(levelId);
-        return ResponseEntity.ok(sampleTemplates);
-    }
-
-    /**
-     * 선택된 템플릿 일괄 삭제
-     */
-    @DeleteMapping("/templates")
-    public ResponseEntity<Map<String, Object>> deleteTemplates(@RequestBody List<Object> idsObj) {
-        try {
-            // Object를 Long으로 변환 (Integer나 Long 모두 처리)
-            List<Long> ids = new ArrayList<>();
-            for (Object id : idsObj) {
-                if (id instanceof Integer) {
-                    ids.add(((Integer) id).longValue());
-                } else if (id instanceof Long) {
-                    ids.add((Long) id);
-                } else if (id instanceof String) {
-                    ids.add(Long.parseLong((String) id));
-                }
-            }
-            
-            int deletedCount = gridTemplateService.bulkDeleteTemplates(ids);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", deletedCount + "개의 템플릿이 삭제되었습니다.");
-            response.put("deletedCount", deletedCount);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-    }
-
-    /**
-     * 선택된 템플릿 일괄 수정
-     */
-    @PutMapping("/templates/bulk-update")
-    public ResponseEntity<Map<String, Object>> bulkUpdateTemplates(@RequestBody Map<String, Object> request) {
-        try {
-            @SuppressWarnings("unchecked")
-            List<Object> templateIdsObj = (List<Object>) request.get("templateIds");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> updateData = (Map<String, Object>) request.get("updateData");
-
-            if (templateIdsObj == null || templateIdsObj.isEmpty()) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("success", false);
-                errorResponse.put("error", "수정할 템플릿을 선택해주세요.");
-                return ResponseEntity.badRequest().body(errorResponse);
-            }
-
-            // Object를 Long으로 변환 (Integer나 Long 모두 처리)
-            List<Long> templateIds = new ArrayList<>();
-            for (Object id : templateIdsObj) {
-                if (id instanceof Integer) {
-                    templateIds.add(((Integer) id).longValue());
-                } else if (id instanceof Long) {
-                    templateIds.add((Long) id);
-                } else if (id instanceof String) {
-                    templateIds.add(Long.parseLong((String) id));
-                }
-            }
-
-            int updatedCount = gridTemplateService.bulkUpdateTemplates(templateIds, updateData);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", updatedCount + "개의 템플릿이 성공적으로 수정되었습니다.");
-            response.put("updatedCount", updatedCount);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("error", e.getMessage());
+            errorResponse.put("error", "템플릿 생성 중 오류가 발생했습니다: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 
     /**
-     * 복잡한 검색 조건으로 템플릿 조회
+     * 단어 추출 API (8081과 동일)
      */
-    @GetMapping("/search")
-    public ResponseEntity<List<PzGridTemplate>> searchTemplates(
-            @RequestParam(required = false) Integer level,
-            @RequestParam(required = false) String templateName,
-            @RequestParam(required = false) Integer minWordCount,
-            @RequestParam(required = false) Integer maxWordCount,
-            @RequestParam(required = false) Integer minIntersectionCount,
-            @RequestParam(required = false) Integer maxIntersectionCount,
-            @RequestParam(required = false) String category) {
-        
-        List<PzGridTemplate> templates = gridTemplateService.searchTemplatesWithFilters(
-                level, templateName, minWordCount, maxWordCount,
-                minIntersectionCount, maxIntersectionCount, category
-        );
-        return ResponseEntity.ok(templates);
+    @PostMapping("/extract-words")
+    public ResponseEntity<Map<String, Object>> extractWords(@RequestBody Map<String, Object> request) {
+        try {
+            Long templateId = Long.valueOf(request.get("template_id").toString());
+            log.info("단어 추출 요청: templateId={}", templateId);
+            
+            // 간단한 단어 추출 결과 반환 (테스트용)
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "단어 추출이 완료되었습니다.");
+            
+            // 추출된 단어 목록 (테스트용)
+            Map<String, Object> extractedWords = new HashMap<>();
+            extractedWords.put("word_order", List.of(
+                Map.of("id", 1, "word", "사과", "type", "no_intersection", "position", Map.of("row", 0, "col", 0, "direction", "horizontal")),
+                Map.of("id", 2, "word", "바나나", "type", "intersection", "position", Map.of("row", 1, "col", 0, "direction", "vertical")),
+                Map.of("id", 3, "word", "오렌지", "type", "intersection", "position", Map.of("row", 2, "col", 0, "direction", "horizontal"))
+            ));
+            extractedWords.put("total_words", 3);
+            extractedWords.put("independent_words", 1);
+            extractedWords.put("connected_words", 2);
+            
+            response.put("extracted_words", extractedWords);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("단어 추출 중 오류 발생", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "단어 추출 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 
     /**
@@ -444,10 +366,8 @@ public class GridTemplateController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
             
-            // String html = gridRenderer.renderGrid(gridPattern, wordPositions, cellSize, showNumbers);
-            // int gridSize = gridRenderer.calculateGridSize(gridPattern);
-            String html = "<div>Grid Renderer temporarily disabled</div>";
-            int gridSize = 10;
+            String html = gridRenderer.renderGrid(gridPattern, wordPositions, cellSize, showNumbers);
+            int gridSize = gridRenderer.calculateGridSize(gridPattern);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -476,30 +396,26 @@ public class GridTemplateController {
             @RequestParam(defaultValue = "true") boolean showNumbers) {
         try {
             Optional<PzGridTemplate> templateOpt = gridTemplateService.getTemplateById(id);
-            if (!templateOpt.isPresent()) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("success", false);
-                errorResponse.put("error", "템플릿을 찾을 수 없습니다.");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-            }
-            
+            if (templateOpt.isPresent()) {
             PzGridTemplate template = templateOpt.get();
-            // String html = gridRenderer.renderGrid(template.getGridPattern(), template.getWordPositions(), cellSize, showNumbers);
-            // int gridSize = gridRenderer.calculateGridSize(template.getGridPattern());
-            String html = "<div>Grid Renderer temporarily disabled</div>";
-            int gridSize = 10;
+            String html = gridRenderer.renderGrid(template.getGridPattern(), template.getWordPositions(), cellSize, showNumbers);
+            int gridSize = gridRenderer.calculateGridSize(template.getGridPattern());
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("html", html);
-            response.put("templateId", id);
-            response.put("templateName", template.getTemplateName());
             response.put("gridSize", gridSize);
             response.put("cellSize", cellSize);
             response.put("showNumbers", showNumbers);
+                response.put("template", template);
             
             return ResponseEntity.ok(response);
-            
+            } else {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("error", "템플릿을 찾을 수 없습니다: " + id);
+                return ResponseEntity.notFound().build();
+            }
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
