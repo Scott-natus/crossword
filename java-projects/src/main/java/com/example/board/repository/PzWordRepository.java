@@ -90,6 +90,7 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
      */
     @Query("SELECT COUNT(w) FROM PzWord w WHERE w.id NOT IN (SELECT DISTINCT h.word.id FROM PzHint h)")
     Long countWordsWithoutHints();
+    
 
     /**
      * 단어 검색 (페이징)

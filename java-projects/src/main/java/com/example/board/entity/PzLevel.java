@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 /**
  * 퍼즐 레벨 엔티티
  * 
- * @author Crossword Team
+ * @author Board Team
  * @version 1.0.0
- * @since 2025-09-23
+ * @since 2025-10-26
  */
 @Entity
 @Table(name = "puzzle_levels", schema = "public")
@@ -48,7 +48,6 @@ public class PzLevel {
     
     @Column(name = "updated_by")
     private String updatedBy;
-    
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

@@ -101,7 +101,7 @@ public class AdminController {
             // 관리자 메뉴 정보
             model.addAttribute("adminMenus", java.util.Arrays.asList(
                 java.util.Map.of("name", "단어 관리", "url", "/admin/words", "icon", "fas fa-book", "description", "단어 추가, 수정, 삭제 및 일괄 변경"),
-                java.util.Map.of("name", "AI 힌트 관리", "url", "/admin/hints", "icon", "fas fa-magic", "description", "Gemini AI를 활용한 자동 힌트 생성"),
+                java.util.Map.of("name", "AI 힌트 생성", "url", "/admin/hint-generator", "icon", "fas fa-magic", "description", "Gemini AI를 활용한 자동 힌트 생성"),
                 java.util.Map.of("name", "레벨 관리", "url", "/admin/levels", "icon", "fas fa-layer-group", "description", "퍼즐 레벨 및 난이도 설정"),
                 java.util.Map.of("name", "템플릿 관리", "url", "/admin/templates", "icon", "fas fa-th", "description", "퍼즐 그리드 패턴 및 템플릿 관리"),
                 java.util.Map.of("name", "사용자 관리", "url", "/admin/users", "icon", "fas fa-users", "description", "사용자 계정 및 권한 관리"),
@@ -123,16 +123,25 @@ public class AdminController {
     
     
     /**
-     * 힌트 관리 페이지
+     * AI 힌트 생성 페이지
      */
-    @GetMapping("/hints")
-    public String hintManagement(Model model) {
+    @GetMapping("/hint-generator")
+    public ResponseEntity<String> hintGenerator() {
         try {
-            log.info("힌트 관리 페이지 접근");
-            return "admin/hints";
-        } catch (Exception e) {
-            log.error("힌트 관리 페이지 접근 중 오류 발생: {}", e.getMessage());
-            return "error";
+            log.info("AI 힌트 생성 페이지 접근");
+            
+            Resource resource = new ClassPathResource("static/admin/hint-generator/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            log.error("AI 힌트 생성 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
         }
     }
     
@@ -140,13 +149,22 @@ public class AdminController {
      * 레벨 관리 페이지
      */
     @GetMapping("/levels")
-    public String levelManagement(Model model) {
+    public ResponseEntity<String> levelManagement() {
         try {
             log.info("레벨 관리 페이지 접근");
-            return "admin/levels";
-        } catch (Exception e) {
-            log.error("레벨 관리 페이지 접근 중 오류 발생: {}", e.getMessage());
-            return "error";
+            
+            Resource resource = new ClassPathResource("static/admin/levels/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            log.error("레벨 관리 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
         }
     }
     

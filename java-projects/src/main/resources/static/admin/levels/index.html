@@ -298,7 +298,7 @@
                 processing: true,
                 serverSide: true,
                 ajax: {
-                    url: '/K-CrossWord/admin/api/level-management/levels-ajax',
+                    url: '/admin/api/level-management/levels-ajax',
                     type: 'GET',
                     data: function(d) {
                         d.search = $('#searchLevelName').val();
@@ -358,7 +358,18 @@
                         data: 'updatedAt',
                         render: function(data) {
                             if (!data) return '-';
-                            const date = new Date(data);
+                            
+                            let date;
+                            if (Array.isArray(data)) {
+                                // 배열 형태: [year, month, day, hour, minute, second, nanosecond]
+                                date = new Date(data[0], data[1] - 1, data[2], data[3], data[4], data[5]);
+                            } else {
+                                // 문자열 형태
+                                date = new Date(data);
+                            }
+                            
+                            if (isNaN(date.getTime())) return '-';
+                            
                             const year = date.getFullYear().toString().slice(-2);
                             const month = (date.getMonth() + 1).toString().padStart(2, '0');
                             const day = date.getDate().toString().padStart(2, '0');
@@ -436,7 +447,7 @@
 
         function loadStats() {
             $.ajax({
-                url: '/K-CrossWord/admin/api/level-management/stats',
+                url: '/admin/api/level-management/stats',
                 type: 'GET',
                 success: function(response) {
                     $('#totalLevels').text(response.totalLevels || 0);
@@ -480,7 +491,7 @@
             
             // API 호출하여 업데이트
             $.ajax({
-                url: '/K-CrossWord/admin/api/level-management/level/' + id,
+                url: '/admin/api/level-management/' + id,
                 type: 'PUT',
                 contentType: 'application/json',
                 data: JSON.stringify(updateData),
@@ -511,7 +522,7 @@
         function deleteLevel(id) {
             if (confirm('정말로 이 레벨을 삭제하시겠습니까?')) {
                 $.ajax({
-                    url: '/K-CrossWord/admin/api/level-management/level/' + id,
+                    url: '/admin/api/level-management/' + id,
                     type: 'DELETE',
                     success: function(response) {
                         if (response.success) {
@@ -557,7 +568,7 @@
 
             if (confirm('선택된 ' + selectedLevelIds.length + '개의 레벨을 일괄 수정하시겠습니까?')) {
                 $.ajax({
-                    url: '/K-CrossWord/admin/api/level-management/levels/bulk-update',
+                    url: '/admin/api/level-management/bulk-update',
                     type: 'PUT',
                     contentType: 'application/json',
                     data: JSON.stringify({
@@ -590,7 +601,7 @@
 
             if (confirm('선택된 ' + selectedLevelIds.length + '개의 레벨을 정말로 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) {
                 $.ajax({
-                    url: '/K-CrossWord/admin/api/level-management/levels/bulk-delete',
+                    url: '/admin/api/level-management/bulk-delete',
                     type: 'DELETE',
                     contentType: 'application/json',
                     data: JSON.stringify(selectedLevelIds),
