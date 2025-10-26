@@ -7,12 +7,19 @@ import com.example.board.service.PuzzleLevelService;
 import com.example.board.service.GameSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +38,51 @@ public class AdminController {
     private final PzHintService pzHintService;
     private final PuzzleLevelService puzzleLevelService;
     private final GameSessionService gameSessionService;
+    
+    /**
+     * 단어 관리 페이지 (테스트)
+     */
+    @GetMapping("/words/test")
+    public String wordsManagementTest(Model model, Authentication authentication) {
+        try {
+            log.info("단어 관리 테스트 페이지 접근");
+            
+            // 현재 사용자 정보
+            if (authentication != null && authentication.getPrincipal() instanceof User) {
+                User user = (User) authentication.getPrincipal();
+                model.addAttribute("currentUser", user);
+            }
+            
+            return "admin/words/test";
+            
+        } catch (Exception e) {
+            log.error("단어 관리 테스트 페이지 로드 중 오류 발생", e);
+            return "error/500";
+        }
+    }
+    
+    /**
+     * 단어 관리 페이지
+     */
+    @GetMapping("/words")
+    public ResponseEntity<String> wordsManagement() {
+        try {
+            log.info("단어 관리 페이지 접근");
+            
+            Resource resource = new ClassPathResource("static/admin/words/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            log.error("단어 관리 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
+        }
+    }
     
     /**
      * 관리자 메인 대시보드
@@ -69,19 +121,6 @@ public class AdminController {
         }
     }
     
-    /**
-     * 단어 관리 페이지
-     */
-    @GetMapping("/words")
-    public String wordManagement(Model model) {
-        try {
-            log.info("단어 관리 페이지 접근");
-            return "admin/words";
-        } catch (Exception e) {
-            log.error("단어 관리 페이지 접근 중 오류 발생: {}", e.getMessage());
-            return "error";
-        }
-    }
     
     /**
      * 힌트 관리 페이지

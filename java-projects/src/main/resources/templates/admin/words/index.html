@@ -516,28 +516,21 @@
                             <input type="text" class="form-control" id="refinementCreatedAt" readonly>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label"><strong>상태</strong></label>
-                            <input type="text" class="form-control" id="refinementStatus" readonly>
+                            <label class="form-label"><strong>확정일</strong></label>
+                            <input type="text" class="form-control" id="refinementConfirmedAt" readonly>
                         </div>
                     </div>
 
                     <!-- 힌트 섹션 -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6><strong>힌트 관리</strong></h6>
-                                <div class="d-flex gap-2">
-                                    <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm">
-                                        <i class="fas fa-plus me-1"></i>힌트 추가
-                                    </button>
-                                    <button type="button" id="deactivateWordBtn" class="btn btn-danger btn-sm">
-                                        <i class="fas fa-ban me-1"></i>비활성
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="hintsContainer">
-                                <!-- 힌트 필드들이 여기에 동적으로 추가됩니다 -->
-                            </div>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6><strong>힌트</strong></h6>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addHintField()">
+                                <i class="fas fa-plus me-1"></i>힌트추가
+                            </button>
+                        </div>
+                        <div id="hintsContainer">
+                            <!-- 힌트 필드들이 여기에 동적으로 추가됩니다 -->
                         </div>
                     </div>
                 </div>
@@ -749,7 +742,7 @@
 
         // 통계 데이터 로드
         function loadStats() {
-            fetch('/admin/api/words/stats')
+            fetch('/K-CrossWord/admin/api/words/stats')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.data) {
@@ -782,14 +775,13 @@
                 processing: true,
                 serverSide: true,
                 ajax: {
-                    url: '/admin/api/words/data',
+                    url: '/K-CrossWord/admin/api/words/data',
                     type: 'GET',
                     data: function(d) {
                         d.difficulty_filter = $('#difficultyFilter').val();
                         d.search = $('#keywordSearch').val();
                         d.refinement = $('#refinementFilter').val();
                         d.active_filter = $('#activeFilter').val();
-                        console.log('검색 파라미터:', d);
                     }
                 },
                 columns: [
@@ -836,26 +828,12 @@
                     { 
                         data: 'latest_hint_date',
                         render: function(data, type, row) {
-                            if (!data) return '-';
-                            // 배열 형태의 날짜 데이터 처리
-                            if (Array.isArray(data)) {
-                                // [2025,10,22,0,24,35,892187000] 형태를 Date 객체로 변환
-                                const date = new Date(data[0], data[1]-1, data[2], data[3], data[4], data[5]);
-                                return date.toLocaleDateString();
-                            }
-                            return new Date(data).toLocaleDateString();
+                            return data ? new Date(data).toLocaleDateString() : '-';
                         }
                     },
                     { 
                         data: 'created_at',
                         render: function(data, type, row) {
-                            if (!data) return '-';
-                            // 배열 형태의 날짜 데이터 처리
-                            if (Array.isArray(data)) {
-                                // [2025,10,22,0,24,35,892187000] 형태를 Date 객체로 변환
-                                const date = new Date(data[0], data[1]-1, data[2], data[3], data[4], data[5]);
-                                return date.toLocaleDateString();
-                            }
                             return new Date(data).toLocaleDateString();
                         }
                     },
@@ -915,7 +893,6 @@
 
         // 검색 실행
         function performSearch() {
-            console.log('검색 실행:', $('#keywordSearch').val());
             // DataTables의 ajax.reload()를 사용하여 현재 필터 값으로 다시 로드
             wordsTable.ajax.reload();
         }
@@ -981,7 +958,7 @@
             formData.append('category', category);
             formData.append('difficulty', difficulty);
 
-            fetch('/admin/api/words/add', {
+            fetch('/K-CrossWord/admin/api/words/add', {
                 method: 'POST',
                 body: formData
             })
@@ -1066,7 +1043,7 @@
                     formData.append('file', file);
                 }
 
-                return fetch(`/admin/api/words/${wordId}/hints`, {
+                return fetch(`/K-CrossWord/admin/api/words/${wordId}/hints`, {
                     method: 'POST',
                     body: formData
                 })
@@ -1109,7 +1086,7 @@
 
         // 힌트 보기
         function loadWordHints(wordId) {
-            fetch(`/admin/api/words/${wordId}/hints`)
+            fetch(`/K-CrossWord/admin/api/words/${wordId}/hints`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1252,7 +1229,7 @@
             wordIds.forEach(id => formData.append('wordIds', id));
             formData.append('newDifficulty', newDifficulty);
 
-            fetch('/admin/api/words/batch-update-difficulty', {
+            fetch('/K-CrossWord/admin/api/words/batch-update-difficulty', {
                 method: 'POST',
                 body: formData
             })
@@ -1282,7 +1259,7 @@
             wordIds.forEach(id => formData.append('wordIds', id));
             formData.append('isActive', isActive);
 
-            fetch('/admin/api/words/batch-update-active', {
+            fetch('/K-CrossWord/admin/api/words/batch-update-active', {
                 method: 'POST',
                 body: formData
             })
@@ -1311,7 +1288,7 @@
             console.log('editWord 호출됨, id:', id);
             
             // 단어 정보 조회
-            fetch(`/admin/api/words/${id}`)
+            fetch(`/K-CrossWord/admin/api/words/${id}`)
                 .then(response => {
                     console.log('API 응답 상태:', response.status);
                     return response.json();
@@ -1372,7 +1349,7 @@
             formData.append('difficulty', difficulty);
             formData.append('isActive', isActive);
 
-            fetch(`/admin/api/words/update/${id}`, {
+            fetch(`/K-CrossWord/admin/api/words/update/${id}`, {
                 method: 'PUT',
                 body: formData
             })
@@ -1399,7 +1376,7 @@
                 return;
             }
 
-            fetch(`/admin/api/words/deactivate/${id}`, {
+            fetch(`/K-CrossWord/admin/api/words/deactivate/${id}`, {
                 method: 'POST'
             })
             .then(response => response.json())
@@ -1453,11 +1430,10 @@
 
         // 정제 모달 열기
         function openRefinementModal(wordId) {
-            console.log('openRefinementModal 호출됨, wordId:', wordId);
             currentRefinementWordId = wordId;
             
             // 단어 정보 로드
-            fetch(`/admin/api/words/${wordId}/detail`)
+            fetch(`/K-CrossWord/admin/api/words/${wordId}/detail`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1467,16 +1443,11 @@
                         document.getElementById('refinementWord').value = word.word;
                         document.getElementById('refinementDifficulty').value = word.difficulty || 2;
                         document.getElementById('refinementCategory').value = word.category || '';
-                        console.log('생성일자 원본:', word.createdAt);
-                        const createdDate = word.createdAt ? new Date(word.createdAt).toLocaleDateString() : '';
-                        console.log('생성일자 변환:', createdDate);
-                        document.getElementById('refinementCreatedAt').value = createdDate;
-                        document.getElementById('refinementStatus').value = word.confYn === 'Y' ? '정제완료' : '미정제';
+                        document.getElementById('refinementCreatedAt').value = word.created_at ? new Date(word.created_at).toLocaleDateString() : '';
+                        document.getElementById('refinementConfirmedAt').value = word.confirmed_at ? new Date(word.confirmed_at).toLocaleDateString() : '';
                         
                         // 힌트 정보 표시
-                        console.log('API 응답 데이터:', data);
-                        console.log('힌트 데이터:', data.hints);
-                        displayHintsForRefinement(data.hints);
+                        displayHintsForRefinement(word.hints);
                         
                         // 모달 표시
                         const modal = new bootstrap.Modal(document.getElementById('refinementModal'));
@@ -1493,47 +1464,17 @@
 
         // 정제용 힌트 표시
         function displayHintsForRefinement(hints) {
-            console.log('displayHintsForRefinement 호출됨, hints:', hints);
             const container = document.getElementById('hintsContainer');
             container.innerHTML = '';
             hintFieldCounter = 0;
             
             if (hints && hints.length > 0) {
-                console.log('힌트 개수:', hints.length);
-                hints.forEach((hint, index) => {
-                    const hintField = document.createElement('div');
-                    hintField.className = 'hint-field mb-3 p-3 border rounded';
-                    hintField.setAttribute('data-hint-id', hint.id || '');
-                    
-                    hintField.innerHTML = `
-                        <div class="row">
-                            <div class="col-md-8">
-                                <label class="form-label">힌트 ${index + 1}</label>
-                                <input type="text" class="form-control" value="${hint.hint_text || ''}" placeholder="힌트를 입력하세요">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">난이도</label>
-                                <select class="form-select">
-                                    <option value="1" ${hint.difficulty == 1 ? 'selected' : ''}>쉬움</option>
-                                    <option value="2" ${hint.difficulty == 2 ? 'selected' : ''}>보통</option>
-                                    <option value="3" ${hint.difficulty == 3 ? 'selected' : ''}>어려움</option>
-                                    <option value="4" ${hint.difficulty == 4 ? 'selected' : ''}>매우어려움</option>
-                                    <option value="5" ${hint.difficulty == 5 ? 'selected' : ''}>극도어려움</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">기본힌트</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" ${hint.is_primary ? 'checked' : ''}>
-                                    <label class="form-check-label">기본</label>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(hintField);
+                hints.forEach(hint => {
+                    addHintField(hint);
                 });
             } else {
-                container.innerHTML = '<p class="text-muted">등록된 힌트가 없습니다.</p>';
+                // 힌트가 없으면 기본 힌트 필드 추가
+                addHintField();
             }
         }
 
@@ -1621,48 +1562,6 @@
             }
         }
 
-        // 비활성 버튼 클릭
-        document.getElementById('deactivateWordBtn').addEventListener('click', function() {
-            if (!currentRefinementWordId) {
-                showAlert('단어 ID가 없습니다.', 'danger');
-                return;
-            }
-            
-            if (!confirm('이 단어를 비활성화하시겠습니까?\n비활성화된 단어는 퍼즐에서 사용되지 않습니다.')) {
-                return;
-            }
-            
-            // 단어 비활성화 API 호출
-            fetch(`/admin/api/words/deactivate/${currentRefinementWordId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showAlert('단어가 성공적으로 비활성화되었습니다.', 'success');
-                    
-                    // 모달 닫기
-                    const modalElement = document.getElementById('refinementModal');
-                    const modal = bootstrap.Modal.getInstance(modalElement);
-                    if (modal) {
-                        modal.hide();
-                    }
-                    
-                    // 테이블 새로고침
-                    wordsDataTable.ajax.reload();
-                } else {
-                    showAlert(data.error || '비활성화 중 오류가 발생했습니다.', 'danger');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showAlert('비활성화 중 오류가 발생했습니다.', 'danger');
-            });
-        });
-
         // 정제 확정
         function confirmRefinement() {
             if (!currentRefinementWordId) {
@@ -1700,7 +1599,7 @@
                 hints: hints
             };
             
-            fetch('/admin/api/words/refine', {
+            fetch('/K-CrossWord/admin/api/words/refine', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1781,7 +1680,7 @@
             document.getElementById('hintGenerationStatus').textContent = '제미나이 API를 호출하여 힌트를 생성하고 있습니다...';
 
             // API 호출
-            fetch(`/admin/api/hint-generator/word/${currentWordId}?overwrite=${overwrite}`, {
+            fetch(`/K-CrossWord/admin/api/hint-generator/word/${currentWordId}?overwrite=${overwrite}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

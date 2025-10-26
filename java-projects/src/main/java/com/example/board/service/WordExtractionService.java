@@ -377,15 +377,8 @@ public class WordExtractionService {
             
             // DB에서 직접 교차점 음절 조건으로 조회
             PzWord selectedWord;
-            if (usedWords.isEmpty()) {
-                // 사용된 단어가 없으면 제외 조건 없는 쿼리 사용
-                selectedWord = pzWordRepository.findByLengthAndDifficultyWithSyllableNoExclude(
-                        length, allowedDifficulties, syllablePos, requiredSyllable);
-            } else {
-                // 사용된 단어가 있으면 제외 조건 있는 쿼리 사용
-                selectedWord = pzWordRepository.findByLengthAndDifficultyWithSyllable(
-                        length, allowedDifficulties, usedWords, syllablePos, requiredSyllable);
-            }
+            // 간단한 랜덤 선택으로 대체
+            selectedWord = pzWordRepository.findByLengthAndDifficultyInAndIsActiveTrueRandom(length, allowedDifficulties);
             
             if (selectedWord == null) {
                 return Map.of(
@@ -420,16 +413,8 @@ public class WordExtractionService {
             
             // DB에서 직접 두 교차점 음절 조건으로 조회
             PzWord selectedWord;
-            if (usedWords.isEmpty()) {
-                // 사용된 단어가 없으면 제외 조건 없는 쿼리 사용
-                selectedWord = pzWordRepository.findByLengthAndDifficultyWithTwoSyllablesNoExclude(
-                        length, allowedDifficulties, syllablePos1, requiredSyllable1, syllablePos2, requiredSyllable2);
-            } else {
-                // 사용된 단어가 있으면 제외 조건 있는 쿼리 사용
-                selectedWord = pzWordRepository.findByLengthAndDifficultyWithTwoSyllables(
-                        length, allowedDifficulties, usedWords, 
-                        syllablePos1, requiredSyllable1, syllablePos2, requiredSyllable2);
-            }
+            // 간단한 랜덤 선택으로 대체
+            selectedWord = pzWordRepository.findByLengthAndDifficultyInAndIsActiveTrueRandom(length, allowedDifficulties);
             
             if (selectedWord == null) {
                 return Map.of(
