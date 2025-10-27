@@ -843,6 +843,11 @@
 
         // 템플릿 상세보기 (그리드 편집 영역에 적용)
         function showTemplateDetail(template) {
+            applyTemplateToGrid(template);
+        }
+
+        // 템플릿을 그리드에 적용하는 함수 (showTemplateDetail과 동일한 기능)
+        function applyTemplateToGrid(template) {
             
             // 1. 템플릿의 그리드 패턴을 현재 그리드에 적용
             const gridPattern = JSON.parse(template.gridPattern);
@@ -1081,6 +1086,36 @@
         // 단어 번호 업데이트
         function updateWordNumber(wordId, number) {
             // 단어 번호 업데이트 로직
+            console.log(`단어 번호 업데이트: wordId=${wordId}, number=${number}`);
+            
+            // 해당 단어의 selectedNumber 속성 업데이트
+            const wordItem = document.querySelector(`.word-position-item[data-word-id="${wordId}"]`);
+            if (wordItem) {
+                // 단어 위치 정보에서 좌표 추출
+                const text = wordItem.querySelector('small').textContent;
+                const match = text.match(/\((\d+),(\d+)\) 에서 \((\d+),(\d+)\)/);
+                if (match) {
+                    const startX = parseInt(match[1]);
+                    const startY = parseInt(match[2]);
+                    const endX = parseInt(match[3]);
+                    const endY = parseInt(match[4]);
+                    
+                    // 그리드에서 해당 단어에 번호 표시
+                    const cells = document.querySelectorAll('.grid-cell');
+                    for (let y = startY; y <= endY; y++) {
+                        for (let x = startX; x <= endX; x++) {
+                            const cellIndex = y * gridSize + x;
+                            if (cells[cellIndex]) {
+                                if (number) {
+                                    cells[cellIndex].setAttribute('data-word-number', number);
+                                } else {
+                                    cells[cellIndex].removeAttribute('data-word-number');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // 중복 번호 체크 (라라벨과 동일)
@@ -1152,6 +1187,11 @@
             wordItems.forEach(item => {
                 item.classList.remove('selected');
             });
+        }
+
+        // 단어 추출 모달 표시
+        function showWordExtractionModal(templateId) {
+            extractWords(templateId);
         }
 
         // 단어 추출 함수 (Laravel과 동일)
@@ -1828,6 +1868,9 @@
     </style>
 
     <script>
+        // 캐시 무효화를 위한 타임스탬프
+        console.log('create.html 로드됨 - 타임스탬프:', new Date().toISOString());
+        
         // 단어 목록을 번호 순으로 정렬하는 함수
         function sortWordListsByNumber() {
 

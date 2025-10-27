@@ -24,22 +24,20 @@
 
         .header {
             text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #667eea;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
         }
 
         .header h1 {
             color: #2c3e50;
-            font-weight: 600;
-            margin-bottom: 5px;
-            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
         }
 
         .header p {
             color: #7f8c8d;
-            font-size: 0.9rem;
-            margin-bottom: 0;
+            font-size: 1.1em;
         }
 
         .level-selector {
@@ -272,169 +270,6 @@
             color: #6c757d;
             font-size: 0.9em;
         }
-
-        .grid-cell:hover {
-            opacity: 0.8;
-        }
-
-        .grid-cell:active {
-            opacity: 0.6;
-        }
-
-        /* 그리드 넘버링 스타일 */
-        .grid-cell-number {
-            position: relative;
-            transition: all 0.2s ease;
-        }
-
-        .grid-cell-number:hover {
-            transform: scale(1.05);
-            z-index: 10;
-        }
-
-        .word-number {
-            background: #ff6b6b;
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .grid-container {
-            background: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .word-order-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .word-order-list .card {
-            transition: all 0.2s ease;
-        }
-
-        .word-order-list .card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-
-        /* 단어 위치 정보 스타일 */
-        .word-position-item {
-            transition: all 0.2s ease;
-            border: 1px solid #dee2e6 !important;
-        }
-
-        .word-position-item:hover {
-            border-color: #007bff !important;
-            box-shadow: 0 2px 4px rgba(0,123,255,0.1);
-        }
-
-        .word-position-item.selected {
-            border-color: #28a745 !important;
-            background-color: #f8fff9;
-        }
-
-        .word-number-select {
-            transition: all 0.2s ease;
-        }
-
-        .word-number-select:focus {
-            border-color: #007bff;
-            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
-        }
-
-        /* 그리드 하이라이트 효과 */
-        .grid-cell.highlighted {
-            border: 2px solid red !important;
-            box-shadow: 0 0 8px rgba(255,0,0,0.3);
-            z-index: 5;
-        }
-
-        .grid-cell.highlighted-focus {
-            border: 2px solid #ff6b6b !important;
-            background-color: #ffebee !important;
-            box-shadow: 0 0 8px rgba(255,107,107,0.3);
-            z-index: 5;
-        }
-
-        /* 단어 위치 정보 카드 선택 효과 */
-        .word-position-item.selected {
-            border-color: #28a745 !important;
-            background-color: #f8fff9;
-        }
-
-        /* 단어 위치 항목 스타일 */
-        .word-position-item {
-            display: flex;
-            align-items: center;
-            padding: 8px;
-            margin-bottom: 5px;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            transition: all 0.2s ease;
-        }
-
-        .word-position-item:hover {
-            background: #e9ecef;
-            border-color: #adb5bd;
-        }
-
-        .form-control, .form-select {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-            transition: all 0.3s ease;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-
-        .alert-custom {
-            border-radius: 15px;
-            border: none;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .alert-success-custom {
-            background: linear-gradient(135deg, #d4edda, #c3e6cb);
-            color: #155724;
-        }
-
-        .alert-danger-custom {
-            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
-            color: #721c24;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .spinner-border-custom {
-            color: #667eea;
-        }
-
-        .admin-nav {
-            background: white;
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-        }
     </style>
 </head>
 <body>
@@ -444,32 +279,6 @@
             <div class="header">
                 <h1><i class="fas fa-plus-circle me-3"></i>그리드 템플릿 생성</h1>
                 <p>레벨에 맞는 조건에 따라 그리드를 직접 생성하고 템플릿으로 저장할 수 있습니다.</p>
-            </div>
-
-            <!-- 퍼즐 관리 네비게이션 -->
-            <div class="admin-nav">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 text-primary">
-                        <i class="fas fa-puzzle-piece me-2"></i>퍼즐 관리 바로가기
-                    </h6>
-                    <div class="d-flex gap-2">
-                        <a href="/admin/" class="btn btn-secondary btn-sm">
-                            <i class="fas fa-home me-1"></i>퍼즐관리
-                        </a>
-                        <a href="/admin/words" class="btn btn-primary btn-sm">
-                            <i class="fas fa-list me-1"></i>단어관리
-                        </a>
-                        <a href="/admin/hint-generator" class="btn btn-info btn-sm">
-                            <i class="fas fa-magic me-1"></i>AI 힌트관리
-                        </a>
-                        <a href="/admin/levels" class="btn btn-success btn-sm">
-                            <i class="fas fa-layer-group me-1"></i>레벨관리
-                        </a>
-                        <a href="/admin/templates" class="btn btn-warning btn-sm">
-                            <i class="fas fa-th me-1"></i>그리드 템플릿관리
-                        </a>
-                    </div>
-                </div>
             </div>
 
             <!-- 레벨 선택 -->
@@ -522,6 +331,7 @@
                     </div>
                 </div>
             </div>
+
 
             <!-- 그리드 편집 -->
             <div class="grid-container">
@@ -596,7 +406,9 @@
                         </div>
                     </div>
                 </div>
+
             </div>
+
 
             <!-- 조건 확인 -->
             <div class="row mb-4">
@@ -692,31 +504,193 @@
         </div>
     </div>
 
+    <!-- 단어 추출 결과 모달 -->
+    <div class="modal fade" id="wordExtractionModal" tabindex="-1" data-bs-backdrop="true" data-bs-keyboard="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">템플릿 단어 추출 결과</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="wordExtractionContent">
+                        <!-- 단어 추출 결과가 여기에 표시됩니다 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
     <script>
         let currentGrid = [];
-        let currentLevel = null;
-        let wordPositions = [];
-        let gridSize = 8; // 기본 그리드 크기
+        let gridSize = 5;
         let levelConditions = null;
+        let currentTemplateId = null; // 현재 수정 중인 템플릿 ID
+        let isEditMode = false; // 수정 모드 여부
+        let savedScrollPosition = 0; // 모달 열기 전 스크롤 위치 저장
 
-        // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', function() {
-            loadLevels();
-            createGrid();
-            setupEventListeners();
-        });
-
-        // 이벤트 리스너 설정
-        function setupEventListeners() {
-            document.getElementById('grid_size').addEventListener('change', createGrid);
-            document.getElementById('clearGrid').addEventListener('click', clearGrid);
-            document.getElementById('sortWordPositions').addEventListener('click', sortWordPositions);
-            document.getElementById('saveTemplate').addEventListener('click', saveTemplate);
+        // 그리드 초기화
+        function initializeGrid(size) {
+            gridSize = size;
+            currentGrid = [];
+            
+            for (let i = 0; i < size; i++) {
+                currentGrid[i] = [];
+                for (let j = 0; j < size; j++) {
+                    currentGrid[i][j] = 1; // 1: 흰색 칸 (빈 공간), 2: 검은색 칸 (단어 입력 공간)
+                }
+            }
+            
+            renderGrid();
+            checkConditions();
         }
 
-        // 레벨 목록 로드 (8081 형식)
+        // 그리드 렌더링
+        function renderGrid() {
+            const editor = document.getElementById('gridEditor');
+            editor.innerHTML = '';
+            
+            for (let i = 0; i < gridSize; i++) {
+                const row = document.createElement('div');
+                row.className = 'd-flex';
+                
+                for (let j = 0; j < gridSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell border d-flex align-items-center justify-content-center';
+                    cell.style.width = '40px';
+                    cell.style.height = '40px';
+                    cell.style.cursor = 'pointer';
+                    cell.style.userSelect = 'none';
+                    cell.style.backgroundColor = currentGrid[i][j] === 2 ? 'black' : 'white';
+                    cell.style.color = currentGrid[i][j] === 2 ? 'white' : 'black';
+                    cell.textContent = currentGrid[i][j] === 2 ? '■' : '□';
+                    
+                    cell.addEventListener('click', () => toggleCell(i, j));
+                    cell.addEventListener('mouseenter', () => {
+                        if (event.buttons === 1) { // 마우스 드래그
+                            toggleCell(i, j);
+                        }
+                    });
+                    
+                    row.appendChild(cell);
+                }
+                
+                editor.appendChild(row);
+            }
+        }
+
+        // 셀 토글
+        function toggleCell(row, col) {
+            
+            currentGrid[row][col] = currentGrid[row][col] === 2 ? 1 : 2; // 2: 검은색(단어 공간) ↔ 1: 흰색(빈 공간)
+            renderGrid();
+            
+            // 현재 선택된 번호들을 좌표 기반으로 저장
+            const currentSelections = {};
+            
+            document.querySelectorAll('.word-number-select').forEach(select => {
+                if (select.value) {
+                    const wordItem = select.closest('.word-position-item');
+                    const textContent = wordItem.querySelector('small').textContent;
+                    
+                    const startPos = textContent.match(/\((\d+),(\d+)\)/);
+                    const endPosMatches = textContent.match(/\((\d+),(\d+)\)/g);
+                    
+                    if (startPos && endPosMatches && endPosMatches[1]) {
+                        const endPosMatch = endPosMatches[1].match(/\((\d+),(\d+)\)/);
+                        
+                        if (endPosMatch) {
+                            const key = `${startPos[1]},${startPos[2]}-${endPosMatch[1]},${endPosMatch[2]}`;
+                            currentSelections[key] = select.value;
+                        }
+                    }
+                }
+            });
+            
+            // 그리드 변경 시 포지션 정보 실시간 업데이트
+            const wordPositions = analyzeGrid();
+            
+            // 저장된 번호 정보를 좌표로 매칭하여 새로 분석된 단어에 적용
+            wordPositions.forEach(word => {
+                const key = `${word.start_x},${word.start_y}-${word.end_x},${word.end_y}`;
+                if (currentSelections[key]) {
+                    word.selectedNumber = currentSelections[key]; // 기존 번호 유지
+                } else {
+                    word.selectedNumber = null; // 매칭되지 않는 단어는 "번호" 옵션
+                }
+            });
+            
+            updateWordPositionsList(wordPositions);
+            
+            checkConditions();
+        }
+
+        // DOM 로드 완료 후 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // 초기 상태로 복원
+            document.getElementById('clearGrid').addEventListener('click', () => {
+                // 수정 모드 해제
+                isEditMode = false;
+                currentTemplateId = null;
+                
+                // 저장 버튼 텍스트 원래대로 복원
+                document.getElementById('saveButtonText').textContent = '템플릿 저장';
+                
+                // 그리드 초기화 (모든 칸을 흰색으로)
+                for (let i = 0; i < gridSize; i++) {
+                    for (let j = 0; j < gridSize; j++) {
+                        currentGrid[i][j] = 1; // 흰색 칸 (빈 공간)
+                    }
+                }
+                
+                renderGrid();
+                
+                // 단어 위치 정보 초기화
+                const wordPositions = analyzeGrid();
+                updateWordPositionsList(wordPositions);
+                
+                checkConditions();
+                
+                // 레벨 선택 초기화
+                document.getElementById('levelSelect').value = '';
+                hideLevelInfo();
+            });
+
+            // 그리드 크기 변경
+            document.getElementById('grid_size').addEventListener('change', (e) => {
+                initializeGrid(parseInt(e.target.value));
+            });
+
+            // 레벨 선택
+            document.getElementById('levelSelect').addEventListener('change', (e) => {
+                const levelId = e.target.value;
+                if (levelId) {
+                    fetchLevelConditions(levelId);
+                } else {
+                    hideLevelInfo();
+                }
+            });
+
+            // 저장 버튼 클릭 이벤트
+            document.getElementById('saveTemplate').addEventListener('click', () => {
+                saveTemplate();
+            });
+
+            // 초기 그리드 생성
+            initializeGrid(5);
+            
+            // 레벨 목록 로드
+            loadLevels();
+        });
+
+        // 레벨 목록 로드
         function loadLevels() {
             $.ajax({
                 url: '/admin/api/level-management/levels-ajax',
@@ -728,17 +702,14 @@
                     orderDir: 'asc'
                 },
                 success: function(response) {
-                    console.log('레벨 목록 응답:', response);
                     if (response.data && response.data.length > 0) {
                         const levelSelect = $('#levelSelect');
                         levelSelect.empty().append('<option value="">레벨을 선택하세요</option>');
                         
                         response.data.forEach(level => {
                             const levelType = getLevelType(level.level);
-                            levelSelect.append(`<option value="${level.level}">레벨 ${level.level} - ${level.levelName || levelType}</option>`);
+                            levelSelect.append(`<option value="${level.level}">레벨 ${level.level} - ${levelType}</option>`);
                         });
-                    } else {
-                        console.warn('레벨 데이터가 없습니다:', response);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -755,7 +726,7 @@
             });
         }
 
-        // 레벨 조건 가져오기 (레벨 선택 시 호출) - 8081 형식
+        // 레벨 조건 가져오기 (레벨 선택 시 호출)
         function loadLevelConditions() {
             const levelSelect = document.getElementById('levelSelect');
             const selectedLevel = levelSelect.value;
@@ -767,7 +738,7 @@
             }
         }
 
-        // 레벨 조건 가져오기 - 8081 형식
+        // 레벨 조건 가져오기
         function fetchLevelConditions(levelId) {
             // 레벨 정보 가져오기
             fetch('/admin/api/level-management/level/' + levelId, {
@@ -799,7 +770,7 @@
             });
         }
 
-        // 기존 템플릿 목록 가져오기 - 8081 형식
+        // 기존 템플릿 목록 가져오기
         function fetchExistingTemplates(levelId, levelData) {
             fetch('/admin/api/grid-template-management/sample-templates/level/' + levelId, {
                 method: 'GET',
@@ -822,7 +793,7 @@
             });
         }
 
-        // 레벨 타입 가져오기 - 8081 형식
+        // 레벨 타입 가져오기
         function getLevelType(level) {
             if (level <= 10) return "실마리 발견자 (Clue Spotter)";
             if (level <= 25) return "단서 수집가 (Clue Collector)";
@@ -832,7 +803,7 @@
             return "절대적 해답 (Absolute Resolution)";
         }
 
-        // 레벨 정보 표시 - 8081 형식
+        // 레벨 정보 표시
         function showLevelInfo(level, templates) {
             document.getElementById('requiredWordCount').textContent = level.wordCount;
             document.getElementById('requiredIntersectionCount').textContent = level.intersectionCount;
@@ -867,36 +838,20 @@
         function hideLevelInfo() {
             document.getElementById('levelConditions').style.display = 'none';
             document.getElementById('existingTemplates').style.display = 'none';
-            currentLevel = null;
             levelConditions = null;
         }
 
-        // 템플릿 상세보기 (8081과 동일)
+        // 템플릿 상세보기 (그리드 편집 영역에 적용)
         function showTemplateDetail(template) {
-            console.log('showTemplateDetail 호출됨:', template);
-            console.log('gridPattern:', template.gridPattern, typeof template.gridPattern);
-            console.log('wordPositions:', template.wordPositions, typeof template.wordPositions);
+            applyTemplateToGrid(template);
+        }
+
+        // 템플릿을 그리드에 적용하는 함수 (showTemplateDetail과 동일한 기능)
+        function applyTemplateToGrid(template) {
             
             // 1. 템플릿의 그리드 패턴을 현재 그리드에 적용
-            let gridPattern, wordPositions;
-            
-            try {
-                if (typeof template.gridPattern === 'string') {
-                    gridPattern = JSON.parse(template.gridPattern);
-                } else {
-                    gridPattern = template.gridPattern;
-                }
-                
-                if (typeof template.wordPositions === 'string') {
-                    wordPositions = JSON.parse(template.wordPositions);
-                } else {
-                    wordPositions = template.wordPositions;
-                }
-            } catch (e) {
-                console.error('JSON 파싱 오류:', e);
-                alert('템플릿 데이터를 처리할 수 없습니다: ' + e.message);
-                return;
-            }
+            const gridPattern = JSON.parse(template.gridPattern);
+            const wordPositions = JSON.parse(template.wordPositions);
             
             const size = gridPattern.length;
             let isSame = true;
@@ -913,35 +868,335 @@
                 alert('현재 그리드와 동일한 템플릿입니다.');
                 return;
             }
+
+            // 2. 그리드 크기와 패턴 적용
+            document.getElementById('grid_size').value = size;
+            gridSize = size;
+            initializeGrid(size);
             
-            // 2. 그리드 크기 변경
-            if (size !== gridSize) {
-                gridSize = size;
-                createGrid();
-            }
-            
-            // 3. 그리드 패턴 적용
             for (let i = 0; i < size; i++) {
                 for (let j = 0; j < size; j++) {
                     currentGrid[i][j] = gridPattern[i][j];
                 }
             }
             
-            // 4. 단어 위치 정보 적용
-            wordPositions = wordPositions;
-            
-            // 5. 그리드 다시 그리기
+            // 3. 그리드 렌더링
             renderGrid();
             
-            // 6. 단어 위치 목록 업데이트
-            updateWordPositionsList();
+            // 4. 단어 위치 정보와 번호 정보 적용
+            setTimeout(() => {
+                // 데이터베이스에서 가져온 단어들에 selectedNumber 속성 추가
+                wordPositions.forEach(word => {
+                    word.selectedNumber = word.id; // 데이터베이스 ID를 selectedNumber로 설정
+                });
+                
+                updateWordPositionsList(wordPositions);
+                
+                // 드롭다운에 selected 값 설정 (저장된 번호 사용)
+                setTimeout(() => {
+                    wordPositions.forEach(word => {
+                        const select = document.querySelector(`select[data-word-id="${word.id}"]`);
+                        if (select) {
+                            // 저장된 번호를 사용 (데이터베이스의 word.id 값)
+                            select.value = word.id.toString();
+                        }
+                    });
+                }, 50);
+                
+                checkConditions();
+            }, 100);
             
-            // 7. 성공 메시지
-            alert(`템플릿 "${template.templateName}"이 현재 그리드에 적용되었습니다.`);
+            // 템플릿 적용 완료 (경고창 제거)
         }
 
-        // 단어 추출 함수 (8081과 동일)
+
+        // 단어 위치 정보 목록 업데이트 (Laravel과 동일)
+        function updateWordPositionsList(wordPositions) {
+            const horizontalContainer = document.getElementById('horizontalWordPositionsList');
+            const verticalContainer = document.getElementById('verticalWordPositionsList');
+            
+            if (!horizontalContainer || !verticalContainer) {
+                console.error('컨테이너 요소를 찾을 수 없습니다!');
+                return;
+            }
+            
+            if (wordPositions.length === 0) {
+                horizontalContainer.innerHTML = '<p class="text-muted text-center">가로형 단어가 없습니다</p>';
+                verticalContainer.innerHTML = '<p class="text-muted text-center">세로형 단어가 없습니다</p>';
+                return;
+            }
+            
+            // 기존 선택된 번호들 저장 (Laravel과 동일)
+            const existingSelections = {};
+            document.querySelectorAll('.word-number-select').forEach(select => {
+                if (select.value) {
+                    existingSelections[select.dataset.wordId] = select.value;
+                }
+            });
+            
+            // 가로형과 세로형 분리 (정렬은 나중에 별도 함수에서 처리)
+            const horizontalWords = wordPositions.filter(word => word.direction === 'horizontal');
+            const verticalWords = wordPositions.filter(word => word.direction === 'vertical');
+            
+            // 가로형 단어 목록 생성
+            let horizontalHtml = '';
+            if (horizontalWords.length === 0) {
+                horizontalHtml = '<p class="text-muted text-center">가로형 단어가 없습니다</p>';
+                } else {
+                horizontalWords.forEach((word, index) => {
+                    const length = word.length;
+                    const startPos = `(${word.start_x},${word.start_y})`;
+                    const endPos = `(${word.end_x},${word.end_y})`;
+                    
+                    // 템플릿에서 가져온 번호를 우선 사용, 없으면 기존 선택된 번호 사용
+                    const selectedValue = word.selectedNumber || existingSelections[word.id] || '';
+                    
+                    horizontalHtml += `
+                        <div class="word-position-item mb-2 p-2 border rounded" data-word-id="${word.id}" data-direction="horizontal">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <small class="text-muted">${startPos} 에서 ${endPos}</small><br>
+                                    <strong>가로 ${length}칸</strong>
+                                </div>
+                                <div class="ms-2">
+                                    <select class="form-select form-select-sm word-number-select" 
+                                            data-word-id="${word.id}" 
+                                            style="width: 80px;">
+                                        <option value="">번호</option>
+                                        ${generateNumberOptions(wordPositions, selectedValue)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // 세로형 단어 목록 생성
+            let verticalHtml = '';
+            if (verticalWords.length === 0) {
+                verticalHtml = '<p class="text-muted text-center">세로형 단어가 없습니다</p>';
+                } else {
+                verticalWords.forEach((word, index) => {
+                    const length = word.length;
+                    const startPos = `(${word.start_x},${word.start_y})`;
+                    const endPos = `(${word.end_x},${word.end_y})`;
+                    
+                    // 템플릿에서 가져온 번호를 우선 사용, 없으면 기존 선택된 번호 사용
+                    const selectedValue = word.selectedNumber || existingSelections[word.id] || '';
+                    
+                    verticalHtml += `
+                        <div class="word-position-item mb-2 p-2 border rounded" data-word-id="${word.id}" data-direction="vertical">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <small class="text-muted">${startPos} 에서 ${endPos}</small><br>
+                                    <strong>세로 ${length}칸</strong>
+                                </div>
+                                <div class="ms-2">
+                                    <select class="form-select form-select-sm word-number-select" 
+                                            data-word-id="${word.id}" 
+                                            style="width: 80px;">
+                                        <option value="">번호</option>
+                                        ${generateNumberOptions(wordPositions, selectedValue)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // HTML 업데이트
+            horizontalContainer.innerHTML = horizontalHtml;
+            verticalContainer.innerHTML = verticalHtml;
+            
+            // DOM이 완전히 렌더링된 후 드롭다운 값 설정 및 정렬 실행
+            setTimeout(() => {
+                // 드롭다운에 selected 값 설정
+                wordPositions.forEach(word => {
+                    const select = document.querySelector(`select[data-word-id="${word.id}"]`);
+                    if (select) {
+                        // selectedNumber가 있으면 해당 값, 없으면 빈 값("번호" 옵션)
+                        select.value = word.selectedNumber || '';
+                        //console.log(`드롭다운 값 설정: wordId=${word.id}, value=${select.value}`);
+                    }
+                });
+                // 정렬 실행
+                sortWordListsByNumber();
+            }, 50);
+            
+            // 번호 선택 이벤트 추가 (라라벨과 동일)
+            document.querySelectorAll('.word-number-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const wordId = this.dataset.wordId;
+                    const selectedNumber = this.value;
+                    
+                    // 다른 번호와 중복 체크
+                    if (selectedNumber && isDuplicateNumber(selectedNumber, wordId)) {
+                        alert('이미 사용된 번호입니다.');
+                        this.value = '';
+                return;
+            }
+            
+                    // 그리드에서 해당 단어 하이라이트
+                    highlightWordInGrid(parseInt(wordId), selectedNumber);
+                    
+                    updateWordNumber(wordId, selectedNumber);
+                    
+                    // 번호 변경 후 실시간 정렬 업데이트
+                setTimeout(() => {
+                        sortWordListsByNumber();
+                }, 100);
+                });
+                
+                // 포커스 시 하이라이트
+                select.addEventListener('focus', function() {
+                    const wordId = this.dataset.wordId;
+                    highlightWordInGrid(parseInt(wordId), this.value || 'focus');
+                });
+                
+                // 포커스 아웃 시 하이라이트 제거
+                select.addEventListener('blur', function() {
+                    const wordId = this.dataset.wordId;
+                    if (!this.value) {
+                        removeWordHighlight(parseInt(wordId));
+                    }
+                });
+                
+                // 단어 위치 아이템 클릭 시에도 포커스
+                const wordItem = select.closest('.word-position-item');
+                if (wordItem) {
+                    wordItem.addEventListener('click', function() {
+                        select.focus();
+                    });
+                }
+            });
+        }
+
+        // 번호 옵션 생성 (Laravel과 동일)
+        function generateNumberOptions(wordPositions, selectedValue = '') {
+            let options = '';
+            wordPositions.forEach(word => {
+                const selected = word.id.toString() === selectedValue ? 'selected' : '';
+                options += `<option value="${word.id}" ${selected}>${word.id}</option>`;
+            });
+            return options;
+        }
+
+        // 단어 번호 업데이트
+        function updateWordNumber(wordId, number) {
+            // 단어 번호 업데이트 로직
+            console.log(`단어 번호 업데이트: wordId=${wordId}, number=${number}`);
+            
+            // 해당 단어의 selectedNumber 속성 업데이트
+            const wordItem = document.querySelector(`.word-position-item[data-word-id="${wordId}"]`);
+            if (wordItem) {
+                // 단어 위치 정보에서 좌표 추출
+                const text = wordItem.querySelector('small').textContent;
+                const match = text.match(/\((\d+),(\d+)\) 에서 \((\d+),(\d+)\)/);
+                if (match) {
+                    const startX = parseInt(match[1]);
+                    const startY = parseInt(match[2]);
+                    const endX = parseInt(match[3]);
+                    const endY = parseInt(match[4]);
+                    
+                    // 그리드에서 해당 단어에 번호 표시
+                    const cells = document.querySelectorAll('.grid-cell');
+                    for (let y = startY; y <= endY; y++) {
+                        for (let x = startX; x <= endX; x++) {
+                            const cellIndex = y * gridSize + x;
+                            if (cells[cellIndex]) {
+                                if (number) {
+                                    cells[cellIndex].setAttribute('data-word-number', number);
+                                } else {
+                                    cells[cellIndex].removeAttribute('data-word-number');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 중복 번호 체크 (라라벨과 동일)
+        function isDuplicateNumber(number, currentWordId) {
+            const selects = document.querySelectorAll('.word-number-select');
+            for (const select of selects) {
+                if (select.dataset.wordId !== currentWordId && select.value === number) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 그리드에서 단어 하이라이트 (라라벨과 동일)
+        function highlightWordInGrid(wordId, number) {
+            // 단어 위치 정보에서 해당 wordId를 가진 요소 찾기
+            const wordItem = document.querySelector(`.word-position-item[data-word-id="${wordId}"]`);
+            if (!wordItem) return;
+            
+            // 단어 위치 정보에서 좌표 추출
+            const text = wordItem.querySelector('small').textContent;
+            const match = text.match(/\((\d+),(\d+)\) 에서 \((\d+),(\d+)\)/);
+            if (!match) return;
+            
+            const startX = parseInt(match[1]);
+            const startY = parseInt(match[2]);
+            const endX = parseInt(match[3]);
+            const endY = parseInt(match[4]);
+            
+            // 기존 하이라이트 제거
+            removeAllHighlights();
+            
+            // 해당 단어 하이라이트
+            const cells = document.querySelectorAll('.grid-cell');
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    const cellIndex = y * gridSize + x;
+                    if (cells[cellIndex]) {
+                        if (number === 'focus') {
+                            cells[cellIndex].classList.add('highlighted-focus');
+                        } else {
+                            cells[cellIndex].classList.add('highlighted');
+                        }
+                    }
+                }
+            }
+            
+            // 단어 위치 아이템도 하이라이트
+            wordItem.classList.add('selected');
+        }
+
+        // 단어 하이라이트 제거
+        function removeWordHighlight(wordId) {
+            const wordItem = document.querySelector(`.word-position-item[data-word-id="${wordId}"]`);
+            if (wordItem) {
+                wordItem.classList.remove('selected');
+            }
+            removeAllHighlights();
+        }
+
+        // 모든 하이라이트 제거
+        function removeAllHighlights() {
+            const cells = document.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('highlighted', 'highlighted-focus');
+            });
+            
+            const wordItems = document.querySelectorAll('.word-position-item');
+            wordItems.forEach(item => {
+                item.classList.remove('selected');
+            });
+        }
+
+        // 단어 추출 모달 표시
+        function showWordExtractionModal(templateId) {
+            extractWords(templateId);
+        }
+
+        // 단어 추출 함수 (Laravel과 동일)
         function extractWords(templateId) {
+            
             // 현재 스크롤 위치 저장
             savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
             
@@ -980,8 +1235,9 @@
             });
         }
 
-        // 단어 추출 결과 표시 (8081과 동일)
+        // 단어 추출 결과 표시 (Laravel과 동일)
         function showWordExtractionResult(data) {
+            
             const content = document.getElementById('wordExtractionContent');
             
             if (data.success && data.extracted_words) {
@@ -1023,33 +1279,76 @@
                                     <td><span class="badge bg-warning">${connectedWords}개</span></td>
                                 </tr>
                             </table>
+                            
+                            <h6>🔲 그리드 패턴 시각화</h6>
+                            <div class="grid-visualization mb-3" id="extractionGridVisualization">
+                                <!-- 그리드가 여기에 렌더링됩니다 -->
                         </div>
+                        </div>
+                        
                         <div class="col-md-6">
-                            <h6>📝 단어 목록</h6>
-                            <div class="list-group" style="max-height: 200px; overflow-y: auto;">
-                                ${extractedWords.word_order.map((word, index) => `
-                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong>${index + 1}. ${word.word}</strong>
-                                            <br>
+                            <h6>📋 결정된 단어 배치 순서</h6>
+                            <div class="word-order-list" style="max-height: 400px; overflow-y: auto;">
+                                ${extractedWords.word_order.map((item, index) => `
+                                    <div class="card mb-2">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <h6 class="card-title mb-1">
+                                                        ${index + 1} 단어 ${item.word_id} (${item.position.length}글자)
+                                                    </h6>
+                                                    <div class="mt-1">
                                             <small class="text-muted">
-                                                ${word.position.direction === 'horizontal' ? '가로' : '세로'} 
-                                                (${word.position.row}, ${word.position.col})
+                                                            ${item.position.direction === 'horizontal' ? '가로' : '세로'} 
+                                                            (${item.position.start_x},${item.position.start_y}) → (${item.position.end_x},${item.position.end_y})
                                             </small>
                                         </div>
-                                        <span class="badge ${word.type === 'no_intersection' ? 'bg-info' : 'bg-warning'}">
-                                            ${word.type === 'no_intersection' ? '독립' : '연결'}
-                                        </span>
+                                                    ${item.extracted_word ? `
+                                                    <div class="mt-2">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <strong class="text-success">추출된 단어: ${item.extracted_word}</strong>
+                                                            <button class="btn btn-sm btn-outline-info" onclick="showHint('${item.hint || '힌트 없음'}')">힌트 보기</button>
+                                                        </div>
+                                                    </div>
+                                                    ` : ''}
+                                                    <div class="mt-1">
+                                                        <span class="badge ${getTypeBadgeClass(item.type)}">${getTypeLabel(item.type)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
                     </div>
                     
+                    <hr>
                     <div class="mt-3">
-                        <button class="btn btn-primary" onclick="closeWordExtractionModal()">확인</button>
+                        <h6>실행된 데이터베이스 쿼리</h6>
+                        <div id="queryLog" class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px;">
+                            <p class="text-muted">쿼리 로그가 여기에 표시됩니다...</p>
+                        </div>
                     </div>
                 `;
+                
+                // 그리드 렌더링 (공용 함수 사용)
+                setTimeout(() => {
+                    
+                    // 그리드 패턴과 단어 위치 데이터 확인
+                    if (extractedWords.grid_info && extractedWords.grid_info.pattern) {
+                        // gridPattern이 이미 문자열이므로 그대로 사용
+                        const template = {
+                            gridPattern: extractedWords.grid_info.pattern,
+                            wordPositions: JSON.stringify(extractedWords.word_order)
+                        };
+                        renderGridFromAPI(template, '#extractionGridVisualization', 30, true);
+                    } else {
+                        console.error('그리드 데이터가 없습니다:', extractedWords);
+                        $('#extractionGridVisualization').html('<div class="alert alert-warning">그리드 데이터가 없습니다.</div>');
+                    }
+                }, 100);
+                
             } else {
                 content.innerHTML = `
                     <div class="alert alert-danger">
@@ -1061,13 +1360,55 @@
             }
         }
 
+        // 타입별 배지 클래스 반환
+        function getTypeBadgeClass(type) {
+            switch(type) {
+                case 'no_intersection': return 'bg-info';
+                case 'sequential_word': return 'bg-secondary';
+                case 'remaining_word': return 'bg-dark';
+                case 'intersection_start': return 'bg-primary';
+                case 'chain_middle': return 'bg-warning';
+                case 'intersection_connected': return 'bg-success';
+                case 'intersection_horizontal': return 'bg-danger';
+                case 'intersection_vertical': return 'bg-danger';
+                case 'first_word': return 'bg-primary';
+                default: return 'bg-secondary';
+            }
+        }
+
+        // 타입 라벨 반환
+        function getTypeLabel(type) {
+            switch(type) {
+                case 'no_intersection': return '독립 단어';
+                case 'sequential_word': return '순차 단어';
+                case 'remaining_word': return '남은 단어';
+                case 'intersection_start': return '교차 시작';
+                case 'chain_middle': return '연결 중간';
+                case 'intersection_connected': return '교차 연결';
+                case 'intersection_horizontal': return '교차 가로';
+                case 'intersection_vertical': return '교차 세로';
+                case 'first_word': return '첫 번째 단어';
+                default: return type;
+            }
+        }
+
+
+        // 힌트 보기
+        function showHint(hint) {
+            alert(`힌트: ${hint}`);
+        }
+
         // 단어 추출 모달 닫기
         function closeWordExtractionModal() {
             const modal = bootstrap.Modal.getInstance(document.getElementById('wordExtractionModal'));
             if (modal) {
                 modal.hide();
             }
+            }
             
+        // 단어 추출 모달 닫기 및 포커스 복원
+        function closeWordExtractionModalAndFocus() {
+            closeWordExtractionModal();
             // 저장된 스크롤 위치로 복원
             if (savedScrollPosition !== null) {
                 window.scrollTo(0, savedScrollPosition);
@@ -1075,361 +1416,167 @@
             }
         }
 
-        // 템플릿 상세보기
-        async function viewTemplateDetail(templateId) {
-            try {
-                const response = await fetch(`/admin/api/grid-template-management/template/${templateId}`);
-                const data = await response.json();
-                
-                if (data.success && data.template) {
-                    const template = data.template;
-                    const content = `
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>템플릿 정보</h6>
-                                <p><strong>이름:</strong> ${template.templateName}</p>
-                                <p><strong>크기:</strong> ${template.gridWidth}x${template.gridHeight}</p>
-                                <p><strong>단어 수:</strong> ${template.wordCount}개</p>
-                                <p><strong>교차점 수:</strong> ${template.intersectionCount}개</p>
-                                <p><strong>카테고리:</strong> ${template.category}</p>
-                                <p><strong>난이도:</strong> ${template.difficultyRating}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>그리드 미리보기</h6>
-                                <div id="templateGridPreview"></div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    document.getElementById('templateDetailContent').innerHTML = content;
-                    
-                    // 그리드 렌더링
-                    if (template.gridPattern && template.wordPositions) {
-                        renderTemplateGrid(template, '#templateGridPreview');
-                    }
-                    
-                    const modal = new bootstrap.Modal(document.getElementById('templateDetailModal'));
-                    modal.show();
-                }
-            } catch (error) {
-                console.error('템플릿 상세보기 오류:', error);
-                showAlert('템플릿 상세보기 중 오류가 발생했습니다.', 'danger');
-            }
-        }
-
-        // 템플릿 그리드 렌더링
-        async function renderTemplateGrid(template, containerId) {
-            try {
-                const response = await fetch('/admin/api/grid-template-management/render-grid', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
+        // 공통 그리드 렌더링 함수 (다른 파일에서 가져옴)
+        function renderGridFromAPI(template, container, cellSize = 20, showNumbers = true) {
+            
+            const gridContainer = $(container);
+            gridContainer.empty();
+            
+            // 로딩 표시
+            gridContainer.html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> 그리드 로딩 중...</div>');
+            
+            const requestData = {
                         gridPattern: template.gridPattern,
                         wordPositions: template.wordPositions,
-                        cellSize: 20,
-                        showNumbers: true
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    document.querySelector(containerId).innerHTML = data.html;
-                }
-            } catch (error) {
-                console.error('그리드 렌더링 오류:', error);
-            }
-        }
-
-        // 그리드 생성
-        function createGrid() {
-            const size = parseInt(document.getElementById('grid_size').value);
-            currentGrid = [];
-            wordPositions = [];
+                cellSize: cellSize,
+                showNumbers: showNumbers
+            };
             
-            const gridEditor = document.getElementById('gridEditor');
-            gridEditor.innerHTML = '';
-            gridEditor.style.display = 'grid';
-            gridEditor.style.gridTemplateColumns = `repeat(${size}, 30px)`;
-            gridEditor.style.gridTemplateRows = `repeat(${size}, 30px)`;
-            gridEditor.style.gap = '0';
-            gridEditor.style.border = '2px solid #2c3e50';
-            gridEditor.style.borderRadius = '10px';
-            gridEditor.style.overflow = 'hidden';
-            
-            for (let y = 0; y < size; y++) {
-                currentGrid[y] = [];
-                for (let x = 0; x < size; x++) {
-                    currentGrid[y][x] = 0; // 0: 빈칸, 1: 흰색, 2: 검은색
-                    
-                    const cell = document.createElement('div');
-                    cell.className = 'grid-cell';
-                    cell.dataset.x = x;
-                    cell.dataset.y = y;
-                    cell.onclick = () => toggleCell(x, y);
-                    gridEditor.appendChild(cell);
-                }
-            }
-            
-            updateWordPositions();
-            checkConditions();
-        }
-
-        // 셀 토글
-        function toggleCell(x, y) {
-            currentGrid[y][x] = (currentGrid[y][x] + 1) % 3;
-            updateGridDisplay();
-            updateWordPositions();
-            checkConditions();
-        }
-
-        // 그리드 표시 업데이트
-        function updateGridDisplay() {
-            const cells = document.querySelectorAll('.grid-cell');
-            cells.forEach(cell => {
-                const x = parseInt(cell.dataset.x);
-                const y = parseInt(cell.dataset.y);
-                const value = currentGrid[y][x];
-                
-                cell.className = 'grid-cell';
-                if (value === 1) {
-                    cell.classList.add('white');
-                } else if (value === 2) {
-                    cell.classList.add('black');
-                }
-            });
-        }
-
-        // 단어 위치 정보 업데이트
-        function updateWordPositions() {
-            wordPositions = [];
-            const size = currentGrid.length;
-            
-            // 가로형 단어 찾기
-            for (let y = 0; y < size; y++) {
-                let wordStart = -1;
-                let wordLength = 0;
-                
-                for (let x = 0; x < size; x++) {
-                    if (currentGrid[y][x] === 2) { // 검은색 칸
-                        if (wordStart === -1) {
-                            wordStart = x;
-                        }
-                        wordLength++;
-                    } else {
-                        if (wordLength >= 2) { // 최소 2글자 이상
-                            wordPositions.push({
-                                id: wordPositions.length + 1,
-                                start_x: wordStart,
-                                start_y: y,
-                                direction: 'horizontal',
-                                length: wordLength
-                            });
-                        }
-                        wordStart = -1;
-                        wordLength = 0;
-                    }
-                }
-                
-                // 행 끝에서 단어 완성
-                if (wordLength >= 2) {
-                    wordPositions.push({
-                        id: wordPositions.length + 1,
-                        start_x: wordStart,
-                        start_y: y,
-                        direction: 'horizontal',
-                        length: wordLength
-                    });
-                }
-            }
-            
-            // 세로형 단어 찾기
-            for (let x = 0; x < size; x++) {
-                let wordStart = -1;
-                let wordLength = 0;
-                
-                for (let y = 0; y < size; y++) {
-                    if (currentGrid[y][x] === 2) { // 검은색 칸
-                        if (wordStart === -1) {
-                            wordStart = y;
-                        }
-                        wordLength++;
-                    } else {
-                        if (wordLength >= 2) { // 최소 2글자 이상
-                            wordPositions.push({
-                                id: wordPositions.length + 1,
-                                start_x: x,
-                                start_y: wordStart,
-                                direction: 'vertical',
-                                length: wordLength
-                            });
-                        }
-                        wordStart = -1;
-                        wordLength = 0;
-                    }
-                }
-                
-                // 열 끝에서 단어 완성
-                if (wordLength >= 2) {
-                    wordPositions.push({
-                        id: wordPositions.length + 1,
-                        start_x: x,
-                        start_y: wordStart,
-                        direction: 'vertical',
-                        length: wordLength
-                    });
-                }
-            }
-            
-            updateWordPositionsDisplay();
-        }
-
-        // 단어 위치 표시 업데이트
-        function updateWordPositionsDisplay() {
-            const horizontalList = document.getElementById('horizontalWordPositionsList');
-            const verticalList = document.getElementById('verticalWordPositionsList');
-            
-            const horizontalWords = wordPositions.filter(w => w.direction === 'horizontal');
-            const verticalWords = wordPositions.filter(w => w.direction === 'vertical');
-            
-            // 가로형 단어 목록
-            if (horizontalWords.length === 0) {
-                horizontalList.innerHTML = '<p class="text-muted text-center">가로형 단어가 없습니다</p>';
+            $.ajax({
+                url: '/admin/api/grid-template-management/render-grid',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function(response) {
+                    if (response.success) {
+                        gridContainer.html(response.html);
+                        console.log('그리드 렌더링 완료');
             } else {
-                horizontalList.innerHTML = horizontalWords.map(word => `
-                    <div class="word-position-item" onclick="highlightWord(${word.id})">
-                        <div class="flex-grow-1">
-                            <strong>#${word.id}</strong> - (${word.start_x}, ${word.start_y})
-                            <small class="text-muted d-block">${word.length}글자</small>
-                        </div>
-                    </div>
-                `).join('');
-            }
-            
-            // 세로형 단어 목록
-            if (verticalWords.length === 0) {
-                verticalList.innerHTML = '<p class="text-muted text-center">세로형 단어가 없습니다</p>';
-            } else {
-                verticalList.innerHTML = verticalWords.map(word => `
-                    <div class="word-position-item" onclick="highlightWord(${word.id})">
-                        <div class="flex-grow-1">
-                            <strong>#${word.id}</strong> - (${word.start_x}, ${word.start_y})
-                            <small class="text-muted d-block">${word.length}글자</small>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        // 단어 하이라이트
-        function highlightWord(wordId) {
-            const word = wordPositions.find(w => w.id === wordId);
-            if (!word) return;
-            
-            // 기존 하이라이트 제거
-            document.querySelectorAll('.grid-cell').forEach(cell => {
-                cell.classList.remove('highlighted', 'highlighted-focus');
+                        console.error('그리드 렌더링 실패:', response.error);
+                        gridContainer.html('<div class="alert alert-danger">그리드 렌더링 실패: ' + response.error + '</div>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('그리드 렌더링 API 오류:', xhr, status, error);
+                    console.error('응답 텍스트:', xhr.responseText);
+                    gridContainer.html('<div class="alert alert-danger">그리드 렌더링 중 오류가 발생했습니다: ' + error + '</div>');
+                }
             });
-            
-            // 단어 위치 하이라이트
-            for (let i = 0; i < word.length; i++) {
-                let x, y;
-                if (word.direction === 'horizontal') {
-                    x = word.start_x + i;
-                    y = word.start_y;
-                } else {
-                    x = word.start_x;
-                    y = word.start_y + i;
-                }
-                
-                const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-                if (cell) {
-                    cell.classList.add('highlighted');
-                }
-            }
-        }
-
-        // 그리드 초기화
-        function clearGrid() {
-            const size = currentGrid.length;
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    currentGrid[y][x] = 0;
-                }
-            }
-            updateGridDisplay();
-            updateWordPositions();
-            checkConditions();
-        }
-
-        // 단어 위치 정렬
-        function sortWordPositions() {
-            wordPositions.sort((a, b) => {
-                if (a.direction !== b.direction) {
-                    return a.direction === 'horizontal' ? -1 : 1;
-                }
-                if (a.start_y !== b.start_y) {
-                    return a.start_y - b.start_y;
-                }
-                return a.start_x - b.start_x;
-            });
-            
-            // ID 재할당
-            wordPositions.forEach((word, index) => {
-                word.id = index + 1;
-            });
-            
-            updateWordPositionsDisplay();
         }
 
         // 조건 확인
         function checkConditions() {
-            if (!levelConditions) {
-                document.getElementById('conditionCheck').style.display = 'none';
-                document.getElementById('saveTemplate').disabled = true;
-                return;
-            }
+            if (!levelConditions) return;
+            
+            // 현재 그리드 분석 (항상 최신 상태 반영)
+            const wordPositions = analyzeGrid();
             
             const wordCount = wordPositions.length;
-            const intersectionCount = calculateIntersections();
+            const intersectionCount = countIntersections(wordPositions);
+            
+            const conditionCheck = document.getElementById('conditionCheck');
+            const conditionDetails = document.getElementById('conditionDetails');
+            const saveButton = document.getElementById('saveTemplate');
             
             let isValid = true;
-            let conditionText = '';
+            let details = [];
             
-            // 단어 수 조건 확인
-            if (levelConditions.wordCount && wordCount < levelConditions.wordCount) {
-                isValid = false;
-                conditionText += `<div class="text-danger">❌ 단어 수 부족: ${wordCount}/${levelConditions.wordCount}</div>`;
+            // 단어 개수 확인
+            if (wordCount === levelConditions.wordCount) {
+                details.push(`✅ 단어 개수: ${wordCount}/${levelConditions.wordCount}`);
             } else {
-                conditionText += `<div class="text-success">✅ 단어 수: ${wordCount}/${levelConditions.wordCount || '조건 없음'}</div>`;
+                details.push(`❌ 단어 개수: ${wordCount}/${levelConditions.wordCount}`);
+                isValid = false;
             }
             
-            // 교차점 수 조건 확인
-            if (levelConditions.intersectionCount && intersectionCount < levelConditions.intersectionCount) {
-                isValid = false;
-                conditionText += `<div class="text-danger">❌ 교차점 수 부족: ${intersectionCount}/${levelConditions.intersectionCount}</div>`;
+            // 교차점 개수 확인 (최소값 체크)
+            if (intersectionCount >= levelConditions.intersectionCount) {
+                details.push(`✅ 교차점 개수: ${intersectionCount}개 (최소 ${levelConditions.intersectionCount}개 필요)`);
             } else {
-                conditionText += `<div class="text-success">✅ 교차점 수: ${intersectionCount}/${levelConditions.intersectionCount || '조건 없음'}</div>`;
+                details.push(`❌ 교차점 개수: ${intersectionCount}개 (최소 ${levelConditions.intersectionCount}개 필요)`);
+                isValid = false;
             }
             
-            // 그리드 패턴 유효성
-            if (wordCount === 0) {
-                isValid = false;
-                conditionText += `<div class="text-danger">❌ 그리드에 단어가 없습니다</div>`;
-            } else {
-                conditionText += `<div class="text-success">✅ 그리드 패턴 유효</div>`;
-            }
+            conditionDetails.innerHTML = details.join('<br>');
+            conditionCheck.className = `alert ${isValid ? 'alert-success' : 'alert-danger'}`;
+            conditionCheck.style.display = 'block';
             
-            document.getElementById('conditionDetails').innerHTML = conditionText;
-            document.getElementById('conditionCheck').style.display = 'block';
-            document.getElementById('conditionCheck').className = `alert ${isValid ? 'alert-success' : 'alert-danger'}`;
-            document.getElementById('saveTemplate').disabled = !isValid;
+            // 단어 위치 정보 업데이트는 별도로 처리
+            
+            // 번호 선택 validation 체크
+            const numberValidation = validateWordNumbers();
+            saveButton.disabled = !isValid || !numberValidation;
         }
 
-        // 교차점 수 계산
-        function calculateIntersections() {
-            const intersections = new Set();
+        // 그리드 분석
+        function analyzeGrid() {
+            const wordPositions = [];
+            let wordId = 1;
+            
+            // 가로 단어 찾기 (검은색 칸들)
+            for (let i = 0; i < gridSize; i++) {
+                let start = -1;
+                for (let j = 0; j < gridSize; j++) {
+                    if (currentGrid[i][j] === 2 && start === -1) { // 검은색 칸 (단어 공간)
+                        start = j;
+                    } else if (currentGrid[i][j] === 1 && start !== -1) { // 흰색 칸 (빈 공간)
+                        if (j - start >= 2) {
+                            wordPositions.push({
+                                id: wordId++,
+                                start_x: start,
+                                start_y: i,
+                                end_x: j - 1,
+                                end_y: i,
+                                direction: 'horizontal',
+                                length: j - start
+                            });
+                        }
+                        start = -1;
+                    }
+                }
+                if (start !== -1 && gridSize - start >= 2) {
+                    wordPositions.push({
+                        id: wordId++,
+                        start_x: start,
+                        start_y: i,
+                        end_x: gridSize - 1,
+                        end_y: i,
+                        direction: 'horizontal',
+                        length: gridSize - start
+                    });
+                }
+            }
+            
+            // 세로 단어 찾기 (검은색 칸들)
+            for (let j = 0; j < gridSize; j++) {
+                let start = -1;
+                for (let i = 0; i < gridSize; i++) {
+                    if (currentGrid[i][j] === 2 && start === -1) { // 검은색 칸 (단어 공간)
+                        start = i;
+                    } else if (currentGrid[i][j] === 1 && start !== -1) { // 흰색 칸 (빈 공간)
+                        if (i - start >= 2) {
+                            wordPositions.push({
+                                id: wordId++,
+                                start_x: j,
+                                start_y: start,
+                                end_x: j,
+                                end_y: i - 1,
+                                direction: 'vertical',
+                                length: i - start
+                            });
+                        }
+                        start = -1;
+                    }
+                }
+                if (start !== -1 && gridSize - start >= 2) {
+                    wordPositions.push({
+                        id: wordId++,
+                        start_x: j,
+                        start_y: start,
+                        end_x: j,
+                        end_y: gridSize - 1,
+                        direction: 'vertical',
+                        length: gridSize - start
+                    });
+                }
+            }
+            
+            return wordPositions;
+        }
+
+        // 교차점 개수 계산
+        function countIntersections(wordPositions) {
+            let intersections = 0;
             
             for (let i = 0; i < wordPositions.length; i++) {
                 for (let j = i + 1; j < wordPositions.length; j++) {
@@ -1437,59 +1584,98 @@
                     const word2 = wordPositions[j];
                     
                     if (word1.direction !== word2.direction) {
-                        const intersection = findIntersection(word1, word2);
-                        if (intersection) {
-                            intersections.add(`${intersection.x},${intersection.y}`);
+                        if (word1.direction === 'horizontal' && word2.direction === 'vertical') {
+                            if (word1.start_y >= word2.start_y && word1.start_y <= word2.end_y &&
+                                word2.start_x >= word1.start_x && word2.start_x <= word1.end_x) {
+                        intersections++;
+                    }
+                        } else if (word1.direction === 'vertical' && word2.direction === 'horizontal') {
+                            if (word2.start_y >= word1.start_y && word2.start_y <= word1.end_y &&
+                                word1.start_x >= word2.start_x && word1.start_x <= word2.end_x) {
+                                intersections++;
+                            }
                         }
                     }
                 }
             }
-            
-            return intersections.size;
+
+            return intersections;
         }
 
-        // 두 단어의 교차점 찾기
-        function findIntersection(word1, word2) {
-            const horizontal = word1.direction === 'horizontal' ? word1 : word2;
-            const vertical = word1.direction === 'vertical' ? word1 : word2;
+
+
+        // 번호 선택 validation (선택사항으로 변경)
+        function validateWordNumbers() {
+            const selects = document.querySelectorAll('.word-number-select');
+            const selectedNumbers = [];
             
-            for (let i = 0; i < horizontal.length; i++) {
-                const hx = horizontal.start_x + i;
-                const hy = horizontal.start_y;
-                
-                for (let j = 0; j < vertical.length; j++) {
-                    const vx = vertical.start_x;
-                    const vy = vertical.start_y + j;
-                    
-                    if (hx === vx && hy === vy) {
-                        return { x: hx, y: vy };
-                    }
+            for (const select of selects) {
+                if (select.value) {
+                    selectedNumbers.push(parseInt(select.value));
                 }
             }
             
-            return null;
+            // 번호가 선택된 경우에만 중복 체크
+            if (selectedNumbers.length > 0) {
+                const uniqueNumbers = [...new Set(selectedNumbers)];
+                return uniqueNumbers.length === selectedNumbers.length;
+            }
+            
+            // 번호가 선택되지 않은 경우도 허용
+            return true;
         }
 
         // 템플릿 저장
-        async function saveTemplate() {
+        function saveTemplate() {
             if (!levelConditions) {
-                showAlert('레벨을 선택해주세요.', 'danger');
+                alert('레벨을 선택해주세요.');
                 return;
             }
+
+            const wordPositions = analyzeGrid();
+            const intersectionCount = countIntersections(wordPositions);
             
-            if (wordPositions.length === 0) {
-                showAlert('그리드에 단어를 배치해주세요.', 'danger');
-                return;
+            // 번호 정보 수집 (Laravel과 동일)
+            const wordNumbering = [];
+            document.querySelectorAll('.word-number-select').forEach(select => {
+                if (select.value) {
+                    wordNumbering.push({
+                        word_id: parseInt(select.dataset.wordId),
+                        order: parseInt(select.value)
+                    });
+                }
+            });
+            
+            console.log('수집된 번호 정보:', wordNumbering);
+            
+            // 사용자가 선택한 번호로 word_positions의 id 값 업데이트 (Laravel과 동일)
+            if (wordNumbering.length > 0) {
+                // 번호 매핑 생성
+                const numberMapping = {};
+                wordNumbering.forEach(item => {
+                    numberMapping[item.word_id] = item.order;
+                });
+                
+                console.log('번호 매핑:', numberMapping);
+                
+                // word_positions의 id 값을 선택된 번호로 변경
+                wordPositions.forEach(word => {
+                    if (numberMapping[word.id]) {
+                        console.log(`단어 ID 변경: ${word.id} -> ${numberMapping[word.id]}`);
+                        word.id = numberMapping[word.id];
+                    }
+                });
+                
+                console.log('업데이트된 wordPositions:', wordPositions);
             }
             
             const templateData = {
-                levelId: levelConditions.level,
-                templateName: '',
-                gridSize: currentGrid.length,
-                gridWidth: currentGrid.length,
-                gridHeight: currentGrid.length,
+                levelId: levelConditions.level,  // Spring Boot 엔티티 필드명 (camelCase)
+                templateName: '',  // 서버에서 자동 생성하도록 빈 문자열로 설정
+                gridWidth: gridSize,
+                gridHeight: gridSize,
                 wordCount: wordPositions.length,
-                intersectionCount: calculateIntersections(),
+                intersectionCount: intersectionCount,
                 difficultyRating: levelConditions.wordDifficulty || 1,
                 description: 'Spring Boot에서 생성된 템플릿',
                 category: 'general',
@@ -1499,67 +1685,255 @@
             
             console.log('전송할 템플릿 데이터:', templateData);
 
-            try {
-                const response = await fetch('/admin/api/grid-template-management/template', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(templateData)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('템플릿이 성공적으로 저장되었습니다!', 'success');
-                    setTimeout(() => {
-                        window.location.href = '/admin/templates';
-                    }, 2000);
-                } else {
-                    showAlert('템플릿 저장 실패: ' + (result.message || result.error), 'danger');
+            $.ajax({
+                url: '/admin/api/grid-template-management/template',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(templateData),
+                success: function(response) {
+                    if (response.success) {
+                        alert('템플릿이 성공적으로 저장되었습니다.');
+                        location.reload();
+            } else {
+                        alert('템플릿 저장 실패: ' + (response.error || '알 수 없는 오류'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('템플릿 저장 오류:', xhr.responseText);
+                    console.error('Status:', xhr.status);
+                    console.error('Error:', error);
+                    
+                    let errorMessage = '템플릿 저장 중 오류가 발생했습니다.';
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.error || errorResponse.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = xhr.responseText || errorMessage;
+                    }
+                    alert('오류: ' + errorMessage);
                 }
-            } catch (error) {
-                console.error('템플릿 저장 오류:', error);
-                showAlert('템플릿 저장 중 오류가 발생했습니다.', 'danger');
-            }
+            });
         }
 
-        // 알림 표시
-        function showAlert(message, type) {
-            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-            const alertHtml = `
-                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-            
-            // 기존 알림 제거
-            const existingAlert = document.querySelector('.alert');
-            if (existingAlert) {
-                existingAlert.remove();
-            }
-            
-            // 새 알림 추가
-            document.querySelector('.main-container').insertAdjacentHTML('afterbegin', alertHtml);
+        // 목록으로 이동
+        function goToList() {
+            window.location.href = '/K-CrossWord/admin/grid-templates';
         }
     </script>
 
-    <!-- 단어 추출 모달 -->
-    <div class="modal fade" id="wordExtractionModal" tabindex="-1" aria-labelledby="wordExtractionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="wordExtractionModalLabel">
-                        <i class="fas fa-magic me-2"></i>단어 추출 결과
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="wordExtractionContent">
-                    <!-- 동적으로 내용이 채워집니다 -->
-                </div>
-            </div>
-        </div>
-    </div>
+    <style>
+        .grid-cell:hover {
+            opacity: 0.8;
+        }
+
+        .grid-cell:active {
+            opacity: 0.6;
+        }
+
+        /* 그리드 넘버링 스타일 */
+        .grid-cell-number {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .grid-cell-number:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .word-number {
+            background: #ff6b6b;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .grid-container {
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .word-order-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .word-order-list .card {
+            transition: all 0.2s ease;
+        }
+
+        .word-order-list .card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* 단어 위치 정보 스타일 */
+        .word-position-item {
+            transition: all 0.2s ease;
+            border: 1px solid #dee2e6 !important;
+        }
+
+        .word-position-item:hover {
+            border-color: #007bff !important;
+            box-shadow: 0 2px 4px rgba(0,123,255,0.1);
+        }
+
+        .word-position-item.selected {
+            border-color: #28a745 !important;
+            background-color: #f8fff9;
+        }
+
+        .word-number-select {
+            transition: all 0.2s ease;
+        }
+
+        .word-number-select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        }
+
+        /* 그리드 하이라이트 효과 (라라벨과 동일) */
+        .grid-cell.highlighted {
+            border: 2px solid red !important;
+            box-shadow: 0 0 8px rgba(255,0,0,0.3);
+            z-index: 5;
+        }
+
+        .grid-cell.highlighted-focus {
+            border: 2px solid #ff6b6b !important;
+            background-color: #ffebee !important;
+            box-shadow: 0 0 8px rgba(255,107,107,0.3);
+            z-index: 5;
+        }
+
+        /* 단어 위치 정보 카드 선택 효과 */
+        .word-position-item.selected {
+            border-color: #28a745 !important;
+            background-color: #f8fff9;
+        }
+
+        /* 단어 위치 항목 스타일 */
+        .word-position-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .word-position-item:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .word-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: #007bff;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .word-info {
+            flex: 1;
+            font-size: 14px;
+            color: #495057;
+            margin-right: 10px;
+        }
+
+        .word-number-select {
+            width: 80px;
+            flex-shrink: 0;
+        }
+    </style>
+
+    <script>
+        // 캐시 무효화를 위한 타임스탬프
+        console.log('create.html 로드됨 - 타임스탬프:', new Date().toISOString());
+        
+        // 단어 목록을 번호 순으로 정렬하는 함수
+        function sortWordListsByNumber() {
+
+            
+            // 가로형 컨테이너 정렬
+            const horizontalContainer = document.getElementById('horizontalWordPositionsList');
+            
+            
+            if (horizontalContainer && horizontalContainer.children.length > 0) {
+                const horizontalItems = Array.from(horizontalContainer.children);
+ 
+                
+                // 각 아이템의 번호 정보 수집
+                const itemsWithNumbers = horizontalItems.map(item => {
+                    const select = item.querySelector('.word-number-select');
+                    const number = select ? parseInt(select.value) || 999 : 999;
+                    return { item, number };
+                });
+                
+                 
+                // 번호 순으로 정렬
+                itemsWithNumbers.sort((a, b) => a.number - b.number);
+                
+                
+                // 정렬된 순서로 DOM 재배치 (강제로 순서 변경)
+                itemsWithNumbers.forEach(({ item }, index) => {
+                    if (index === 0) {
+                        horizontalContainer.insertBefore(item, horizontalContainer.firstChild);
+                } else {
+                        const prevItem = itemsWithNumbers[index - 1].item;
+                        horizontalContainer.insertBefore(item, prevItem.nextSibling);
+                    }
+                });
+            }
+            
+            // 세로형 컨테이너 정렬
+            const verticalContainer = document.getElementById('verticalWordPositionsList');
+            
+            if (verticalContainer && verticalContainer.children.length > 0) {
+                const verticalItems = Array.from(verticalContainer.children);
+                
+                // 각 아이템의 번호 정보 수집
+                const itemsWithNumbers = verticalItems.map(item => {
+                    const select = item.querySelector('.word-number-select');
+                    const number = select ? parseInt(select.value) || 999 : 999;
+                    return { item, number };
+                });
+                
+                
+                // 번호 순으로 정렬
+                itemsWithNumbers.sort((a, b) => a.number - b.number);
+                
+                
+                // 정렬된 순서로 DOM 재배치 (강제로 순서 변경)
+                itemsWithNumbers.forEach(({ item }, index) => {
+                    if (index === 0) {
+                        verticalContainer.insertBefore(item, verticalContainer.firstChild);
+                    } else {
+                        const prevItem = itemsWithNumbers[index - 1].item;
+                        verticalContainer.insertBefore(item, prevItem.nextSibling);
+                    }
+                });
+            }
+        }
+    </script>
 </body>
 </html>

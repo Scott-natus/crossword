@@ -213,19 +213,27 @@ public class AdminController {
             return ResponseEntity.notFound().build();
         }
     }
-    
-    
+
     /**
      * 사용자 관리 페이지
      */
     @GetMapping("/users")
-    public String userManagement(Model model) {
+    public ResponseEntity<String> userManagement() {
         try {
             log.info("사용자 관리 페이지 접근");
-            return "admin/users";
-        } catch (Exception e) {
-            log.error("사용자 관리 페이지 접근 중 오류 발생: {}", e.getMessage());
-            return "error";
+            
+            Resource resource = new ClassPathResource("static/admin/users/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            log.error("사용자 관리 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
         }
     }
     

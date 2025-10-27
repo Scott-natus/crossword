@@ -216,44 +216,33 @@
     <div class="container">
 
         <!-- 퍼즐 관리 네비게이션 -->
-        <div class="admin-nav">
-            <ul class="nav nav-pills justify-content-center">
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin/">
-                        <i class="fas fa-tachometer-alt me-1"></i>대시보드
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin/words">
-                        <i class="fas fa-book me-1"></i>단어 관리
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin/hint-generator">
-                        <i class="fas fa-magic me-1"></i>AI 힌트 생성
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin/levels">
-                        <i class="fas fa-layer-group me-1"></i>레벨 관리
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="/admin/templates">
-                        <i class="fas fa-th me-1"></i>템플릿 관리
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin/users">
-                        <i class="fas fa-users me-1"></i>사용자 관리
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin/statistics">
-                        <i class="fas fa-chart-bar me-1"></i>통계
-                    </a>
-                </li>
-            </ul>
+        <div class="container mb-4">
+            <div class="card">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 text-primary">
+                            <i class="fas fa-puzzle-piece me-2"></i>퍼즐 관리 바로가기
+                        </h6>
+                        <div class="d-flex gap-2">
+                            <a href="/admin/" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-home me-1"></i>퍼즐관리
+                            </a>
+                            <a href="/admin/words" class="btn btn-primary btn-sm">
+                                <i class="fas fa-list me-1"></i>단어관리
+                            </a>
+                            <a href="/admin/hint-generator" class="btn btn-info btn-sm">
+                                <i class="fas fa-magic me-1"></i>AI 힌트관리
+                            </a>
+                            <a href="/admin/levels" class="btn btn-success btn-sm">
+                                <i class="fas fa-layer-group me-1"></i>레벨관리
+                            </a>
+                            <a href="/admin/templates" class="btn btn-warning btn-sm">
+                                <i class="fas fa-th me-1"></i>그리드 템플릿관리
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 통계 카드 -->

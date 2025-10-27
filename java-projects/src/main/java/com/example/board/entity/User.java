@@ -1,36 +1,62 @@
 package com.example.board.entity;
 
 import jakarta.persistence.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 /**
  * 사용자 엔티티
- * 8080 포트 게시판 서비스와 동일한 구조로 통합
+ * 
+ * @author Crossword Team
+ * @version 1.0.0
+ * @since 2025-10-27
  */
 @Entity
-@Table(name = "users")
-@EntityListeners(AuditingEntityListener.class)
+@Table(name = "users", schema = "public")
+@Getter
+@Setter
 public class User {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, unique = true)
-    private String email;
-    
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
     
-    @Column(nullable = false)
+    @Column(name = "email", nullable = false, unique = true, length = 255)
+    private String email;
+    
+    @Column(name = "password", nullable = false, length = 255)
     private String password;
+    
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "active"; // active, inactive, banned
+    
+    @Column(name = "games_played")
+    private Integer gamesPlayed = 0;
+    
+    @Column(name = "total_score")
+    private Integer totalScore = 0;
+    
+    @Column(name = "wins")
+    private Integer wins = 0;
+    
+    @Column(name = "level")
+    private Integer level;
+    
+    @Column(name = "is_admin")
+    private Boolean isAdmin = false;
+    
+    @Column(name = "is_guest")
+    private Boolean isGuest = false;
+    
+    @Column(name = "guest_id")
+    private java.util.UUID guestId;
+    
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
     
     @Column(name = "total_ddongsun_power")
     private Integer totalDdongsunPower = 0;
@@ -41,126 +67,55 @@ public class User {
     @Column(name = "profile_image")
     private String profileImage;
     
-    @Column(name = "is_admin")
-    private Boolean isAdmin = false;
+    @Column(name = "nickname")
+    private String nickname;
     
-    @Column(name = "guest_id")
-    private UUID guestId;
+    @Column(name = "avatar")
+    private String avatar;
     
-    @Column(name = "is_guest")
-    private Boolean isGuest = false;
+    @Column(name = "provider")
+    private String provider;
     
-    @CreatedDate
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "provider_id")
+    private String providerId;
+    
+    @Column(name = "email_verified_at")
+    private LocalDateTime emailVerifiedAt;
+    
+    @Column(name = "remember_token")
+    private String rememberToken;
+    
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     
-    @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
-    // Constructors
-    public User() {}
-    
-    public User(String email, String name, String password) {
-        this.email = email;
-        this.name = name;
-        this.password = password;
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
     
-    // Getters and Setters
-    public Long getId() {
-        return id;
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
     
-    public void setId(Long id) {
-        this.id = id;
+    // 추가 메서드들
+    public String getInitial() {
+        return name != null && !name.isEmpty() ? name.charAt(0) + "" : "U";
     }
     
-    public String getEmail() {
-        return email;
+    public boolean isActive() {
+        return "active".equals(status);
     }
     
-    public void setEmail(String email) {
-        this.email = email;
+    public boolean isBanned() {
+        return "banned".equals(status);
     }
     
-    public String getName() {
-        return name;
-    }
-    
-    public void setName(String name) {
-        this.name = name;
-    }
-    
-    public String getPassword() {
-        return password;
-    }
-    
-    public void setPassword(String password) {
-        this.password = password;
-    }
-    
-    public Integer getTotalDdongsunPower() {
-        return totalDdongsunPower;
-    }
-    
-    public void setTotalDdongsunPower(Integer totalDdongsunPower) {
-        this.totalDdongsunPower = totalDdongsunPower;
-    }
-    
-    public String getCurrentLevel() {
-        return currentLevel;
-    }
-    
-    public void setCurrentLevel(String currentLevel) {
-        this.currentLevel = currentLevel;
-    }
-    
-    public String getProfileImage() {
-        return profileImage;
-    }
-    
-    public void setProfileImage(String profileImage) {
-        this.profileImage = profileImage;
-    }
-    
-    public Boolean getIsAdmin() {
-        return isAdmin;
-    }
-    
-    public void setIsAdmin(Boolean isAdmin) {
-        this.isAdmin = isAdmin;
-    }
-    
-    public UUID getGuestId() {
-        return guestId;
-    }
-    
-    public void setGuestId(UUID guestId) {
-        this.guestId = guestId;
-    }
-    
-    public Boolean getIsGuest() {
-        return isGuest;
-    }
-    
-    public void setIsGuest(Boolean isGuest) {
-        this.isGuest = isGuest;
-    }
-    
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-    
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-    
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-    
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
+    public boolean isInactive() {
+        return "inactive".equals(status);
     }
 }
