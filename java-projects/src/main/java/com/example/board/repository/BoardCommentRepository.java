@@ -16,7 +16,7 @@ public interface BoardCommentRepository extends JpaRepository<BoardComment, Long
     
     List<BoardComment> findByParentIdOrderByCreatedAtAsc(Long parentId);
     
-    @Query("SELECT c FROM BoardComment c WHERE c.board = :board AND c.parentId IS NULL ORDER BY c.createdAt ASC")
+    @Query("SELECT c FROM BoardComment c LEFT JOIN FETCH c.user LEFT JOIN FETCH c.boardType WHERE c.board = :board AND c.parentId IS NULL ORDER BY c.createdAt ASC")
     List<BoardComment> findTopLevelCommentsByBoard(@Param("board") Board board);
     
     @Query("SELECT c FROM BoardComment c WHERE c.parentId = :parentId ORDER BY c.createdAt ASC")

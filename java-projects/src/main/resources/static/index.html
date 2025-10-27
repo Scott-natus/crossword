@@ -315,9 +315,10 @@
         // API 기본 URL
         const API_BASE_URL = '/api';
         
-        // 로그인 폼 표시 - 8080 서비스로 리다이렉트
+        // 로그인 폼 표시 - 8080 서비스로 리다이렉트 (현재 페이지 기억)
         function showLoginForm() {
-            window.location.href = 'https://natus250601.viewdns.net/login';
+            const currentUrl = window.location.href;
+            window.location.href = `https://natus250601.viewdns.net/login?redirect=${encodeURIComponent(currentUrl)}`;
         }
         
         // 로그인 폼 숨기기
@@ -507,8 +508,9 @@
             localStorage.removeItem('crossword_user_type');
             localStorage.removeItem('user_email');
             
-            // 8080 서비스의 로그아웃 API 호출 후 메인으로 이동
-            window.location.href = 'https://natus250601.viewdns.net/logout';
+            // 현재 페이지를 기억하고 로그아웃 후 돌아오기
+            const currentUrl = window.location.href;
+            window.location.href = `https://natus250601.viewdns.net/logout?redirect=${encodeURIComponent(currentUrl)}`;
         }
         
         // 인증 상태 확인 및 UI 업데이트

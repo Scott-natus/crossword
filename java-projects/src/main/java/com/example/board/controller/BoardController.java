@@ -39,6 +39,29 @@ public class BoardController {
     @Autowired
     private BoardVoteRepository boardVoteRepository;
     
+    /**
+     * 게시판 메인 페이지 - 모든 게시판 목록
+     */
+    @GetMapping({"", "/"})
+    public String boardMain(Model model) {
+        logger.info("=== 게시판 메인 페이지 접근 ===");
+        
+        try {
+            // 모든 게시판 타입 조회
+            List<BoardType> boardTypes = boardTypeRepository.findAll();
+            logger.info("게시판 타입 조회 완료: {}개", boardTypes.size());
+            
+            model.addAttribute("boardTypes", boardTypes);
+            model.addAttribute("title", "게시판 시스템");
+            model.addAttribute("message", "다양한 주제의 게시판에서 소통해보세요!");
+            
+            return "board/main";
+        } catch (Exception e) {
+            logger.error("게시판 메인 페이지 오류: {}", e.getMessage(), e);
+            return "error/500";
+        }
+    }
+    
     @GetMapping("/{boardType}")
     public String index(@PathVariable String boardType, 
                        @RequestParam(required = false) String search,
@@ -170,9 +193,26 @@ public class BoardController {
             logger.info("조회수 증가 완료");
             
             // 댓글 조회
-            logger.info("댓글 조회 시작");
-            List<BoardComment> comments = boardCommentRepository.findTopLevelCommentsByBoard(board);
-            logger.info("댓글 조회 완료: {}개", comments.size());
+            logger.info("댓글 조회 시작 - boardId: {}", board.getId());
+            List<BoardComment> comments = new ArrayList<>();
+            try {
+                // 간단한 쿼리로 댓글 조회 (JOIN FETCH 없이)
+                comments = boardCommentRepository.findByBoardAndParentIdIsNullOrderByCreatedAtAsc(board);
+                logger.info("댓글 조회 완료: {}개", comments.size());
+                
+                // 각 댓글의 기본 정보만 로깅 (User, BoardType 접근하지 않음)
+                for (int i = 0; i < comments.size(); i++) {
+                    BoardComment comment = comments.get(i);
+                    logger.info("댓글 {}: id={}, content={}", 
+                        i+1, comment.getId(), 
+                        comment.getContent() != null ? comment.getContent().substring(0, Math.min(50, comment.getContent().length())) : "null");
+                }
+            } catch (Exception e) {
+                logger.error("댓글 조회 중 오류 발생: {}", e.getMessage(), e);
+                logger.error("에러 스택 트레이스:", e);
+                // 에러가 발생해도 빈 리스트로 계속 진행
+                comments = new ArrayList<>();
+            }
             
             // 트리 구조 조회 (원글~답글)
             logger.info("트리 구조 조회 시작");

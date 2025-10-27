@@ -17,5 +17,7 @@ public interface BoardTypeRepository extends JpaRepository<BoardType, Long> {
     
     @Query("SELECT bt FROM BoardType bt WHERE bt.isActive = true ORDER BY bt.sortOrder, bt.name")
     List<BoardType> findActiveBoardTypesOrdered();
+    
+    boolean existsBySlug(String slug);
 }
 

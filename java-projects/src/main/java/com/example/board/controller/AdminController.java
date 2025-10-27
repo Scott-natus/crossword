@@ -29,7 +29,6 @@ import java.util.Map;
  * 8080 서비스에 맞게 새로 구현
  */
 @Controller
-@RequestMapping("/admin")
 @RequiredArgsConstructor
 @Slf4j
 public class AdminController {
@@ -40,9 +39,39 @@ public class AdminController {
     private final GameSessionService gameSessionService;
     
     /**
-     * 단어 관리 페이지 (테스트)
+     * 로그인 페이지
      */
-    @GetMapping("/words/test")
+    @GetMapping("/login")
+    public String login() {
+        return "login";
+    }
+    
+    /**
+     * 관리자 대시보드
+     */
+    @GetMapping("/admin")
+    public String adminDashboard(Model model, Authentication authentication) {
+        try {
+            log.info("관리자 대시보드 접근");
+            
+            // 현재 사용자 정보
+            if (authentication != null && authentication.isAuthenticated()) {
+                User user = (User) authentication.getPrincipal();
+                model.addAttribute("user", user);
+                log.info("인증된 사용자: {}", user.getEmail());
+            }
+            
+            return "admin/dashboard";
+        } catch (Exception e) {
+            log.error("관리자 대시보드 로드 중 오류 발생", e);
+            return "error/500";
+        }
+    }
+    
+    /**
+     * 단어 관리 페이지
+     */
+    @GetMapping("/admin/words")
     public String wordsManagementTest(Model model, Authentication authentication) {
         try {
             log.info("단어 관리 테스트 페이지 접근");
@@ -87,7 +116,7 @@ public class AdminController {
     /**
      * 관리자 메인 대시보드
      */
-    @GetMapping({"", "/", "/index"})
+    @GetMapping({"/admin", "/admin/", "/admin/index"})
     public String adminMain(Model model, Authentication authentication) {
         try {
             log.info("관리자 메인 대시보드 접근");
@@ -125,7 +154,7 @@ public class AdminController {
     /**
      * AI 힌트 생성 페이지
      */
-    @GetMapping("/hint-generator")
+    @GetMapping("/admin/hint-generator")
     public ResponseEntity<String> hintGenerator() {
         try {
             log.info("AI 힌트 생성 페이지 접근");
@@ -148,7 +177,7 @@ public class AdminController {
     /**
      * 템플릿 관리 페이지
      */
-    @GetMapping("/templates")
+    @GetMapping("/admin/templates")
     public ResponseEntity<String> templates() {
         try {
             log.info("템플릿 관리 페이지 접근");
@@ -171,7 +200,7 @@ public class AdminController {
     /**
      * 새 템플릿 생성 페이지
      */
-    @GetMapping("/templates/create")
+    @GetMapping("/admin/templates/create")
     public ResponseEntity<String> createTemplate() {
         try {
             log.info("새 템플릿 생성 페이지 접근");
@@ -194,7 +223,7 @@ public class AdminController {
     /**
      * 레벨 관리 페이지
      */
-    @GetMapping("/levels")
+    @GetMapping("/admin/levels")
     public ResponseEntity<String> levelManagement() {
         try {
             log.info("레벨 관리 페이지 접근");
@@ -217,7 +246,7 @@ public class AdminController {
     /**
      * 사용자 관리 페이지
      */
-    @GetMapping("/users")
+    @GetMapping("/admin/users")
     public ResponseEntity<String> userManagement() {
         try {
             log.info("사용자 관리 페이지 접근");
