@@ -286,8 +286,22 @@ public class PuzzleGameController {
                     // 정답 정보를 먼저 클라이언트에 전송
                     Map<String, Object> puzzleData = game.getCurrentPuzzleData();
                     if (puzzleData != null) {
-                        @SuppressWarnings("unchecked")
-                        List<Map<String, Object>> extractedWords = (List<Map<String, Object>>) puzzleData.get("extracted_words");
+                        Object extractedWordsObj = puzzleData.get("extracted_words");
+                        List<Map<String, Object>> extractedWords = null;
+                        
+                        // extracted_words 구조 확인 (Map 또는 List)
+                        if (extractedWordsObj instanceof Map) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> extractedWordsData = (Map<String, Object>) extractedWordsObj;
+                            @SuppressWarnings("unchecked")
+                            List<Map<String, Object>> wordOrder = (List<Map<String, Object>>) extractedWordsData.get("word_order");
+                            extractedWords = wordOrder;
+                        } else if (extractedWordsObj instanceof List) {
+                            @SuppressWarnings("unchecked")
+                            List<Map<String, Object>> extractedWordsList = (List<Map<String, Object>>) extractedWordsObj;
+                            extractedWords = extractedWordsList;
+                        }
+                        
                         if (extractedWords != null && !extractedWords.isEmpty()) {
                             List<Map<String, Object>> allAnswers = new ArrayList<>();
                             for (int i = 0; i < extractedWords.size(); i++) {
@@ -295,7 +309,7 @@ public class PuzzleGameController {
                                 Map<String, Object> answerData = new HashMap<>();
                                 answerData.put("word_id", wordData.get("word_id"));
                                 
-                                // pz_word_id를 사용해서 실제 단어 조회
+                                // pz_word_id를 사용해서 실제 단어 조회 (8081과 동일)
                                 Integer pzWordId = Integer.valueOf(wordData.get("pz_word_id").toString());
                                 Optional<PzWord> pzWordOpt = pzWordService.getPzWordById(pzWordId);
                                 String actualWord = pzWordOpt.map(PzWord::getWord).orElse("");
