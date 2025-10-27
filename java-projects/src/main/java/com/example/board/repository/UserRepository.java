@@ -4,6 +4,7 @@ import com.example.board.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -42,6 +43,34 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * 활성 사용자 수 조회
      */
     long countByStatusAndLastLoginAtAfter(String status, LocalDateTime lastLogin);
+    
+    /**
+     * 디버깅용 - 특정 사용자 조회
+     */
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    User findByIdForDebug(@Param("id") Long id);
+    
+    /**
+     * 사용자 게임 통계 업데이트 (네이티브 쿼리)
+     */
+    @Modifying
+    @Query(value = """
+        UPDATE users SET 
+            games_played = subquery.games_played,
+            total_score = subquery.total_score,
+            wins = subquery.wins
+        FROM (
+            SELECT 
+                user_id,
+                COUNT(*) as games_played,
+                COALESCE(SUM(score), 0) as total_score,
+                COUNT(CASE WHEN game_status = 'completed' THEN 1 END) as wins
+            FROM puzzle_game_records 
+            GROUP BY user_id
+        ) as subquery
+        WHERE users.id = subquery.user_id
+        """, nativeQuery = true)
+    int updateUserGameStatistics();
     
     /**
      * 상태별 사용자 조회

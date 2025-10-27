@@ -48,7 +48,11 @@ public class UserManagementService {
                 return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(search, search, pageable);
             } else {
                 // 필터가 없는 경우 - 모든 사용자 조회
-                return userRepository.findAll(pageable);
+                Page<User> users = userRepository.findAll(pageable);
+                log.info("조회된 사용자 수: {}, 첫 번째 사용자 정보: {}", 
+                    users.getTotalElements(), 
+                    users.getContent().isEmpty() ? "없음" : users.getContent().get(0));
+                return users;
             }
         } catch (Exception e) {
             log.error("사용자 목록 조회 중 오류 발생", e);
@@ -84,6 +88,43 @@ public class UserManagementService {
         } catch (Exception e) {
             log.error("사용자 통계 조회 중 오류 발생", e);
             throw new RuntimeException("통계 정보를 불러올 수 없습니다.", e);
+        }
+    }
+    
+    /**
+     * 사용자 게임 통계 업데이트 (puzzle_game_records에서 계산)
+     */
+    @Transactional
+    public void updateUserGameStatistics() {
+        try {
+            int updatedCount = userRepository.updateUserGameStatistics();
+            log.info("사용자 게임 통계 업데이트 완료: {}명의 사용자 통계가 업데이트되었습니다.", updatedCount);
+        } catch (Exception e) {
+            log.error("사용자 게임 통계 업데이트 중 오류 발생", e);
+            throw new RuntimeException("게임 통계 업데이트에 실패했습니다.", e);
+        }
+    }
+    
+    /**
+     * 사용자 관리자 권한 변경
+     */
+    @Transactional
+    public boolean changeAdminStatus(Long userId, Boolean isAdmin) {
+        try {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                log.warn("사용자를 찾을 수 없습니다: {}", userId);
+                return false;
+            }
+            
+            user.setIsAdmin(isAdmin);
+            userRepository.save(user);
+            
+            log.info("사용자 {}의 관리자 권한이 {}로 변경되었습니다.", user.getEmail(), isAdmin ? "부여" : "제거");
+            return true;
+        } catch (Exception e) {
+            log.error("관리자 권한 변경 중 오류 발생", e);
+            return false;
         }
     }
 

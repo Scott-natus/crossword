@@ -258,10 +258,11 @@
                             <th>이름</th>
                             <th>이메일</th>
                             <th>상태</th>
+                            <th>권한</th>
                             <th>가입일</th>
                             <th>마지막 로그인</th>
                             <th>게임 플레이</th>
-                            <th width="120">액션</th>
+                            <th width="150">액션</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -405,6 +406,16 @@
                         }
                     },
                     {
+                        data: 'is_admin',
+                        render: function(data, type, row) {
+                            if (data === true) {
+                                return '<span class="badge badge-primary">관리자</span>';
+                            } else {
+                                return '<span class="badge badge-secondary">일반사용자</span>';
+                            }
+                        }
+                    },
+                    {
                         data: 'created_at',
                         render: function(data, type, row) {
                             return data ? new Date(data).toLocaleDateString('ko-KR') : '-';
@@ -427,6 +438,14 @@
                         orderable: false,
                         searchable: false,
                         render: function(data, type, row) {
+                            const adminButton = row.is_admin ? 
+                                `<button class="btn btn-sm btn-outline-secondary btn-action" onclick="changeAdminStatus(${row.id}, false)" title="관리자 권한 제거">
+                                    <i class="fas fa-user-minus"></i>
+                                </button>` :
+                                `<button class="btn btn-sm btn-outline-info btn-action" onclick="changeAdminStatus(${row.id}, true)" title="관리자 권한 부여">
+                                    <i class="fas fa-user-plus"></i>
+                                </button>`;
+                            
                             return `
                                 <button class="btn btn-sm btn-outline-primary btn-action" onclick="viewUserDetail(${row.id})" title="상세보기">
                                     <i class="fas fa-eye"></i>
@@ -434,6 +453,7 @@
                                 <button class="btn btn-sm btn-outline-warning btn-action" onclick="editUserStatus(${row.id})" title="상태변경">
                                     <i class="fas fa-edit"></i>
                                 </button>
+                                ${adminButton}
                                 <button class="btn btn-sm btn-outline-danger btn-action" onclick="deleteUser(${row.id})" title="삭제">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -597,6 +617,29 @@
                     },
                     error: function() {
                         alert('사용자 삭제에 실패했습니다.');
+                    }
+                });
+            }
+        }
+
+        // 관리자 권한 변경
+        function changeAdminStatus(userId, isAdmin) {
+            const action = isAdmin ? '관리자 권한을 부여' : '관리자 권한을 제거';
+            if (confirm(`정말로 이 사용자에게 ${action}하시겠습니까?`)) {
+                $.ajax({
+                    url: '/admin/api/user-management/user/' + userId + '/admin',
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        isAdmin: isAdmin
+                    }),
+                    success: function() {
+                        alert(`관리자 권한이 ${isAdmin ? '부여' : '제거'}되었습니다.`);
+                        usersTable.ajax.reload();
+                        loadUserStatistics();
+                    },
+                    error: function() {
+                        alert('관리자 권한 변경에 실패했습니다.');
                     }
                 });
             }

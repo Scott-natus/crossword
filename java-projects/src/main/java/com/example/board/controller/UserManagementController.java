@@ -211,6 +211,90 @@ public class UserManagementController {
     }
 
     /**
+     * 사용자 관리자 권한 변경
+     */
+    @PutMapping("/user/{id}/admin")
+    public ResponseEntity<Map<String, Object>> changeAdminStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> request) {
+        try {
+            Boolean isAdmin = request.get("isAdmin");
+            
+            boolean success = userManagementService.changeAdminStatus(id, isAdmin);
+            
+            Map<String, Object> response = new HashMap<>();
+            if (success) {
+                response.put("success", true);
+                response.put("message", isAdmin ? "관리자 권한이 부여되었습니다." : "관리자 권한이 제거되었습니다.");
+            } else {
+                response.put("success", false);
+                response.put("message", "관리자 권한 변경에 실패했습니다.");
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("관리자 권한 변경 중 오류 발생", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "관리자 권한 변경 중 오류가 발생했습니다.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * 게임 통계 업데이트
+     */
+    @PostMapping("/update-game-statistics")
+    public ResponseEntity<Map<String, Object>> updateGameStatistics() {
+        try {
+            userManagementService.updateUserGameStatistics();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "게임 통계가 업데이트되었습니다.");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("게임 통계 업데이트 중 오류 발생", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "게임 통계 업데이트에 실패했습니다.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * 디버깅용 - 특정 사용자 상세 조회
+     */
+    @GetMapping("/debug/user/{id}")
+    public ResponseEntity<Map<String, Object>> debugUser(@PathVariable Long id) {
+        try {
+            User user = userManagementService.getUserById(id);
+            if (user == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Map<String, Object> debugInfo = new HashMap<>();
+            debugInfo.put("id", user.getId());
+            debugInfo.put("name", user.getName());
+            debugInfo.put("email", user.getEmail());
+            debugInfo.put("createdAt", user.getCreatedAt());
+            debugInfo.put("lastLoginAt", user.getLastLoginAt());
+            debugInfo.put("gamesPlayed", user.getGamesPlayed());
+            debugInfo.put("status", user.getStatus());
+            debugInfo.put("createdAt_class", user.getCreatedAt() != null ? user.getCreatedAt().getClass().getName() : "null");
+            debugInfo.put("lastLoginAt_class", user.getLastLoginAt() != null ? user.getLastLoginAt().getClass().getName() : "null");
+            
+            return ResponseEntity.ok(debugInfo);
+        } catch (Exception e) {
+            log.error("디버깅 사용자 조회 중 오류 발생", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "디버깅 정보를 불러올 수 없습니다.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
      * 사용자 데이터 내보내기
      */
     @GetMapping("/export")
@@ -239,8 +323,9 @@ public class UserManagementController {
         userMap.put("name", user.getName());
         userMap.put("email", user.getEmail());
         userMap.put("status", user.getStatus());
-        userMap.put("created_at", user.getCreatedAt());
-        userMap.put("last_login_at", user.getLastLoginAt());
+        userMap.put("is_admin", user.getIsAdmin());
+        userMap.put("created_at", user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
+        userMap.put("last_login_at", user.getLastLoginAt() != null ? user.getLastLoginAt().toString() : null);
         userMap.put("games_played", user.getGamesPlayed());
         return userMap;
     }
@@ -254,8 +339,9 @@ public class UserManagementController {
         userMap.put("name", user.getName());
         userMap.put("email", user.getEmail());
         userMap.put("status", user.getStatus());
-        userMap.put("created_at", user.getCreatedAt());
-        userMap.put("last_login_at", user.getLastLoginAt());
+        userMap.put("is_admin", user.getIsAdmin());
+        userMap.put("created_at", user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
+        userMap.put("last_login_at", user.getLastLoginAt() != null ? user.getLastLoginAt().toString() : null);
         userMap.put("games_played", user.getGamesPlayed());
         userMap.put("total_score", user.getTotalScore());
         userMap.put("wins", user.getWins());
