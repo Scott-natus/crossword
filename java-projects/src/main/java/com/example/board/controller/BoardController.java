@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import jakarta.servlet.http.HttpServletRequest;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Controller
 @RequestMapping("/board")
@@ -76,7 +78,8 @@ public class BoardController {
                        @RequestParam(required = false) String search,
                        @RequestParam(defaultValue = "0") int page,
                        @RequestParam(defaultValue = "15") int size,
-                       Model model) {
+                       Model model,
+                       HttpServletRequest request) {
         
         Optional<BoardType> boardTypeOpt = boardTypeRepository.findBySlug(boardType);
         if (boardTypeOpt.isEmpty()) {
@@ -87,7 +90,8 @@ public class BoardController {
         
         // 인증이 필요한 게시판인지 확인
         if (boardTypeEntity.getRequiresAuth() && !isAuthenticated()) {
-            return "redirect:/login?error=login_required";
+            String redirect = buildCurrentUrl(request);
+            return "redirect:/login?redirect=" + urlEncode(redirect);
         }
         
         Pageable pageable = PageRequest.of(page, size);
@@ -104,15 +108,17 @@ public class BoardController {
         model.addAttribute("search", search);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", boards.getTotalPages());
+        model.addAttribute("currentUrl", buildCurrentUrl(request));
         
         return "board/index";
     }
     
     @GetMapping("/{boardType}/create")
-    public String create(@PathVariable String boardType, Model model) {
+    public String create(@PathVariable String boardType, Model model, HttpServletRequest request) {
         // 인증 확인
         if (!isAuthenticated()) {
-            return "redirect:/login?error=login_required";
+            String redirect = buildCurrentUrl(request);
+            return "redirect:/login?redirect=" + urlEncode(redirect);
         }
         
         Optional<BoardType> boardTypeOpt = boardTypeRepository.findBySlug(boardType);
@@ -131,7 +137,8 @@ public class BoardController {
                        @RequestParam String title,
                        @RequestParam String content,
                        @RequestParam String password,
-                       @RequestParam(required = false) Long parentId) {
+                       @RequestParam(required = false) Long parentId,
+                       HttpServletRequest request) {
         
         Optional<BoardType> boardTypeOpt = boardTypeRepository.findBySlug(boardType);
         if (boardTypeOpt.isEmpty()) {
@@ -140,7 +147,8 @@ public class BoardController {
         
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
-            return "redirect:/login";
+            String redirect = buildCurrentUrl(request);
+            return "redirect:/login?redirect=" + urlEncode(redirect);
         }
         
         String email = auth.getName();
@@ -171,8 +179,9 @@ public class BoardController {
     
     @GetMapping("/{boardType}/{id}")
     public String show(@PathVariable String boardType, 
-                      @PathVariable Long id, 
-                      Model model) {
+                     @PathVariable Long id, 
+                     Model model,
+                     HttpServletRequest request) {
         
         logger.info("=== BoardController.show() 시작 ===");
         logger.info("boardType: {}, id: {}", boardType, id);
@@ -198,7 +207,8 @@ public class BoardController {
             // 인증이 필요한 게시판인지 확인
             if (board.getBoardType().getRequiresAuth() && !isAuthenticated()) {
                 logger.info("인증 필요");
-                return "redirect:/login?error=login_required";
+                String redirect = buildCurrentUrl(request);
+                return "redirect:/login?redirect=" + urlEncode(redirect);
             }
             
             // 조회수 증가
@@ -236,6 +246,7 @@ public class BoardController {
             model.addAttribute("board", board);
             model.addAttribute("comments", comments);
             model.addAttribute("thread", thread);
+            model.addAttribute("currentUrl", buildCurrentUrl(request));
             
             logger.info("모델 속성 설정 완료");
             logger.info("board 객체: {}", (board != null ? "OK" : "NULL"));
@@ -383,6 +394,16 @@ public class BoardController {
             return new ArrayList<>();
         }
     }
+
+    private String buildCurrentUrl(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String qs = request.getQueryString();
+        return qs != null && !qs.isBlank() ? uri + "?" + qs : uri;
+    }
+
+    private String urlEncode(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
     
     /**
      * 첨부파일 다운로드
@@ -445,7 +466,8 @@ public class BoardController {
             // 인증 확인
             if (!isAuthenticated()) {
                 logger.warn("인증되지 않은 사용자의 댓글 작성 시도");
-                return "redirect:/login?error=login_required";
+                String redirect = buildCurrentUrl(request);
+                return "redirect:/login?redirect=" + urlEncode(redirect);
             }
             
             // 게시물 조회
@@ -468,7 +490,8 @@ public class BoardController {
             Optional<User> userOpt = userRepository.findByEmail(email);
             if (userOpt.isEmpty()) {
                 logger.warn("사용자를 찾을 수 없음: {}", email);
-                return "redirect:/login?error=user_not_found";
+                String redirect = "/board/" + boardType + "/" + id;
+                return "redirect:/login?redirect=" + urlEncode(redirect);
             }
             
             User user = userOpt.get();

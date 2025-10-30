@@ -39,34 +39,14 @@ public class AdminController {
     private final GameSessionService gameSessionService;
     
     /**
-     * 로그인 페이지 (/admin/login)
+     * 로그인 페이지 (공통) - 어디서든 접근 가능
      */
-    @GetMapping({"/admin/login", "/login"})
+    @GetMapping({"/login", "/admin/login"})
     public String login() {
         return "login";
     }
     
-    /**
-     * 관리자 대시보드
-     */
-    @GetMapping("/admin")
-    public String adminDashboard(Model model, Authentication authentication) {
-        try {
-            log.info("관리자 대시보드 접근");
-            
-            // 현재 사용자 정보
-            if (authentication != null && authentication.isAuthenticated()) {
-                User user = (User) authentication.getPrincipal();
-                model.addAttribute("user", user);
-                log.info("인증된 사용자: {}", user.getEmail());
-            }
-            
-            return "admin/dashboard";
-        } catch (Exception e) {
-            log.error("관리자 대시보드 로드 중 오류 발생", e);
-            return "error/500";
-        }
-    }
+    // Note: 중복 매핑 제거. '/admin'은 아래 adminMain에서 렌더링합니다.
     
     /**
      * 단어 관리 페이지 (정적 페이지 제공)

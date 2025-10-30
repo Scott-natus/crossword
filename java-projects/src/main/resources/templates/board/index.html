@@ -51,7 +51,7 @@
                 <a class="nav-link" href="/admin/" sec:authorize="hasRole('ADMIN')">
                     <i class="fas fa-cog me-1"></i>관리자
                 </a>
-                <a class="nav-link" href="/login" sec:authorize="!isAuthenticated()">
+                <a class="nav-link" th:href="@{'/login'(redirect=${currentUrl})}" sec:authorize="!isAuthenticated()">
                     <i class="fas fa-sign-in-alt me-1"></i>로그인
                 </a>
                 <div class="nav-item dropdown" sec:authorize="isAuthenticated()">

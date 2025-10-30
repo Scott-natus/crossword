@@ -9,6 +9,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.Authentication;
+import java.io.IOException;
 
 @Configuration
 @EnableWebSecurity
@@ -28,12 +35,15 @@ public class SecurityConfig {
                 .requestMatchers("/api/puzzle/**", "/api/auth/**").permitAll()
                 .requestMatchers("/admin/api/**").permitAll() // 관리자 API는 인증 제외 (페이지는 인증)
                 .requestMatchers("/admin/templates/create").permitAll() // 템플릿 생성 페이지는 인증 제외
+                .requestMatchers("/login").permitAll()
                 .requestMatchers("/admin/**").authenticated() // 관리자 메뉴 페이지는 인증 필요
                 .anyRequest().permitAll()
             )
             .formLogin(form -> form
-                .loginPage("/admin/login")
-                .defaultSuccessUrl("/admin", true)
+                .loginPage("/login")
+                .loginProcessingUrl("/login")
+                .successHandler(authenticationSuccessHandler())
+                .failureUrl("/login?error")
                 .permitAll()
             )
             .logout(logout -> logout
@@ -53,5 +63,32 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationSuccessHandler authenticationSuccessHandler() {
+        SavedRequestAwareAuthenticationSuccessHandler delegate = new SavedRequestAwareAuthenticationSuccessHandler();
+        delegate.setDefaultTargetUrl("/");
+        delegate.setAlwaysUseDefaultTargetUrl(false);
+
+        return new AuthenticationSuccessHandler() {
+            @Override
+            public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
+                String redirect = request.getParameter("redirect");
+                if (redirect != null && !redirect.isBlank() && isSafeRedirect(redirect)) {
+                    response.sendRedirect(redirect);
+                    return;
+                }
+                try {
+                    delegate.onAuthenticationSuccess(request, response, authentication);
+                } catch (Exception e) {
+                    response.sendRedirect("/");
+                }
+            }
+
+            private boolean isSafeRedirect(String url) {
+                return url.startsWith("/");
+            }
+        };
     }
 }

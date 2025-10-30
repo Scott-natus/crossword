@@ -12,7 +12,7 @@
         <div class="container">
             <a class="navbar-brand" href="/board">게시판 시스템</a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link" th:if="${!isAuthenticated}" href="/login">로그인</a>
+                <a class="nav-link" th:if="${!isAuthenticated}" th:href="@{'/login'(redirect=${#request.requestURI + (#request.queryString != null ? '?' + #request.queryString : '')})}">로그인</a>
                 <div class="nav-item dropdown" th:if="${isAuthenticated}">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <span th:text="${userName}">사용자</span>
