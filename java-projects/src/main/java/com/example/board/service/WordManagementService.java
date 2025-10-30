@@ -16,9 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -745,9 +742,29 @@ public class WordManagementService {
                 for (Map<String, Object> hintData : hints) {
                     PzHint hint = new PzHint();
                     hint.setWord(word);
-                    hint.setHintText((String) hintData.get("hintText"));
-                    hint.setDifficulty((Integer) hintData.get("difficulty"));
-                    hint.setIsPrimary((Boolean) hintData.getOrDefault("isPrimary", false));
+                    // 키 이름 호환 처리: hintText | hint_text, isPrimary | is_primary
+                    Object textObj = hintData.get("hintText");
+                    if (textObj == null) textObj = hintData.get("hint_text");
+                    hint.setHintText(textObj != null ? textObj.toString() : null);
+
+                    Object diffObj = hintData.get("difficulty");
+                    Integer diffVal = null;
+                    if (diffObj instanceof Integer) diffVal = (Integer) diffObj;
+                    else if (diffObj instanceof Number) diffVal = ((Number) diffObj).intValue();
+                    else if (diffObj != null) {
+                        try { diffVal = Integer.parseInt(diffObj.toString()); } catch (Exception ignore) {}
+                    }
+                    hint.setDifficulty(diffVal != null ? diffVal : 2);
+
+                    Object primaryObj = hintData.get("isPrimary");
+                    if (primaryObj == null) primaryObj = hintData.get("is_primary");
+                    Boolean isPrimary = false;
+                    if (primaryObj instanceof Boolean) isPrimary = (Boolean) primaryObj;
+                    else if (primaryObj instanceof String) isPrimary = Boolean.parseBoolean((String) primaryObj);
+                    hint.setIsPrimary(isPrimary != null ? isPrimary : false);
+                    // 기본값 보정: hint_type, language_code
+                    hint.setHintType("TEXT");
+                    hint.setLanguageCode("ko");
                     hint.setCreatedAt(LocalDateTime.now());
                     hint.setUpdatedAt(LocalDateTime.now());
                     pzHintRepository.save(hint);

@@ -12,10 +12,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.core.Authentication;
-import java.io.IOException;
 
 @Configuration
 @EnableWebSecurity
@@ -71,23 +67,17 @@ public class SecurityConfig {
         delegate.setDefaultTargetUrl("/");
         delegate.setAlwaysUseDefaultTargetUrl(false);
 
-        return new AuthenticationSuccessHandler() {
-            @Override
-            public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
-                String redirect = request.getParameter("redirect");
-                if (redirect != null && !redirect.isBlank() && isSafeRedirect(redirect)) {
-                    response.sendRedirect(redirect);
-                    return;
-                }
-                try {
-                    delegate.onAuthenticationSuccess(request, response, authentication);
-                } catch (Exception e) {
-                    response.sendRedirect("/");
-                }
+        return (request, response, authentication) -> {
+            String redirect = request.getParameter("redirect");
+            boolean safe = redirect != null && !redirect.isBlank() && redirect.startsWith("/");
+            if (safe) {
+                response.sendRedirect(redirect);
+                return;
             }
-
-            private boolean isSafeRedirect(String url) {
-                return url.startsWith("/");
+            try {
+                delegate.onAuthenticationSuccess(request, response, authentication);
+            } catch (Exception e) {
+                response.sendRedirect("/");
             }
         };
     }

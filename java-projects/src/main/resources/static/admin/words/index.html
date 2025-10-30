@@ -383,7 +383,6 @@
                                     <th>힌트 개수</th>
                                     <th>사용여부</th>
                                     <th>정제여부</th>
-                                    <th>힌트 생성일자</th>
                                     <th>입력일자</th>
                                     <th width="120">관리</th>
                                 </tr>
@@ -839,19 +838,7 @@
                                 '<span class="badge bg-warning">정제대기</span>';
                         }
                     },
-                    { 
-                        data: 'latest_hint_date',
-                        render: function(data, type, row) {
-                            if (!data) return '-';
-                            // 배열 형태의 날짜 데이터 처리
-                            if (Array.isArray(data)) {
-                                // [2025,10,22,0,24,35,892187000] 형태를 Date 객체로 변환
-                                const date = new Date(data[0], data[1]-1, data[2], data[3], data[4], data[5]);
-                                return date.toLocaleDateString();
-                            }
-                            return new Date(data).toLocaleDateString();
-                        }
-                    },
+                    
                     { 
                         data: 'created_at',
                         render: function(data, type, row) {

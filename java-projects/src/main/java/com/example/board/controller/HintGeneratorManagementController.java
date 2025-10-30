@@ -1,6 +1,5 @@
 package com.example.board.controller;
 
-import com.example.board.entity.PzHint;
 import com.example.board.entity.PzWord;
 import com.example.board.service.HintGeneratorManagementService;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -147,9 +145,10 @@ public class HintGeneratorManagementController {
      * 단어에 대한 힌트 생성
      */
     @PostMapping("/word/{wordId}")
-    public ResponseEntity<Map<String, Object>> generateHintsForWord(@PathVariable Integer wordId) {
+    public ResponseEntity<Map<String, Object>> generateHintsForWord(@PathVariable Integer wordId,
+                                                                    @RequestParam(name = "overwrite", defaultValue = "true") Boolean overwrite) {
         try {
-            Map<String, Object> result = hintGeneratorManagementService.generateForWord(wordId, true);
+            Map<String, Object> result = hintGeneratorManagementService.generateForWord(wordId, overwrite);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("힌트 생성 중 오류 발생: {}", wordId, e);

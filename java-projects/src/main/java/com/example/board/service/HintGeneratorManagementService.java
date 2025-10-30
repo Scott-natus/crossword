@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * AI 힌트 생성 관리 서비스
@@ -36,6 +38,18 @@ public class HintGeneratorManagementService {
     
     @Autowired
     private PzWordRepository pzWordRepository;
+
+    @Autowired
+    private org.springframework.web.client.RestTemplate restTemplate;
+
+    @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key:}")
+    private String geminiApiKey;
+
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent}")
+    private String geminiApiUrl;
     
     /**
      * 힌트 생성 통계 조회
@@ -199,8 +213,8 @@ public class HintGeneratorManagementService {
                 log.info("기존 힌트 삭제 완료: wordId={}, 삭제된 힌트 수={}", wordId, existingHints.size());
             }
             
-            // 더미 힌트 생성 (실제로는 Gemini API 호출)
-            List<PzHint> createdHints = createDummyHints(word);
+            // Gemini 호출로 카테고리+힌트 생성 (라라벨 프롬프트와 동일 형식)
+            List<PzHint> createdHints = createHintsViaGemini(word);
             
             response.put("success", true);
             response.put("message", "힌트가 생성되었습니다. (성공: " + createdHints.size() + "개)");
@@ -208,7 +222,7 @@ public class HintGeneratorManagementService {
             response.put("word", word);
             
         } catch (Exception e) {
-            log.error("힌트 생성 중 오류 발생: wordId={}", wordId, e);
+            log.error("HINT_GEN_ERROR wordId={} err={}", wordId, e.toString());
             response.put("success", false);
             response.put("message", "힌트 생성 중 오류가 발생했습니다.");
         }
@@ -216,32 +230,138 @@ public class HintGeneratorManagementService {
         return response;
     }
     
-    /**
-     * 더미 힌트 생성 (실제로는 Gemini API 호출)
-     */
-    private List<PzHint> createDummyHints(PzWord word) {
-        // 실제로는 Gemini API를 호출하여 힌트를 생성
-        // 여기서는 더미 데이터로 대체
-        
-        PzHint primaryHint = new PzHint();
-        primaryHint.setWord(word);
-        primaryHint.setHintText(word.getWord() + "에 대한 기본 힌트입니다.");
-        primaryHint.setDifficulty(2);
-        primaryHint.setIsPrimary(true);
-        primaryHint.setCreatedAt(LocalDateTime.now());
-        primaryHint.setUpdatedAt(LocalDateTime.now());
-        pzHintRepository.save(primaryHint);
-        
-        PzHint additionalHint = new PzHint();
-        additionalHint.setWord(word);
-        additionalHint.setHintText(word.getWord() + "에 대한 추가 힌트입니다.");
-        additionalHint.setDifficulty(3);
-        additionalHint.setIsPrimary(false);
-        additionalHint.setCreatedAt(LocalDateTime.now());
-        additionalHint.setUpdatedAt(LocalDateTime.now());
-        pzHintRepository.save(additionalHint);
-        
-        return List.of(primaryHint, additionalHint);
+    private List<PzHint> createHintsViaGemini(PzWord word) {
+        if (geminiApiKey == null || geminiApiKey.isBlank()) {
+            throw new IllegalStateException("Gemini API 키가 설정되어 있지 않습니다.");
+        }
+
+        String prompt = buildCategoryAndHintsPrompt(word.getWord());
+        log.info("HINT_GEN_START word={} promptSnip={}",
+            word.getWord(),
+            prompt != null && prompt.length() > 120 ? prompt.substring(0,120) + "..." : prompt);
+
+        Map<String, Object> body = new HashMap<>();
+        Map<String, Object> content = new HashMap<>();
+        Map<String, Object> part = new HashMap<>();
+        part.put("text", prompt);
+        content.put("parts", java.util.List.of(part));
+        body.put("contents", java.util.List.of(content));
+
+        Map<String, Object> generationConfig = new HashMap<>();
+        generationConfig.put("temperature", 0.7);
+        generationConfig.put("topK", 40);
+        generationConfig.put("topP", 0.95);
+        generationConfig.put("maxOutputTokens", 1024);
+        body.put("generationConfig", generationConfig);
+
+        String url = geminiApiUrl + "?key=" + geminiApiKey;
+
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        org.springframework.http.HttpEntity<Map<String, Object>> req = new org.springframework.http.HttpEntity<>(body, headers);
+
+        org.springframework.http.ResponseEntity<String> resp;
+        try {
+            resp = restTemplate.postForEntity(url, req, String.class);
+        } catch (Exception ex) {
+            log.error("Gemini API 호출 예외 word={} url={} err={}", word.getWord(), url, ex.toString());
+            throw new IllegalStateException("Gemini API 호출 예외: " + ex.getMessage());
+        }
+        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
+            log.error("Gemini API 호출 실패 status={} body={} word={} url={}", resp.getStatusCode(), resp.getBody(), word.getWord(), url);
+            throw new IllegalStateException("Gemini API 호출 실패: " + resp.getStatusCode());
+        }
+
+        String text;
+        try {
+            com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(resp.getBody());
+            text = root.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
+            log.info("HINT_GEN_RESP word={} bodySnip={}",
+                word.getWord(),
+                resp.getBody() != null && resp.getBody().length() > 200 ? resp.getBody().substring(0,200) + "..." : resp.getBody());
+            log.info("HINT_GEN_TEXT word={} textSnip={}", word.getWord(), text != null && text.length() > 120 ? text.substring(0,120) + "..." : text);
+        } catch (Exception e) {
+            throw new IllegalStateException("Gemini 응답 파싱 실패: " + e.getMessage());
+        }
+
+        // 라라벨 파서와 동일한 패턴으로 카테고리/힌트 추출
+        String category = extractCategory(text);
+        Map<Integer, String> hintsByLevel = extractHints(text);
+
+        if (category != null && (hintsByLevel.get(1) != null || hintsByLevel.get(2) != null || hintsByLevel.get(3) != null)) {
+            // 카테고리 자동 보정(있을 때만)
+            if (category != null && (word.getCategory() == null || word.getCategory().isBlank())) {
+                word.setCategory(category);
+                pzWordRepository.save(word);
+            }
+
+            // 힌트 저장: 보통(2)를 기본힌트로, 나머지는 추가힌트
+            LocalDateTime now = LocalDateTime.now();
+            java.util.ArrayList<PzHint> saved = new java.util.ArrayList<>();
+
+            for (int level : new int[]{2,1,3}) {
+                String h = hintsByLevel.get(level);
+                if (h == null || h.isBlank()) continue;
+                PzHint ph = new PzHint();
+                ph.setWord(word);
+                ph.setHintText(h.trim());
+                ph.setDifficulty(level);
+                ph.setIsPrimary(level == 2);
+                ph.setCreatedAt(now);
+                ph.setUpdatedAt(now);
+                pzHintRepository.save(ph);
+                saved.add(ph);
+            }
+            return saved;
+        }
+
+        throw new IllegalStateException("카테고리 또는 힌트 추출 실패");
+    }
+
+    private String buildCategoryAndHintsPrompt(String word) {
+        return "당신은 한글 십자낱말 퍼즐을 위한 힌트를 만드는 전문가입니다.\n\n" +
+               "단어 '" + word + "' 에 대한 적절한 카테고리를 하나 생성하고 \n" +
+               "카테고리와 단어 '" + word + "'에  적정한 힌트를 3가지 난이도로 만들어주세요.\n\n" +
+               "카테고리는 적합한 한가지 분야로 판단해주세요. (예: 사회 , 사회과학, 인문, 인문학 등)\n \n\n" +
+               "**힌트 작성 규칙:**\n" +
+               "1. 정답 단어를 직접 언급하지 마세요\n" +
+               "2. 50자 내외로 연상되기 쉽게 설명해 주세요\n" +
+               "3. 초등학생도 이해할 수 있게 작성하세요\n" +
+               "4. 너무 어렵거나 추상적인 표현은 피하세요\n\n" +
+               "**응답 형식 (다른 설명 없이):**\n\n" +
+               "'" + word + "' 의 카테고리 : [카테고리]\n\n" +
+               "쉬움: [매우 쉬운 힌트]\n" +
+               "보통: [보통 난이도 힌트]  \n" +
+               "어려움: [조금 어려운 힌트]";
+    }
+
+    private String extractCategory(String text) {
+        if (text == null) return null;
+        Pattern p = Pattern.compile("의 카테고리\\s*:\\s*([^\\n]+)");
+        Matcher m = p.matcher(text);
+        if (m.find()) {
+            String cat = m.group(1).trim();
+            return cat.replaceAll("^\\[|\\]$", "");
+        }
+        return null;
+    }
+
+    private Map<Integer, String> extractHints(String text) {
+        Map<Integer, String> map = new HashMap<>();
+        if (text == null) return map;
+        map.put(1, extractByLabel(text, "쉬움"));
+        map.put(2, extractByLabel(text, "보통"));
+        map.put(3, extractByLabel(text, "어려움"));
+        return map;
+    }
+
+    private String extractByLabel(String text, String label) {
+        Pattern p = Pattern.compile(label + "\\s*:\\s*([^\\n\\[\\]]+)");
+        Matcher m = p.matcher(text);
+        if (m.find()) {
+            return m.group(1).trim();
+        }
+        return null;
     }
     
     /**
