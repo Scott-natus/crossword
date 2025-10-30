@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Controller
-@RequestMapping("/admin/custom-word-collection")
+@RequestMapping("/admin")
 @RequiredArgsConstructor
 @Slf4j
 public class CustomWordCollectionAdminController {
@@ -36,13 +36,13 @@ public class CustomWordCollectionAdminController {
     @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent}")
     private String geminiApiUrl;
 
-    @GetMapping({"/", ""})
+    @GetMapping({"/custom-word-collection", "/custom-word-collection/"})
     public String index(Model model) {
         model.addAttribute("title", "커스텀 단어 수집");
         return "admin/custom-word-collection/index";
     }
 
-    @PostMapping("/admin/api/custom-word-collection/test")
+    @PostMapping("/api/custom-word-collection/test")
     @ResponseBody
     public Map<String, Object> testPrompt(@RequestParam String category,
                                           @RequestParam String promptTemplate) {
@@ -63,7 +63,7 @@ public class CustomWordCollectionAdminController {
         return resp;
     }
 
-    @PostMapping("/admin/api/custom-word-collection/execute")
+    @PostMapping("/api/custom-word-collection/execute")
     @ResponseBody
     public Map<String, Object> executePrompt(@RequestParam String category,
                                              @RequestParam String promptTemplate) {
@@ -86,7 +86,7 @@ public class CustomWordCollectionAdminController {
         return resp;
     }
 
-    @GetMapping("/admin/api/custom-word-collection/recent-words")
+    @GetMapping("/api/custom-word-collection/recent-words")
     @ResponseBody
     public Map<String, Object> recentWords(@RequestParam(defaultValue = "100") int limit) {
         Map<String, Object> resp = new HashMap<>();
