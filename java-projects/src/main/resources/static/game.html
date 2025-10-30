@@ -552,7 +552,12 @@
                 method: 'GET',
                 credentials: 'include'
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 console.log('인증 상태 확인:', data);
                 
@@ -593,6 +598,8 @@
             })
             .catch(error => {
                 console.error('인증 상태 확인 실패:', error);
+                console.error('에러 상세:', error.message, error.stack);
+                
                 // 오류 발생 시 게스트 ID로 처리
                 if (guestId) {
                     window.GUEST_ID = guestId;
@@ -638,6 +645,28 @@
         // 화면 회전 감지
         window.addEventListener('orientationchange', function() {
             setTimeout(preventLandscapeMode, 100);
+        });
+        
+        // 전역 에러 핸들러 설정
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled Promise Rejection:', event.reason);
+            console.error('Promise rejection details:', event.detail);
+            
+            // Promise 에러가 발생한 경우 사용자에게 알림
+            if (event.reason && event.reason.message) {
+                console.error('Promise 에러 메시지:', event.reason.message);
+            }
+            
+            // 에러가 발생해도 게임이 계속 진행될 수 있도록 기본 처리
+            event.preventDefault();
+        });
+        
+        // 일반적인 JavaScript 에러 핸들러
+        window.addEventListener('error', function(event) {
+            console.error('JavaScript 에러:', event.error);
+            console.error('에러 파일:', event.filename);
+            console.error('에러 라인:', event.lineno);
+            console.error('에러 컬럼:', event.colno);
         });
         
         // 페이지 로드 시 초기화
@@ -708,64 +737,9 @@
             }
         }
 
-        // 템플릿 로드
+        // 템플릿 로드 (기존 함수, 재시도 로직 사용)
         function loadTemplate(guestId) {
-            // 템플릿 로드 시작
-            
-            // API 요청 데이터 구성
-            let requestData = {};
-            if (guestId) {
-                requestData.guestId = guestId;
-            }
-            
-            $.ajax({
-                url: `${API_BASE_URL}/template`,
-                method: 'GET',
-                data: requestData,
-                success: function(response) {
-                    // 템플릿 로드 성공
-                    
-                    if (response.error) {
-                        alert('오류: ' + response.error);
-                        return;
-                    }
-                    
-                    gameData = response.game;
-                    levelData = response.level;
-                    templateData = response.template;
-                    
-                    // clear_count를 전역 변수로 저장 (최상위 레벨에 있음)
-                    window.clearCount = response.clear_count;
-                    
-                    // 게임 정보 표시
-                    updateGameInfo();
-                    
-                    // 퍼즐 그리드 렌더링
-                    renderPuzzleGrid(templateData);
-                    
-                    // 기존 정답 복원 (라라벨과 동일)
-                    if (response.game_state && response.game_state.answered_words) {
-                        restoreGameState(response.game_state, response.answered_words_with_answers);
-                    } else {
-                        restoreAnsweredWords(response.answered_words_with_answers);
-                    }
-                    
-                    // 타이머 시작
-                    startTimer();
-                    
-                    // 클리어 조건 표시
-                    updateClearCondition();
-                    
-                },
-                error: function(xhr, status, error) {
-                    console.error('템플릿 로드 실패:', error);
-                    console.log('xhr.status:', xhr.status);
-                    console.log('xhr.responseJSON:', xhr.responseJSON);
-                    
-                    // 퍼즐 생성 실패 모달 표시
-                    showPuzzleGenerationFailedModal(guestId);
-                }
-            });
+            loadTemplateWithRetry(guestId, 0, 3);
         }
 
         // 게임 정보 업데이트
@@ -2083,9 +2057,12 @@
         }
 
         // 퍼즐 생성 실패 모달 표시
-        function showPuzzleGenerationFailedModal(guestId) {
-            $('#puzzle-generation-failed-message').text('퍼즐 생성에 실패했습니다.');
-            $('#puzzle-generation-failed-sub-message').text('서버에서 적절한 단어를 찾지 못했습니다. 다시 시도해보세요.');
+        function showPuzzleGenerationFailedModal(guestId, customMessage = null) {
+            const defaultMessage = '퍼즐 생성에 실패했습니다.';
+            const defaultSubMessage = '서버에서 적절한 단어를 찾지 못했습니다. 다시 시도해보세요.';
+            
+            $('#puzzle-generation-failed-message').text(customMessage || defaultMessage);
+            $('#puzzle-generation-failed-sub-message').text(customMessage ? '잠시 후 다시 시도해주세요.' : defaultSubMessage);
             
             // 재시도 버튼에 게스트 ID 저장
             $('#retry-puzzle-generation-btn').data('guest-id', guestId);
@@ -2254,8 +2231,10 @@
             $('#levelCompleteModal').modal('hide');
         });
 
-        // 새 퍼즐 로드 함수
-        function loadNewPuzzle() {
+        // 새 퍼즐 로드 함수 (재시도 로직 포함)
+        function loadNewPuzzle(retryCount = 0) {
+            const maxRetries = 3;
+            
             // 게임 상태 초기화
             answeredWords.clear();
             answeredWordsData.clear();
@@ -2268,34 +2247,93 @@
             const guestId = window.GUEST_ID;
             
             if (userType === 'user') {
-                loadTemplate(null);
+                loadTemplateWithRetry(null, retryCount, maxRetries);
             } else if (userType === 'guest' && guestId) {
-                loadTemplate(guestId);
+                loadTemplateWithRetry(guestId, retryCount, maxRetries);
             } else {
                 window.location.href = '/';
             }
         }
-
-        // 게임 재시작 함수
-        function restartGame() {
-            // 게임 상태 초기화
-            answeredWords.clear();
-            answeredWordsData.clear();
-            hintsUsed = [];
-            wrongAnswers = [];
-            gameStartTime = Date.now();
+        
+        // 재시도 로직이 포함된 템플릿 로드 함수
+        function loadTemplateWithRetry(guestId, retryCount, maxRetries) {
+            console.log(`템플릿 로드 시도 ${retryCount + 1}/${maxRetries + 1}`);
             
-            // 현재 사용자 정보로 새 퍼즐 로드
-            const userType = window.USER_TYPE;
-            const guestId = window.GUEST_ID;
-            
-            if (userType === 'user') {
-                loadTemplate(null);
-            } else if (userType === 'guest' && guestId) {
-                loadTemplate(guestId);
-            } else {
-                window.location.href = '/';
+            // API 요청 데이터 구성
+            let requestData = {};
+            if (guestId) {
+                requestData.guestId = guestId;
             }
+            
+            $.ajax({
+                url: `${API_BASE_URL}/template`,
+                method: 'GET',
+                data: requestData,
+                timeout: 30000,
+                success: function(response) {
+                    console.log('템플릿 로드 성공:', response);
+                    
+                    if (response.error) {
+                        console.error('서버 에러 응답:', response.error);
+                        if (retryCount < maxRetries) {
+                            console.log(`${retryCount + 1}번째 시도 실패, 재시도 예정...`);
+                            setTimeout(() => loadTemplateWithRetry(guestId, retryCount + 1, maxRetries), 2000);
+                        } else {
+                            showPuzzleGenerationFailedModal(guestId, '서버에서 게임 데이터를 생성할 수 없습니다.');
+                        }
+                        return;
+                    }
+                    
+                    // 성공적으로 로드된 경우 기존 로직 실행
+                    gameData = response.game;
+                    levelData = response.level;
+                    templateData = response.template;
+                    
+                    window.clearCount = response.clear_count;
+                    
+                    updateGameInfo();
+                    renderPuzzleGrid(templateData);
+                    
+                    if (response.game_state && response.game_state.answered_words) {
+                        restoreGameState(response.game_state, response.answered_words_with_answers);
+                    } else {
+                        restoreAnsweredWords(response.answered_words_with_answers);
+                    }
+                    
+                    startTimer();
+                    updateClearCondition();
+                },
+                error: function(xhr, status, error) {
+                    console.error(`템플릿 로드 실패 (시도 ${retryCount + 1}/${maxRetries + 1}):`, {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        responseText: xhr.responseText,
+                        error: error
+                    });
+                    
+                    if (retryCount < maxRetries) {
+                        console.log(`${retryCount + 1}번째 시도 실패, 재시도 예정...`);
+                        setTimeout(() => loadTemplateWithRetry(guestId, retryCount + 1, maxRetries), 2000);
+                    } else {
+                        // 최대 재시도 횟수 초과
+                        if (xhr.status === 0) {
+                            showPuzzleGenerationFailedModal(guestId, '네트워크 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                        } else if (xhr.status >= 500) {
+                            showPuzzleGenerationFailedModal(guestId, '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+                        } else if (xhr.status === 404) {
+                            showPuzzleGenerationFailedModal(guestId, '게임 데이터를 찾을 수 없습니다. 메인으로 돌아갑니다.');
+                            setTimeout(() => window.location.href = '/', 2000);
+                        } else {
+                            showPuzzleGenerationFailedModal(guestId, '게임을 로드할 수 없습니다. 다시 시도해주세요.');
+                        }
+                    }
+                }
+            });
+        }
+
+        // 게임 재시작 함수 (재시도 로직 포함)
+        function restartGame() {
+            loadNewPuzzle(0);
         }
     </script>
 </body>

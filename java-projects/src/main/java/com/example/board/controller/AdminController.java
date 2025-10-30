@@ -69,24 +69,20 @@ public class AdminController {
     }
     
     /**
-     * 단어 관리 페이지
+     * 단어 관리 페이지 (정적 페이지 제공)
      */
     @GetMapping("/admin/words")
-    public String wordsManagementTest(Model model, Authentication authentication) {
+    public ResponseEntity<String> wordsManagementStatic() {
         try {
-            log.info("단어 관리 테스트 페이지 접근");
-            
-            // 현재 사용자 정보
-            if (authentication != null && authentication.getPrincipal() instanceof User) {
-                User user = (User) authentication.getPrincipal();
-                model.addAttribute("currentUser", user);
-            }
-            
-            return "admin/words/test";
-            
-        } catch (Exception e) {
-            log.error("단어 관리 테스트 페이지 로드 중 오류 발생", e);
-            return "error/500";
+            log.info("단어 관리 페이지 접근 (정적)");
+            Resource resource = new ClassPathResource("static/admin/words/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            return ResponseEntity.ok().headers(headers).body(content);
+        } catch (IOException e) {
+            log.error("단어 관리 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
         }
     }
     

@@ -26,10 +26,9 @@ public class SecurityConfig {
                 .requestMatchers("/Korean/**", "/K-pop/**", "/K-movie/**", "/K-Drama/**", "/K-Culture/**").permitAll()
                 .requestMatchers("/board/**").permitAll()
                 .requestMatchers("/api/puzzle/**", "/api/auth/**").permitAll()
-                .requestMatchers("/admin/api/**").permitAll() // 관리자 API는 인증 제외
+                .requestMatchers("/admin/api/**").permitAll() // 관리자 API는 인증 제외 (페이지는 인증)
                 .requestMatchers("/admin/templates/create").permitAll() // 템플릿 생성 페이지는 인증 제외
-                .requestMatchers("/admin/**").authenticated() // 관리자 페이지는 인증 필수
-                .requestMatchers("/K-CrossWord/admin/**").authenticated()
+                .requestMatchers("/admin/**").authenticated() // 관리자 메뉴 페이지는 인증 필요
                 .anyRequest().permitAll()
             )
             .formLogin(form -> form
