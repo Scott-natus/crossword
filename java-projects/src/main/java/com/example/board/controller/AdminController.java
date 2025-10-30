@@ -263,16 +263,20 @@ public class AdminController {
     }
     
     /**
-     * 통계 페이지
+     * 통계 페이지 (정적 페이지 제공)
      */
-    @GetMapping("/statistics")
-    public String statistics(Model model) {
+    @GetMapping("/admin/statistics")
+    public ResponseEntity<String> statistics() {
         try {
-            log.info("통계 페이지 접근");
-            return "admin/statistics";
-        } catch (Exception e) {
-            log.error("통계 페이지 접근 중 오류 발생: {}", e.getMessage());
-            return "error";
+            log.info("통계 페이지 접근 (정적)");
+            Resource resource = new ClassPathResource("static/admin/statistics/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            return ResponseEntity.ok().headers(headers).body(content);
+        } catch (IOException e) {
+            log.error("통계 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
         }
     }
 }
