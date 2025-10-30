@@ -39,9 +39,9 @@ public class AdminController {
     private final GameSessionService gameSessionService;
     
     /**
-     * 로그인 페이지
+     * 로그인 페이지 (/admin/login)
      */
-    @GetMapping("/login")
+    @GetMapping({"/admin/login", "/login"})
     public String login() {
         return "login";
     }
