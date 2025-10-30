@@ -10,7 +10,7 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">게시판 시스템</a>
+            <a class="navbar-brand" href="/board">게시판 시스템</a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" th:if="${!isAuthenticated}" href="/login">로그인</a>
                 <div class="nav-item dropdown" th:if="${isAuthenticated}">

@@ -5,18 +5,27 @@ import com.example.board.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Controller
 @RequestMapping("/board")
@@ -101,6 +110,11 @@ public class BoardController {
     
     @GetMapping("/{boardType}/create")
     public String create(@PathVariable String boardType, Model model) {
+        // 인증 확인
+        if (!isAuthenticated()) {
+            return "redirect:/login?error=login_required";
+        }
+        
         Optional<BoardType> boardTypeOpt = boardTypeRepository.findBySlug(boardType);
         if (boardTypeOpt.isEmpty()) {
             return "error/404";
@@ -264,7 +278,9 @@ public class BoardController {
     @PostMapping("/{boardType}/{id}")
     public String update(@PathVariable String boardType, 
                         @PathVariable Long id, 
-                        @ModelAttribute Board boardData) {
+                        @RequestParam String title,
+                        @RequestParam String content,
+                        @RequestParam String password) {
         
         Optional<Board> boardOpt = boardRepository.findById(id);
         if (boardOpt.isEmpty()) {
@@ -273,13 +289,13 @@ public class BoardController {
         
         Board board = boardOpt.get();
         
-        // 권한 확인
-        if (!canEditBoard(board)) {
-            return "error/403";
+        // 권한 및 비밀번호 확인
+        if (!canDeleteBoard(board, password)) {
+            return "redirect:/board/" + boardType + "/" + id + "?error=unauthorized";
         }
         
-        board.setTitle(boardData.getTitle());
-        board.setContent(boardData.getContent());
+        board.setTitle(title);
+        board.setContent(content);
         
         boardRepository.save(board);
         
@@ -312,6 +328,14 @@ public class BoardController {
     private boolean isAuthenticated() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser");
+    }
+    
+    private String getCurrentUserEmail() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+            return auth.getName();
+        }
+        return null;
     }
     
     private boolean canEditBoard(Board board) {
@@ -357,6 +381,164 @@ public class BoardController {
         } catch (Exception e) {
             // 예외 발생 시 빈 리스트 반환
             return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 첨부파일 다운로드
+     */
+    @GetMapping("/storage/{filePath}")
+    public ResponseEntity<Resource> downloadAttachment(@PathVariable String filePath) {
+        try {
+            logger.info("첨부파일 다운로드 요청: {}", filePath);
+            
+            // 파일 경로에서 실제 파일명 추출
+            String decodedFilePath = java.net.URLDecoder.decode(filePath, "UTF-8");
+            logger.info("디코딩된 파일 경로: {}", decodedFilePath);
+            
+            // 파일 시스템에서 파일 찾기
+            Path file = Paths.get("/var/www/html/storage/app/public/attachments/" + decodedFilePath);
+            logger.info("실제 파일 경로: {}", file.toString());
+            
+            if (!Files.exists(file)) {
+                logger.warn("파일을 찾을 수 없음: {}", file.toString());
+                return ResponseEntity.notFound().build();
+            }
+            
+            Resource resource = new UrlResource(file.toUri());
+            if (!resource.exists()) {
+                logger.warn("리소스를 찾을 수 없음: {}", file.toString());
+                return ResponseEntity.notFound().build();
+            }
+            
+            // 파일명에서 확장자 추출
+            String originalFileName = file.getFileName().toString();
+            String contentType = Files.probeContentType(file);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+            
+            logger.info("파일 다운로드 성공: {}, Content-Type: {}", originalFileName, contentType);
+            
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + originalFileName + "\"")
+                    .body(resource);
+                    
+        } catch (Exception e) {
+            logger.error("첨부파일 다운로드 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * 댓글 작성
+     */
+    @PostMapping("/{boardType}/{id}/comment")
+    public String createComment(@PathVariable String boardType, 
+                               @PathVariable Long id, 
+                               @RequestParam String content,
+                               HttpServletRequest request) {
+        try {
+            logger.info("댓글 작성 요청 - boardType: {}, id: {}, content: {}", boardType, id, content);
+            
+            // 인증 확인
+            if (!isAuthenticated()) {
+                logger.warn("인증되지 않은 사용자의 댓글 작성 시도");
+                return "redirect:/login?error=login_required";
+            }
+            
+            // 게시물 조회
+            Optional<Board> boardOpt = boardRepository.findById(id);
+            if (boardOpt.isEmpty()) {
+                logger.warn("게시물을 찾을 수 없음: {}", id);
+                return "redirect:/board/" + boardType;
+            }
+            
+            Board board = boardOpt.get();
+            
+            // 게시판 타입 확인
+            if (!board.getBoardType().getSlug().equals(boardType)) {
+                logger.warn("게시판 타입 불일치: {} != {}", board.getBoardType().getSlug(), boardType);
+                return "redirect:/board/" + boardType;
+            }
+            
+            // 현재 사용자 조회
+            String email = getCurrentUserEmail();
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (userOpt.isEmpty()) {
+                logger.warn("사용자를 찾을 수 없음: {}", email);
+                return "redirect:/login?error=user_not_found";
+            }
+            
+            User user = userOpt.get();
+            
+            // 댓글 생성
+            BoardComment comment = new BoardComment(content, board, user, board.getBoardType());
+            boardCommentRepository.save(comment);
+            
+            logger.info("댓글 작성 완료 - commentId: {}, userId: {}, boardId: {}", 
+                comment.getId(), user.getId(), board.getId());
+            
+            return "redirect:/board/" + boardType + "/" + id;
+            
+        } catch (Exception e) {
+            logger.error("댓글 작성 중 오류 발생: {}", e.getMessage(), e);
+            return "redirect:/board/" + boardType + "/" + id + "?error=comment_failed";
+        }
+    }
+    
+    /**
+     * 댓글 삭제
+     */
+    @PostMapping("/{boardType}/{id}/comment/{commentId}/delete")
+    public String deleteComment(@PathVariable String boardType, 
+                               @PathVariable Long id, 
+                               @PathVariable Long commentId,
+                               HttpServletRequest request) {
+        try {
+            logger.info("댓글 삭제 요청 - boardType: {}, id: {}, commentId: {}", boardType, id, commentId);
+            
+            // 인증 확인
+            if (!isAuthenticated()) {
+                logger.warn("인증되지 않은 사용자의 댓글 삭제 시도");
+                return "redirect:/login?error=login_required";
+            }
+            
+            // 댓글 조회
+            Optional<BoardComment> commentOpt = boardCommentRepository.findById(commentId);
+            if (commentOpt.isEmpty()) {
+                logger.warn("댓글을 찾을 수 없음: {}", commentId);
+                return "redirect:/board/" + boardType + "/" + id;
+            }
+            
+            BoardComment comment = commentOpt.get();
+            
+            // 게시물 확인
+            if (!comment.getBoard().getId().equals(id)) {
+                logger.warn("댓글과 게시물 ID 불일치: comment.boardId={}, boardId={}", 
+                    comment.getBoard().getId(), id);
+                return "redirect:/board/" + boardType + "/" + id;
+            }
+            
+            // 작성자 확인
+            String email = getCurrentUserEmail();
+            if (!comment.getUser().getEmail().equals(email)) {
+                logger.warn("댓글 작성자가 아닌 사용자의 삭제 시도: commentUser={}, currentUser={}", 
+                    comment.getUser().getEmail(), email);
+                return "redirect:/board/" + boardType + "/" + id + "?error=unauthorized";
+            }
+            
+            // 댓글 삭제
+            boardCommentRepository.delete(comment);
+            
+            logger.info("댓글 삭제 완료 - commentId: {}", commentId);
+            
+            return "redirect:/board/" + boardType + "/" + id;
+            
+        } catch (Exception e) {
+            logger.error("댓글 삭제 중 오류 발생: {}", e.getMessage(), e);
+            return "redirect:/board/" + boardType + "/" + id + "?error=delete_failed";
         }
     }
 }

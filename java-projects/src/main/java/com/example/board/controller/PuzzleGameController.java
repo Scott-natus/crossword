@@ -970,37 +970,41 @@ public class PuzzleGameController {
      */
     private void regenerateWordsAndHintsForCurrentPuzzle(UserPuzzleGame game) {
         try {
-            System.out.println("퍼즐 재생성 시작");
+            logger.info("퍼즐 재생성 시작 - userId: {}, currentLevel: {}", game.getUserId(), game.getCurrentLevel());
             
             // 1. 현재 퍼즐 데이터에서 템플릿 정보만 추출
             Map<String, Object> currentPuzzleData = game.getCurrentPuzzleData();
             if (currentPuzzleData == null) {
-                System.err.println("현재 퍼즐 데이터가 없습니다.");
+                logger.error("현재 퍼즐 데이터가 없습니다 - userId: {}, currentLevel: {}", game.getUserId(), game.getCurrentLevel());
                 return;
             }
             
             @SuppressWarnings("unchecked")
             Map<String, Object> template = (Map<String, Object>) currentPuzzleData.get("template");
             if (template == null) {
-                System.err.println("템플릿 데이터가 없습니다.");
+                logger.error("템플릿 데이터가 없습니다 - userId: {}, currentLevel: {}", game.getUserId(), game.getCurrentLevel());
                 return;
             }
             
             // 레벨 정보 가져오기
             PuzzleLevel level = puzzleLevelService.getById(game.getCurrentLevel().longValue());
             if (level == null) {
-                System.err.println("레벨 정보를 찾을 수 없습니다.");
+                logger.error("레벨 정보를 찾을 수 없습니다 - userId: {}, currentLevel: {}", game.getUserId(), game.getCurrentLevel());
                 return;
             }
             
-            // 템플릿 정보 추출 완료
+            logger.info("템플릿 정보 추출 완료 - templateId: {}, levelId: {}, wordDifficulty: {}, hintDifficulty: {}", 
+                template.get("id"), level.getLevel(), level.getWordDifficulty(), level.getHintDifficulty());
             
             // 2. 사용자별 데이터를 삭제 (현재 퍼즐 종료)
             game.completeActivePuzzle();
             userPuzzleGameService.save(game);
-            // 기존 데이터 삭제 완료
+            logger.info("기존 퍼즐 데이터 삭제 완료 - userId: {}", game.getUserId());
             
             // 3. 퍼즐 제작 로직 2~6번을 다시 실행 (템플릿 기반으로 단어 추출 → 교차점 처리 → 힌트 생성)
+            logger.info("새 퍼즐 단어 추출 시작 - levelId: {}, wordDifficulty: {}, hintDifficulty: {}, intersectionCount: {}", 
+                level.getLevel(), level.getWordDifficulty(), level.getHintDifficulty(), level.getIntersectionCount());
+            
             Map<String, Object> extractionResult = puzzleGridTemplateService.extractWordsFromTemplate(
                 level.getWordDifficulty(), 
                 level.getHintDifficulty(), 
@@ -1009,9 +1013,13 @@ public class PuzzleGameController {
             );
             
             if (!(Boolean) extractionResult.get("success")) {
-                System.err.println("퍼즐 재생성에 실패했습니다: " + extractionResult.get("message"));
+                logger.error("퍼즐 재생성에 실패했습니다 - userId: {}, currentLevel: {}, message: {}", 
+                    game.getUserId(), game.getCurrentLevel(), extractionResult.get("message"));
                 return;
             }
+            
+            logger.info("새 퍼즐 단어 추출 성공 - userId: {}, extractedWordsCount: {}", 
+                game.getUserId(), ((List<?>) extractionResult.get("extracted_words")).size());
             
             // 4. 새로운 데이터를 사용자별 진행데이터에 저장
             Map<String, Object> newPuzzleData = new HashMap<>();
@@ -1029,13 +1037,15 @@ public class PuzzleGameController {
             game.setCurrentLevelCorrectAnswers(0);
             game.setCurrentLevelWrongAnswers(0);
             userPuzzleGameService.save(game);
-            System.out.println("새 퍼즐 시작 - current_level_correct_answers: " + game.getCurrentLevelCorrectAnswers() + " (새 퍼즐로 초기화)");
             
-            System.out.println("퍼즐 재생성 완료");
+            logger.info("새 퍼즐 시작 완료 - userId: {}, currentLevel: {}, correctAnswers: {}, wrongAnswers: {}", 
+                game.getUserId(), game.getCurrentLevel(), game.getCurrentLevelCorrectAnswers(), game.getCurrentLevelWrongAnswers());
+            
+            logger.info("퍼즐 재생성 완료 - userId: {}, currentLevel: {}", game.getUserId(), game.getCurrentLevel());
             
         } catch (Exception e) {
-            System.err.println("퍼즐 재생성 중 오류: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("퍼즐 재생성 중 오류 발생 - userId: {}, currentLevel: {}, error: {}", 
+                game.getUserId(), game.getCurrentLevel(), e.getMessage(), e);
         }
     }
     

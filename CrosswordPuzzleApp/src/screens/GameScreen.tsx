@@ -1,24 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
-  findNodeHandle,
-  Image,
-  Modal,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import CrosswordPuzzle from '../components/CrosswordPuzzle';
 import { useAuth } from '../contexts/AuthContext';
-import CrosswordGrid from '../components/CrosswordGrid';
-import { apiService } from '../services/api';
-
-interface GameScreenProps {
-  navigation?: any;
-}
+import api from '../services/api';
 
 interface WordPosition {
   id: number;

@@ -276,4 +276,9 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     
     @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     PzWord findByLengthAndDifficultyInAndIsActiveTrueRandom(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties);
+    
+    /**
+     * 난이도와 활성화 상태별 단어 개수 조회 (8081과 동일)
+     */
+    long countByDifficultyAndIsActiveTrue(Integer difficulty);
 }

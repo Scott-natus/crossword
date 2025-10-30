@@ -238,6 +238,7 @@ public class PuzzleGridTemplateService {
                     level.getWordDifficulty(), level.getHintDifficulty(), level.getIntersectionCount());
                 log.error("추출된 단어: {}/{}", extractedWords.size(), wordPositions.size());
                 log.error("확정된 단어: {}", confirmedWords.keySet());
+                log.error("시도 횟수: {}/5", retryCount);
                 
                 // 실패한 단어들 상세 로깅
                 List<Integer> failedWordIds = new ArrayList<>();
@@ -245,10 +246,19 @@ public class PuzzleGridTemplateService {
                     Integer wordId = (Integer) word.get("id");
                     if (!confirmedWords.containsKey(wordId)) {
                         failedWordIds.add(wordId);
-                        log.error("실패한 단어 ID: {}, 위치: {}", wordId, word.get("position"));
+                        log.error("실패한 단어 ID: {}, 위치: {}, 길이: {}", 
+                            wordId, word.get("position"), word.get("length"));
                     }
                 }
                 log.error("실패한 단어 ID 목록: {}", failedWordIds);
+                
+                // 데이터베이스에서 사용 가능한 단어 수 확인
+                try {
+                    long availableWordsCount = wordRepository.countByDifficultyAndIsActiveTrue(level.getWordDifficulty());
+                    log.error("사용 가능한 단어 수 (난이도 {}): {}", level.getWordDifficulty(), availableWordsCount);
+                } catch (Exception e) {
+                    log.error("사용 가능한 단어 수 조회 실패", e);
+                }
                 
                 // 최종 실패 정보 저장 (마지막 시도에서 실패한 단어들)
                 try {

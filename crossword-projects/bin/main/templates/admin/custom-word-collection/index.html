@@ -52,7 +52,7 @@
                         <button type="button" class="btn btn-outline-secondary" onclick="loadRecentWords()">
                             <i class="fas fa-history"></i> 최근 수집 단어
                         </button>
-                        <a href="/admin/consonant-vowel-batch" class="btn btn-outline-primary">
+                        <a href="/K-CrossWord/admin/consonant-vowel-batch/" class="btn btn-outline-primary">
                             <i class="fas fa-arrow-left"></i> 배치 관리
                         </a>
                     </div>
@@ -158,7 +158,7 @@
             showLoading(true);
             clearResult();
 
-            fetch('/admin/api/custom-word-collection/test', {
+            fetch('/K-CrossWord/admin/custom-word-collection/test', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -198,7 +198,7 @@
             showLoading(true);
             clearResult();
 
-            fetch('/admin/api/custom-word-collection/execute', {
+            fetch('/K-CrossWord/admin/custom-word-collection/execute', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -385,7 +385,7 @@
                 </div>
             `;
 
-            fetch('/admin/api/custom-word-collection/recent-words?limit=100')
+            fetch('/K-CrossWord/admin/custom-word-collection/recent-words?limit=100')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
