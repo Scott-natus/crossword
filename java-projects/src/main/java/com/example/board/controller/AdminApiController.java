@@ -30,6 +30,7 @@ public class AdminApiController {
     private final PuzzleLevelService puzzleLevelService;
     private final GameSessionService gameSessionService;
     private final LevelManagementService levelManagementService;
+    private final com.example.board.service.DatabaseSyncService databaseSyncService;
     
     /**
      * 시스템 통계 조회
@@ -44,7 +45,7 @@ public class AdminApiController {
             // 단어 통계
             long totalWords = pzWordService.getTotalWordCount();
             long activeWords = pzWordService.getActiveWordCount();
-            long refinedWords = pzWordService.getWordsWithHintsCount();
+            long refinedWords = pzWordService.getRefinedWordsCount();
             long wordsWithoutHints = pzWordService.getWordsWithoutHintsCount();
             
             // 힌트 통계
@@ -94,7 +95,7 @@ public class AdminApiController {
             
             Map<String, Object> stats = new HashMap<>();
             stats.put("totalActiveWords", pzWordService.getActiveWordCount());
-            stats.put("refinedWords", pzWordService.getWordsWithHintsCount());
+            stats.put("refinedWords", pzWordService.getRefinedWordsCount());
             stats.put("wordsWithoutHints", pzWordService.getWordsWithoutHintsCount());
             stats.put("totalHints", pzHintService.getTotalHintCount());
             
@@ -221,6 +222,77 @@ public class AdminApiController {
         }
     }
 
+    /**
+     * 로컬(개발 서버) 테이블 목록 조회
+     */
+    @GetMapping("/db-sync/local-tables")
+    public ResponseEntity<Map<String, Object>> getLocalTables() {
+        try {
+            log.info("로컬 테이블 목록 조회 요청");
+            List<Map<String, Object>> tables = databaseSyncService.getLocalTables();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", tables);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("로컬 테이블 목록 조회 중 오류 발생: {}", e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "테이블 목록 조회 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 원격(운영 서버) 테이블 목록 조회
+     */
+    @GetMapping("/db-sync/remote-tables")
+    public ResponseEntity<Map<String, Object>> getRemoteTables() {
+        try {
+            log.info("원격 테이블 목록 조회 요청");
+            List<Map<String, Object>> tables = databaseSyncService.getRemoteTables();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", tables);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("원격 테이블 목록 조회 중 오류 발생: {}", e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "테이블 목록 조회 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 테이블 동기화 실행
+     */
+    @PostMapping("/db-sync/sync/{tableName}")
+    public ResponseEntity<Map<String, Object>> syncTable(@PathVariable String tableName) {
+        try {
+            log.info("테이블 동기화 요청: {}", tableName);
+            Map<String, Object> result = databaseSyncService.syncTable(tableName);
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("테이블 동기화 중 오류 발생 (테이블: {}): {}", tableName, e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "동기화 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
     /**
      * 시스템 상태 확인
      */

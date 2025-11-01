@@ -256,6 +256,11 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     long countWordsWithHints();
     
     /**
+     * 정제완료(conf_yn = 'Y') 단어 개수 조회
+     */
+    long countByConfYn(String confYn);
+    
+    /**
      * 모든 카테고리 목록 조회
      */
     @Query("SELECT DISTINCT w.category FROM PzWord w WHERE w.isActive = true AND w.category IS NOT NULL ORDER BY w.category")

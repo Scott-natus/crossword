@@ -202,6 +202,13 @@ public class PzWordService {
     }
     
     /**
+     * 정제완료(conf_yn = 'Y') 단어 수 조회
+     */
+    public long getRefinedWordsCount() {
+        return pzWordRepository.countByConfYn("Y");
+    }
+    
+    /**
      * 힌트가 없는 단어 수 조회
      */
     public long getWordsWithoutHintsCount() {

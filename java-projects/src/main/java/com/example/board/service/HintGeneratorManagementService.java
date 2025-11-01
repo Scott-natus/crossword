@@ -61,10 +61,12 @@ public class HintGeneratorManagementService {
         long totalWords = pzWordRepository.count();
         long wordsWithHints = pzWordRepository.countWordsWithHints();
         long wordsWithoutHints = totalWords - wordsWithHints;
+        long totalHints = pzHintRepository.count();
         
         stats.put("total_words", totalWords);
         stats.put("words_with_hints", wordsWithHints);
         stats.put("words_without_hints", wordsWithoutHints);
+        stats.put("total_hints", totalHints);
         
         return stats;
     }
