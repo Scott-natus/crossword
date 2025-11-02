@@ -2,8 +2,10 @@ package com.example.board.service;
 
 import com.example.board.entity.PzWord;
 import com.example.board.entity.PzHint;
+import com.example.board.entity.PuzzleGridTemplate;
 import com.example.board.repository.PzWordRepository;
 import com.example.board.repository.PzHintRepository;
+import com.example.board.repository.PuzzleGridTemplateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,7 @@ import java.util.stream.Collectors;
 
 /**
  * 테마별 퍼즐 생성 서비스
+ * Phase 2: 레벨 1 템플릿 기반 생성
  */
 @Service
 @RequiredArgsConstructor
@@ -22,69 +25,89 @@ public class ThemePuzzleGeneratorService {
     
     private final PzWordRepository pzWordRepository;
     private final PzHintRepository pzHintRepository;
+    private final PuzzleGridTemplateRepository puzzleGridTemplateRepository;
+    private final PuzzleGridTemplateService puzzleGridTemplateService;
     
     /**
-     * 테마별 퍼즐 생성
+     * 테마별 퍼즐 생성 (레벨 1 템플릿 기반)
      */
     @Transactional
     public Map<String, Object> generateThemePuzzle(String theme) {
         try {
-            log.info("테마별 퍼즐 생성 시작: {}", theme);
+            log.info("테마별 퍼즐 생성 시작: {} (레벨 1 템플릿 기반)", theme);
             
-            // 테마별 단어 조회
-            List<PzWord> themeWords = pzWordRepository.findByCat2AndIsApproved(theme, true);
+            // 1. 레벨 1 템플릿 랜덤 선택
+            List<PuzzleGridTemplate> templates = puzzleGridTemplateRepository
+                .findRandomByLevelIdAndIsActiveTrue(1);
             
-            if (themeWords.isEmpty()) {
-                log.warn("{} 테마의 승인된 단어가 없습니다.", theme);
+            if (templates.isEmpty()) {
+                log.error("레벨 1 활성 템플릿이 없습니다.");
                 return Map.of(
                     "success", false,
-                    "message", "테마별 단어가 부족합니다."
+                    "message", "레벨 1 템플릿이 없습니다."
                 );
             }
             
-            // 퍼즐에 사용할 단어 선택 (난이도별)
-            List<PzWord> selectedWords = selectWordsForPuzzle(themeWords);
+            // 첫 번째 템플릿 선택 (이미 RANDOM()으로 정렬됨)
+            PuzzleGridTemplate selectedTemplate = templates.get(0);
+            log.info("선택된 템플릿 ID: {}", selectedTemplate.getId());
             
-            if (selectedWords.isEmpty()) {
-                log.warn("{} 테마의 적합한 단어를 찾을 수 없습니다.", theme);
+            // 2. 템플릿 기반 단어 추출 (cat2 조건 추가)
+            Map<String, Object> extractResult = puzzleGridTemplateService
+                .extractWordsWithTheme(selectedTemplate.getId(), theme);
+            
+            if (!Boolean.TRUE.equals(extractResult.get("success"))) {
+                log.error("테마별 단어 추출 실패: {}", extractResult.get("message"));
                 return Map.of(
                     "success", false,
-                    "message", "적합한 단어를 찾을 수 없습니다."
+                    "message", extractResult.get("message") != null 
+                        ? extractResult.get("message").toString() 
+                        : "단어 추출에 실패했습니다."
                 );
             }
             
-            // 퍼즐 그리드 생성
-            Map<String, Object> gridData = generatePuzzleGrid(selectedWords);
+            // 3. 추출된 단어와 템플릿 정보로 퍼즐 데이터 구성
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> extractedWords = (List<Map<String, Object>>) extractResult.get("extracted_words");
+            
+            if (extractedWords == null || extractedWords.isEmpty()) {
+                log.error("추출된 단어가 없습니다.");
+                return Map.of(
+                    "success", false,
+                    "message", "추출된 단어가 없습니다."
+                );
+            }
             
             // 힌트 조회
-            List<Map<String, Object>> hints = getHintsForWords(selectedWords);
+            List<Map<String, Object>> hints = getHintsForExtractedWords(extractedWords);
             
             // 퍼즐 데이터 구성
-            Map<String, Object> puzzleData = Map.of(
-                "success", true,
-                "puzzleId", generatePuzzleId(),
-                "theme", theme,
-                "words", selectedWords.stream()
-                    .map(word -> Map.of(
-                        "id", word.getId(),
-                        "word", word.getWord(),
-                        "difficulty", word.getDifficulty()
-                    ))
-                    .collect(Collectors.toList()),
-                "hints", hints,
-                "grid", gridData,
-                "generatedAt", new Date()
-            );
+            Map<String, Object> puzzleData = new HashMap<>();
+            puzzleData.put("success", true);
+            puzzleData.put("puzzleId", generatePuzzleId());
+            puzzleData.put("theme", theme);
+            puzzleData.put("templateId", selectedTemplate.getId());
+            puzzleData.put("words", extractedWords);
+            puzzleData.put("hints", hints);
             
-            log.info("테마별 퍼즐 생성 완료: {} - 단어 {}개", theme, selectedWords.size());
+            @SuppressWarnings("unchecked")
+            Map<String, Object> templateInfo = (Map<String, Object>) extractResult.get("template");
+            if (templateInfo != null) {
+                puzzleData.put("grid", templateInfo.get("grid_pattern"));
+            }
+            
+            puzzleData.put("generatedAt", new Date());
+            
+            log.info("테마별 퍼즐 생성 완료: {} - 템플릿 ID: {}, 단어 {}개", 
+                theme, selectedTemplate.getId(), extractedWords.size());
             
             return puzzleData;
             
         } catch (Exception e) {
-            log.error("테마별 퍼즐 생성 중 오류 발생: {} - {}", theme, e.getMessage());
+            log.error("테마별 퍼즐 생성 중 오류 발생: {} - {}", theme, e.getMessage(), e);
             return Map.of(
                 "success", false,
-                "message", "퍼즐 생성에 실패했습니다."
+                "message", "퍼즐 생성에 실패했습니다: " + e.getMessage()
             );
         }
     }
@@ -126,11 +149,21 @@ public class ThemePuzzleGeneratorService {
     }
     
     /**
-     * 퍼즐에 사용할 단어 선택
+     * 퍼즐에 사용할 단어 선택 (힌트가 있는 단어만 선택)
      */
     private List<PzWord> selectWordsForPuzzle(List<PzWord> themeWords) {
         try {
             log.info("퍼즐용 단어 선택 시작: {}개 중에서", themeWords.size());
+            
+            // 테마별 단어 조회 시 이미 힌트가 있는 단어만 조회됨 (findByCat2AndIsActiveTrueAndHasHints)
+            // 별도 필터링 불필요
+            
+            log.info("힌트가 있는 단어: {}개", themeWords.size());
+            
+            if (themeWords.isEmpty()) {
+                log.warn("힌트가 있는 단어가 없습니다.");
+                return new ArrayList<>();
+            }
             
             // 난이도별 단어 분류
             Map<Integer, List<PzWord>> wordsByDifficulty = themeWords.stream()
@@ -153,12 +186,12 @@ public class ThemePuzzleGeneratorService {
                 selectedWords = selectedWords.subList(0, 15);
             }
             
-            log.info("퍼즐용 단어 선택 완료: {}개", selectedWords.size());
+            log.info("퍼즐용 단어 선택 완료: {}개 (힌트 보유 단어 중에서)", selectedWords.size());
             
             return selectedWords;
             
         } catch (Exception e) {
-            log.error("퍼즐용 단어 선택 중 오류 발생: {}", e.getMessage());
+            log.error("퍼즐용 단어 선택 중 오류 발생: {}", e.getMessage(), e);
             return new ArrayList<>();
         }
     }
@@ -225,7 +258,56 @@ public class ThemePuzzleGeneratorService {
     }
     
     /**
-     * 단어들의 힌트 조회
+     * 추출된 단어들의 힌트 조회 (템플릿 기반)
+     */
+    private List<Map<String, Object>> getHintsForExtractedWords(List<Map<String, Object>> extractedWords) {
+        try {
+            log.info("추출된 단어별 힌트 조회 시작: {}개 단어", extractedWords.size());
+            
+            List<Map<String, Object>> hints = new ArrayList<>();
+            
+            for (Map<String, Object> extractedWord : extractedWords) {
+                Integer pzWordId = (Integer) extractedWord.get("pz_word_id");
+                Integer hintId = extractedWord.get("hint_id") != null ? (Integer) extractedWord.get("hint_id") : null;
+                
+                if (pzWordId == null) {
+                    log.warn("pz_word_id가 null입니다. 건너뜁니다.");
+                    continue;
+                }
+                
+                // 힌트가 이미 추출 결과에 포함되어 있는 경우
+                String hintText = extractedWord.get("hint") != null ? extractedWord.get("hint").toString() : null;
+                
+                if (hintText == null || hintText.isEmpty()) {
+                    // 힌트가 없으면 조회
+                    List<PzHint> wordHints = pzHintRepository.findByWordId(pzWordId);
+                    if (!wordHints.isEmpty()) {
+                        hintText = wordHints.get(0).getHintText();
+                    }
+                }
+                
+                if (hintText != null && !hintText.isEmpty()) {
+                    hints.add(Map.of(
+                        "wordId", pzWordId,
+                        "hintId", hintId != null ? hintId : "",
+                        "hintText", hintText,
+                        "wordPositionId", extractedWord.get("word_id")
+                    ));
+                }
+            }
+            
+            log.info("추출된 단어별 힌트 조회 완료: {}개 힌트", hints.size());
+            
+            return hints;
+            
+        } catch (Exception e) {
+            log.error("추출된 단어별 힌트 조회 중 오류 발생: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 단어들의 힌트 조회 (기존 메서드 - 하위 호환성)
      */
     private List<Map<String, Object>> getHintsForWords(List<PzWord> words) {
         try {
@@ -236,13 +318,23 @@ public class ThemePuzzleGeneratorService {
             for (PzWord word : words) {
                 List<PzHint> wordHints = pzHintRepository.findByWordIdAndLanguageCode(word.getId(), "ko");
                 
+                if (wordHints.isEmpty()) {
+                    log.warn("단어 {} (ID: {})의 힌트가 없습니다.", word.getWord(), word.getId());
+                    continue;
+                }
+                
                 for (PzHint hint : wordHints) {
+                    // null 체크 추가 (Map.of는 null을 허용하지 않음)
+                    String hintText = hint.getHintText() != null ? hint.getHintText() : "";
+                    String hintType = hint.getHintType() != null ? hint.getHintType() : "TEXT";
+                    Integer difficulty = hint.getDifficulty() != null ? hint.getDifficulty() : 1;
+                    
                     Map<String, Object> hintData = Map.of(
                         "wordId", word.getId(),
-                        "word", word.getWord(),
-                        "hintText", hint.getHintText(),
-                        "hintType", hint.getHintType(),
-                        "difficulty", hint.getDifficulty()
+                        "word", word.getWord() != null ? word.getWord() : "",
+                        "hintText", hintText,
+                        "hintType", hintType,
+                        "difficulty", difficulty
                     );
                     hints.add(hintData);
                 }

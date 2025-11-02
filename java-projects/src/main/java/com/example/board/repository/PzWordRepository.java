@@ -86,6 +86,18 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     List<PzWord> findByCat2AndIsApproved(@Param("theme") String theme, @Param("isApproved") Boolean isApproved);
     
     /**
+     * 테마별 활성화된 단어 조회 (기존 퍼즐 로직과 동일하게 is_active만 확인)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.cat2 = :theme AND w.isActive = true")
+    List<PzWord> findByCat2AndIsActiveTrue(@Param("theme") String theme);
+    
+    /**
+     * 테마별 힌트가 있는 활성화된 단어 조회 (퍼즐 생성용)
+     */
+    @Query("SELECT DISTINCT w FROM PzWord w WHERE w.cat2 = :theme AND w.isActive = true AND EXISTS (SELECT 1 FROM PzHint h WHERE h.word = w)")
+    List<PzWord> findByCat2AndIsActiveTrueAndHasHints(@Param("theme") String theme);
+    
+    /**
      * 힌트가 없는 단어 개수 조회
      */
     @Query("SELECT COUNT(w) FROM PzWord w WHERE w.id NOT IN (SELECT DISTINCT h.word.id FROM PzHint h)")
@@ -278,6 +290,18 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     
     @Query("SELECT w FROM PzWord w WHERE w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true AND w.word NOT IN :usedWords")
     List<PzWord> findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(@Param("difficulties") List<Integer> difficulties, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
+    
+    /**
+     * 테마별 퍼즐 생성용 단어 조회 (cat2 조건 추가)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.cat2 = :cat2 AND w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true AND w.confYn = 'Y' AND EXISTS (SELECT 1 FROM PzHint h WHERE h.word = w)")
+    List<PzWord> findForThemePuzzleGenerationByDifficultyInAndLength(@Param("cat2") String cat2, @Param("difficulties") List<Integer> difficulties, @Param("length") Integer length);
+    
+    /**
+     * 테마별 퍼즐 생성용 단어 조회 (cat2 조건 추가, 사용된 단어 제외)
+     */
+    @Query("SELECT w FROM PzWord w WHERE w.cat2 = :cat2 AND w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true AND w.confYn = 'Y' AND w.word NOT IN :usedWords AND EXISTS (SELECT 1 FROM PzHint h WHERE h.word = w)")
+    List<PzWord> findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(@Param("cat2") String cat2, @Param("difficulties") List<Integer> difficulties, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
     
     @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     PzWord findByLengthAndDifficultyInAndIsActiveTrueRandom(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties);

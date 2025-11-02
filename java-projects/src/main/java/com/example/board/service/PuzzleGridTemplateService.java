@@ -42,6 +42,157 @@ public class PuzzleGridTemplateService {
     private static final Logger log = LoggerFactory.getLogger(PuzzleGridTemplateService.class);
 
     /**
+     * 테마별 단어 추출 (cat2 조건 추가)
+     * 레벨 1 템플릿 기반으로 테마별 퍼즐 생성
+     */
+    public Map<String, Object> extractWordsWithTheme(Integer templateId, String theme) {
+        try {
+            log.info("테마별 단어 추출 시작: 템플릿 ID={}, 테마={}", templateId, theme);
+            
+            // 템플릿 조회
+            PuzzleGridTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다: " + templateId));
+            
+            if (!template.getIsActive()) {
+                return Map.of("success", false, "message", "비활성화된 템플릿입니다.");
+            }
+            
+            // 레벨 정보 조회
+            PuzzleLevel level = levelRepository.findByLevel(template.getLevelId())
+                .orElseThrow(() -> new RuntimeException("레벨 정보를 찾을 수 없습니다: " + template.getLevelId()));
+            
+            // 최대 5회 재시도
+            int maxRetries = 5;
+            int retryCount = 0;
+            List<Map<String, Object>> extractedWords = new ArrayList<>();
+            Map<Integer, String> confirmedWords = new HashMap<>();
+            boolean extractionFailed = false;
+            
+            List<Map<String, Object>> wordPositions = new ArrayList<>(template.getWordPositions());
+            wordPositions.sort((a, b) -> {
+                Integer idA = (Integer) a.get("id");
+                Integer idB = (Integer) b.get("id");
+                return idA.compareTo(idB);
+            });
+            
+            while (retryCount < maxRetries) {
+                retryCount++;
+                extractedWords.clear();
+                confirmedWords.clear();
+                extractionFailed = false;
+                
+                log.info("템플릿 로드 시도 #{} - 템플릿 ID: {}", retryCount, template.getId());
+                
+                for (Map<String, Object> word : wordPositions) {
+                    Integer wordId = (Integer) word.get("id");
+                    
+                    // 이미 확정된 단어는 건너뛰기
+                    if (confirmedWords.containsKey(wordId)) {
+                        continue;
+                    }
+                    
+                    // 교차점 찾기
+                    List<Map<String, Object>> intersections = findIntersectionsWithConfirmedWords(
+                        word, confirmedWords, wordPositions);
+                    
+                    if (intersections.isEmpty()) {
+                        // 독립 단어 추출 (테마 조건 추가)
+                        Map<String, Object> extractedWord = extractIndependentWord(word, level, confirmedWords, theme);
+                        if ("추출 실패".equals(extractedWord.get("word"))) {
+                            log.error("독립 단어 추출 실패: wordId={}", wordId);
+                            extractionFailed = true;
+                            continue;
+                        }
+                        
+                        extractedWords.add(Map.of(
+                            "word_id", wordId,
+                            "pz_word_id", extractedWord.get("pz_word_id"),
+                            "hint_id", extractedWord.get("hint_id"),
+                            "position", word,
+                            "type", "no_intersection",
+                            "extracted_word", maskWord((String) extractedWord.get("word")),
+                            "hint", extractedWord.get("hint")
+                        ));
+                        confirmedWords.put(wordId, (String) extractedWord.get("word"));
+                    } else {
+                        // 교차점이 있으면 확정된 단어들의 교차점 음절 추출
+                        List<Map<String, Object>> confirmedIntersectionSyllables = new ArrayList<>();
+                        
+                        log.info("교차점 발견 - 단어 ID: {}, 교차점 개수: {}", wordId, intersections.size());
+                        
+                        for (Map<String, Object> intersection : intersections) {
+                            Integer connectedWordId = (Integer) intersection.get("connected_word_id");
+                            String connectedWord = confirmedWords.get(connectedWordId);
+                            Map<String, Object> connectedWordPosition = findWordById(connectedWordId, wordPositions);
+                            
+                            Integer connectedSyllablePos = getSyllablePosition(connectedWordPosition, intersection);
+                            String connectedSyllable = connectedWord.substring(connectedSyllablePos - 1, connectedSyllablePos);
+                            
+                            Integer currentSyllablePos = getSyllablePosition(word, intersection);
+                            
+                            confirmedIntersectionSyllables.add(Map.of(
+                                "syllable", connectedSyllable,
+                                "position", currentSyllablePos
+                            ));
+                        }
+                        
+                        // 확정된 음절들과 매칭되는 단어 추출 (테마 조건 추가)
+                        Map<String, Object> extractedWord = extractWordWithConfirmedSyllables(
+                            word, level, confirmedIntersectionSyllables, confirmedWords, theme);
+                        
+                        if (!Boolean.TRUE.equals(extractedWord.get("success"))) {
+                            log.error("교차점 단어 추출 실패: wordId={}", wordId);
+                            extractionFailed = true;
+                            continue;
+                        }
+                        
+                        extractedWords.add(Map.of(
+                            "word_id", wordId,
+                            "pz_word_id", extractedWord.get("pz_word_id"),
+                            "hint_id", extractedWord.get("hint_id"),
+                            "position", word,
+                            "type", "with_intersections",
+                            "extracted_word", maskWord((String) extractedWord.get("word")),
+                            "hint", extractedWord.get("hint"),
+                            "intersections", intersections
+                        ));
+                        confirmedWords.put(wordId, (String) extractedWord.get("word"));
+                    }
+                }
+                
+                if (!extractionFailed && extractedWords.size() == wordPositions.size()) {
+                    log.info("테마별 단어 추출 성공: 템플릿 ID={}, 테마={}, 단어 수={}", 
+                        template.getId(), theme, extractedWords.size());
+                    break;
+                } else {
+                    log.warn("테마별 단어 추출 실패 (재시도 {}): 추출된 단어={}/{}", 
+                        retryCount, extractedWords.size(), wordPositions.size());
+                }
+            }
+            
+            if (extractionFailed || extractedWords.size() != wordPositions.size()) {
+                return Map.of("success", false, "message", 
+                    "단어 추출에 실패했습니다. (추출된 단어: " + extractedWords.size() + "/" + wordPositions.size() + ")");
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("template", Map.of(
+                "id", template.getId(),
+                "grid_pattern", template.getGridPattern(),
+                "words", extractedWords
+            ));
+            result.put("extracted_words", extractedWords);
+            
+            return result;
+            
+        } catch (Exception e) {
+            log.error("테마별 단어 추출 중 오류 발생: {}", e.getMessage(), e);
+            return Map.of("success", false, "message", "단어 추출 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 라라벨의 extractWords 메서드와 동일한 로직
      */
     public Map<String, Object> extractWordsFromTemplate(
@@ -437,9 +588,16 @@ public class PuzzleGridTemplateService {
     }
     
     /**
-     * 라라벨의 extractIndependentWord와 동일한 로직
+     * 라라벨의 extractIndependentWord와 동일한 로직 (테마 조건 추가 가능)
      */
     private Map<String, Object> extractIndependentWord(Map<String, Object> word, PuzzleLevel level, Map<Integer, String> confirmedWords) {
+        return extractIndependentWord(word, level, confirmedWords, null);
+    }
+    
+    /**
+     * 테마별 독립 단어 추출 (cat2 조건 추가)
+     */
+    private Map<String, Object> extractIndependentWord(Map<String, Object> word, PuzzleLevel level, Map<Integer, String> confirmedWords, String theme) {
         try {
             Integer length = (Integer) word.get("length");
             
@@ -449,12 +607,22 @@ public class PuzzleGridTemplateService {
             // 새로운 난이도 규칙 적용
             List<Integer> allowedDifficulties = getAllowedDifficulties(level.getWordDifficulty());
             
-            // 조건에 맞는 단어 찾기 (이미 사용된 단어 제외) - 퍼즐 게임 생성 전용
+            // 조건에 맞는 단어 찾기
             List<PzWord> words;
-            if (usedWords.isEmpty()) {
-                words = wordRepository.findForPuzzleGenerationByDifficultyInAndLength(allowedDifficulties, length);
+            if (theme != null && !theme.isEmpty()) {
+                // 테마별 단어 추출 (cat2 조건 추가)
+                if (usedWords.isEmpty()) {
+                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLength(theme, allowedDifficulties, length);
+                } else {
+                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(theme, allowedDifficulties, length, usedWords);
+                }
             } else {
-                words = wordRepository.findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(allowedDifficulties, length, usedWords);
+                // 기존 방식 (테마 조건 없음)
+                if (usedWords.isEmpty()) {
+                    words = wordRepository.findForPuzzleGenerationByDifficultyInAndLength(allowedDifficulties, length);
+                } else {
+                    words = wordRepository.findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(allowedDifficulties, length, usedWords);
+                }
             }
             
             if (words.isEmpty()) {
@@ -482,13 +650,25 @@ public class PuzzleGridTemplateService {
     }
 
     /**
-     * 라라벨의 extractWordWithConfirmedSyllables와 동일한 로직
+     * 라라벨의 extractWordWithConfirmedSyllables와 동일한 로직 (테마 조건 추가 가능)
      */
     private Map<String, Object> extractWordWithConfirmedSyllables(
             Map<String, Object> word, 
             PuzzleLevel level, 
             List<Map<String, Object>> confirmedIntersectionSyllables,
             Map<Integer, String> confirmedWords) {
+        return extractWordWithConfirmedSyllables(word, level, confirmedIntersectionSyllables, confirmedWords, null);
+    }
+    
+    /**
+     * 테마별 교차점 단어 추출 (cat2 조건 추가)
+     */
+    private Map<String, Object> extractWordWithConfirmedSyllables(
+            Map<String, Object> word, 
+            PuzzleLevel level, 
+            List<Map<String, Object>> confirmedIntersectionSyllables,
+            Map<Integer, String> confirmedWords,
+            String theme) {
         
         try {
             Integer length = (Integer) word.get("length");
@@ -499,12 +679,22 @@ public class PuzzleGridTemplateService {
             // 새로운 난이도 규칙 적용
             List<Integer> allowedDifficulties = getAllowedDifficulties(level.getWordDifficulty());
             
-            // 조건에 맞는 단어들 찾기 (이미 사용된 단어 제외) - 퍼즐 게임 생성 전용
+            // 조건에 맞는 단어들 찾기
             List<PzWord> words;
-            if (usedWords.isEmpty()) {
-                words = wordRepository.findForPuzzleGenerationByDifficultyInAndLength(allowedDifficulties, length);
+            if (theme != null && !theme.isEmpty()) {
+                // 테마별 단어 추출 (cat2 조건 추가)
+                if (usedWords.isEmpty()) {
+                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLength(theme, allowedDifficulties, length);
+                } else {
+                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(theme, allowedDifficulties, length, usedWords);
+                }
             } else {
-                words = wordRepository.findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(allowedDifficulties, length, usedWords);
+                // 기존 방식 (테마 조건 없음)
+                if (usedWords.isEmpty()) {
+                    words = wordRepository.findForPuzzleGenerationByDifficultyInAndLength(allowedDifficulties, length);
+                } else {
+                    words = wordRepository.findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(allowedDifficulties, length, usedWords);
+                }
             }
             
             for (PzWord candidateWord : words) {

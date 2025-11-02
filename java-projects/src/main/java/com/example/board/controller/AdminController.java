@@ -110,7 +110,8 @@ public class AdminController {
                 java.util.Map.of("name", "레벨 관리", "url", "/admin/levels", "icon", "fas fa-layer-group", "description", "퍼즐 레벨 및 난이도 설정"),
                 java.util.Map.of("name", "템플릿 관리", "url", "/admin/templates", "icon", "fas fa-th", "description", "퍼즐 그리드 패턴 및 템플릿 관리"),
                 java.util.Map.of("name", "사용자 관리", "url", "/admin/users", "icon", "fas fa-users", "description", "사용자 계정 및 권한 관리"),
-                java.util.Map.of("name", "통계", "url", "/admin/statistics", "icon", "fas fa-chart-bar", "description", "시스템 사용 통계 및 분석")
+                java.util.Map.of("name", "통계", "url", "/admin/statistics", "icon", "fas fa-chart-bar", "description", "시스템 사용 통계 및 분석"),
+                java.util.Map.of("name", "데이터베이스 동기화", "url", "/admin/db-sync", "icon", "fas fa-sync-alt", "description", "개발 서버에서 운영 서버로 데이터 동기화")
             ));
             
             // 현재 시간 정보
@@ -256,6 +257,24 @@ public class AdminController {
             return ResponseEntity.ok().headers(headers).body(content);
         } catch (IOException e) {
             log.error("통계 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    /**
+     * 데이터베이스 동기화 페이지 (정적 페이지 제공)
+     */
+    @GetMapping("/admin/db-sync")
+    public ResponseEntity<String> dbSync() {
+        try {
+            log.info("데이터베이스 동기화 페이지 접근");
+            Resource resource = new ClassPathResource("static/admin/db-sync/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            return ResponseEntity.ok().headers(headers).body(content);
+        } catch (IOException e) {
+            log.error("데이터베이스 동기화 페이지 로드 중 오류 발생", e);
             return ResponseEntity.notFound().build();
         }
     }
