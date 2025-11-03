@@ -45,35 +45,28 @@ public class PuzzleGridTemplateService {
      * 테마별 단어 추출 (cat2 조건 추가)
      * 레벨 1 템플릿 기반으로 테마별 퍼즐 생성
      */
-    public Map<String, Object> extractWordsWithTheme(Integer templateId, String theme) {
+    public Map<String, Object> extractWordsWithTheme(Integer initialTemplateId, String theme) {
         try {
-            log.info("테마별 단어 추출 시작: 템플릿 ID={}, 테마={}", templateId, theme);
+            log.info("=== [2단계 상세] 테마별 단어 추출 시작 ===");
+            log.info("[2-0] 초기 템플릿 ID: {}, 테마: {}", initialTemplateId, theme);
             
-            // 템플릿 조회
-            PuzzleGridTemplate template = templateRepository.findById(templateId)
-                .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다: " + templateId));
-            
-            if (!template.getIsActive()) {
-                return Map.of("success", false, "message", "비활성화된 템플릿입니다.");
-            }
-            
-            // 레벨 정보 조회
-            PuzzleLevel level = levelRepository.findByLevel(template.getLevelId())
-                .orElseThrow(() -> new RuntimeException("레벨 정보를 찾을 수 없습니다: " + template.getLevelId()));
-            
-            // 최대 5회 재시도
+            // 최대 5회 재시도 (매 시도마다 새로운 템플릿 선택)
             int maxRetries = 5;
             int retryCount = 0;
             List<Map<String, Object>> extractedWords = new ArrayList<>();
             Map<Integer, String> confirmedWords = new HashMap<>();
             boolean extractionFailed = false;
             
-            List<Map<String, Object>> wordPositions = new ArrayList<>(template.getWordPositions());
-            wordPositions.sort((a, b) -> {
-                Integer idA = (Integer) a.get("id");
-                Integer idB = (Integer) b.get("id");
-                return idA.compareTo(idB);
-            });
+            // 레벨 1 템플릿 목록 조회 (매 시도마다 랜덤 선택)
+            List<PuzzleGridTemplate> availableTemplates = templateRepository.findByLevelIdAndIsActiveTrue(1);
+            if (availableTemplates.isEmpty()) {
+                log.error("[2-1 실패] 레벨 1 활성 템플릿이 없습니다.");
+                return Map.of("success", false, "message", "레벨 1 템플릿이 없습니다.");
+            }
+            
+            PuzzleGridTemplate template = null;
+            PuzzleLevel level = null;
+            List<Map<String, Object>> wordPositions = null;
             
             while (retryCount < maxRetries) {
                 retryCount++;
@@ -81,44 +74,100 @@ public class PuzzleGridTemplateService {
                 confirmedWords.clear();
                 extractionFailed = false;
                 
-                log.info("템플릿 로드 시도 #{} - 템플릿 ID: {}", retryCount, template.getId());
+                // 매 시도마다 새로운 템플릿 랜덤 선택
+                template = availableTemplates.get(new Random().nextInt(availableTemplates.size()));
+                log.info("[2-4] === 시도 #{} 시작 (최대 {}회) ===", retryCount, maxRetries);
+                log.info("[2-4-{}] 새 템플릿 선택 - 템플릿 ID: {}, 테마: {}", retryCount, template.getId(), theme);
+                
+                // 레벨 정보 조회
+                final PuzzleGridTemplate finalTemplate = template;
+                level = levelRepository.findByLevel(finalTemplate.getLevelId())
+                    .orElseThrow(() -> new RuntimeException("레벨 정보를 찾을 수 없습니다: " + finalTemplate.getLevelId()));
+                log.info("[2-4-{}] 레벨 정보 - 레벨: {}, 단어 난이도: {}, 힌트 난이도: {}, 교차점 수: {}", 
+                    retryCount, level.getLevel(), level.getWordDifficulty(), level.getHintDifficulty(), level.getIntersectionCount());
+                
+                // 단어 위치 정보 정렬
+                wordPositions = new ArrayList<>(template.getWordPositions());
+                wordPositions.sort((a, b) -> {
+                    Integer idA = (Integer) a.get("id");
+                    Integer idB = (Integer) b.get("id");
+                    return idA.compareTo(idB);
+                });
+                
+                final List<Map<String, Object>> finalWordPositions = wordPositions;
+                log.info("[2-4-{}] 단어 위치 정보 - 총 단어 수: {}, 단어 ID 목록: {}", 
+                    retryCount, finalWordPositions.size(), finalWordPositions.stream().map(w -> w.get("id")).collect(java.util.stream.Collectors.toList()));
                 
                 for (Map<String, Object> word : wordPositions) {
                     Integer wordId = (Integer) word.get("id");
+                    Integer length = (Integer) word.get("length");
+                    String direction = (String) word.get("direction");
                     
                     // 이미 확정된 단어는 건너뛰기
                     if (confirmedWords.containsKey(wordId)) {
+                        log.debug("[2-4-{}] 단어 ID {}는 이미 확정되어 건너뜀", retryCount, wordId);
                         continue;
                     }
                     
+                    log.info("[2-4-{}] 단어 ID {} 처리 시작 - 길이: {}, 방향: {}, 위치: ({}, {})", 
+                        retryCount, wordId, length, direction, word.get("start_x"), word.get("start_y"));
+                    
                     // 교차점 찾기
+                    log.info("[2-4-{}] 단어 ID {} - 교차점 탐색 시작...", retryCount, wordId);
                     List<Map<String, Object>> intersections = findIntersectionsWithConfirmedWords(
                         word, confirmedWords, wordPositions);
                     
                     if (intersections.isEmpty()) {
-                        // 독립 단어 추출 (테마 조건 추가)
+                        // 2-1. 독립 단어 추출 (교차점 없음, 테마 조건 추가)
+                        log.info("[2-4-{}] 단어 ID {} - 독립 단어 추출 시도 (교차점 없음, 테마: {})", retryCount, wordId, theme);
                         Map<String, Object> extractedWord = extractIndependentWord(word, level, confirmedWords, theme);
+                        
                         if ("추출 실패".equals(extractedWord.get("word"))) {
-                            log.error("독립 단어 추출 실패: wordId={}", wordId);
+                            log.error("[2-4-{}] 단어 ID {} - 독립 단어 추출 실패", retryCount, wordId);
+                            log.error("  - 길이: {}, 위치: ({}, {})", 
+                                word.get("length"), word.get("start_x"), word.get("start_y"));
+                            log.error("  - 레벨: {}, 단어 난이도: {}, 힌트 난이도: {}", 
+                                level.getLevel(), level.getWordDifficulty(), level.getHintDifficulty());
+                            log.error("  - 시도 횟수: {}/{}", retryCount, maxRetries);
+                            
+                            // 독립 단어 추출 실패 정보 저장
+                            try {
+                                String failureReason = String.format("독립 단어 추출 실패 - 길이: %s, 난이도: %s", 
+                                    word.get("length"), level.getWordDifficulty());
+                                
+                                failedWordExtractionService.saveIndependentWordFailure(
+                                    template.getId(), level.getLevel(), level.getWordDifficulty(),
+                                    level.getHintDifficulty(), level.getIntersectionCount(),
+                                    wordId, word, confirmedWords, retryCount);
+                                log.info("[2-4-{}] 독립 단어 추출 실패 로그 저장 완료", retryCount);
+                            } catch (Exception e) {
+                                log.error("[2-4-{}] 독립 단어 추출 실패 로그 저장 중 오류", retryCount, e);
+                            }
+                            
                             extractionFailed = true;
                             continue;
                         }
                         
-                        extractedWords.add(Map.of(
-                            "word_id", wordId,
-                            "pz_word_id", extractedWord.get("pz_word_id"),
-                            "hint_id", extractedWord.get("hint_id"),
-                            "position", word,
-                            "type", "no_intersection",
-                            "extracted_word", maskWord((String) extractedWord.get("word")),
-                            "hint", extractedWord.get("hint")
-                        ));
-                        confirmedWords.put(wordId, (String) extractedWord.get("word"));
+                        String extractedWordStr = (String) extractedWord.get("word");
+                        log.info("[2-4-{}] 단어 ID {} - 독립 단어 추출 성공: '{}' (마스킹: '{}')", 
+                            retryCount, wordId, extractedWordStr, maskWord(extractedWordStr));
+                        // Map.of()는 null을 허용하지 않으므로 HashMap 사용
+                        Map<String, Object> wordData = new HashMap<>();
+                        wordData.put("word_id", wordId);
+                        wordData.put("pz_word_id", extractedWord.get("pz_word_id"));
+                        wordData.put("hint_id", extractedWord.get("hint_id")); // null 허용
+                        wordData.put("position", word);
+                        wordData.put("type", "no_intersection");
+                        wordData.put("extracted_word", maskWord(extractedWordStr));
+                        wordData.put("hint", extractedWord.get("hint"));
+                        extractedWords.add(wordData);
+                        confirmedWords.put(wordId, extractedWordStr);
+                        log.info("[2-4-{}] 단어 ID {} - 확정 완료 (현재 확정 단어 수: {}/{})", 
+                            retryCount, wordId, confirmedWords.size(), wordPositions.size());
                     } else {
-                        // 교차점이 있으면 확정된 단어들의 교차점 음절 추출
+                        // 2-2. 교차점이 있는 경우: 교차점 음절 추출
+                        log.info("[2-4-{}] 단어 ID {} - 교차점 발견: {}개", retryCount, wordId, intersections.size());
                         List<Map<String, Object>> confirmedIntersectionSyllables = new ArrayList<>();
-                        
-                        log.info("교차점 발견 - 단어 ID: {}, 교차점 개수: {}", wordId, intersections.size());
                         
                         for (Map<String, Object> intersection : intersections) {
                             Integer connectedWordId = (Integer) intersection.get("connected_word_id");
@@ -130,43 +179,76 @@ public class PuzzleGridTemplateService {
                             
                             Integer currentSyllablePos = getSyllablePosition(word, intersection);
                             
+                            log.info("[2-4-{}] 단어 ID {} - 교차점 음절 계산: 연결된 단어 ID {} ('{}'), 음절 위치 {}, 음절 '{}', 현재 단어 음절 위치 {}", 
+                                retryCount, wordId, connectedWordId, connectedWord, connectedSyllablePos, connectedSyllable, currentSyllablePos);
+                            
                             confirmedIntersectionSyllables.add(Map.of(
                                 "syllable", connectedSyllable,
                                 "position", currentSyllablePos
                             ));
                         }
                         
-                        // 확정된 음절들과 매칭되는 단어 추출 (테마 조건 추가)
+                        log.info("[2-4-{}] 단어 ID {} - 확정된 교차점 음절: {}개", retryCount, wordId, confirmedIntersectionSyllables.size());
+                        
+                        // 2-2. 확정된 음절들과 매칭되는 단어 추출 (테마 조건 추가)
+                        log.info("[2-4-{}] 단어 ID {} - 교차점 단어 추출 시도 (확정 음절 {}개, 테마: {})", retryCount, wordId, confirmedIntersectionSyllables.size(), theme);
                         Map<String, Object> extractedWord = extractWordWithConfirmedSyllables(
                             word, level, confirmedIntersectionSyllables, confirmedWords, theme);
                         
                         if (!Boolean.TRUE.equals(extractedWord.get("success"))) {
-                            log.error("교차점 단어 추출 실패: wordId={}", wordId);
+                            log.error("[2-4-{}] 단어 ID {} - 교차점 단어 추출 실패", retryCount, wordId);
+                            log.error("  - 길이: {}, 위치: ({}, {})", 
+                                word.get("length"), word.get("start_x"), word.get("start_y"));
+                            log.error("  - 레벨: {}, 단어 난이도: {}, 힌트 난이도: {}", 
+                                level.getLevel(), level.getWordDifficulty(), level.getHintDifficulty());
+                            log.error("  - 교차점 개수: {}, 확정된 교차점 음절: {}", intersections.size(), confirmedIntersectionSyllables);
+                            log.error("  - 시도 횟수: {}/{}", retryCount, maxRetries);
+                            
+                            // 교차점 단어 추출 실패 정보 저장
+                            try {
+                                String failureReason = String.format("교차점 단어 추출 실패 - 길이: %s, 난이도: %s, 교차점 개수: %d", 
+                                    word.get("length"), level.getWordDifficulty(), intersections.size());
+                                
+                                failedWordExtractionService.saveIntersectionWordFailure(
+                                    template.getId(), level.getLevel(), level.getWordDifficulty(),
+                                    level.getHintDifficulty(), level.getIntersectionCount(),
+                                    wordId, word, failureReason, confirmedWords,
+                                    confirmedIntersectionSyllables, retryCount);
+                                log.info("[2-4-{}] 교차점 단어 추출 실패 로그 저장 완료", retryCount);
+                            } catch (Exception e) {
+                                log.error("[2-4-{}] 교차점 단어 추출 실패 로그 저장 중 오류", retryCount, e);
+                            }
+                            
                             extractionFailed = true;
                             continue;
                         }
                         
-                        extractedWords.add(Map.of(
-                            "word_id", wordId,
-                            "pz_word_id", extractedWord.get("pz_word_id"),
-                            "hint_id", extractedWord.get("hint_id"),
-                            "position", word,
-                            "type", "with_intersections",
-                            "extracted_word", maskWord((String) extractedWord.get("word")),
-                            "hint", extractedWord.get("hint"),
-                            "intersections", intersections
-                        ));
-                        confirmedWords.put(wordId, (String) extractedWord.get("word"));
+                        String extractedWordStr = (String) extractedWord.get("word");
+                        log.info("[2-4-{}] 단어 ID {} - 교차점 단어 추출 성공: '{}' (마스킹: '{}')", 
+                            retryCount, wordId, extractedWordStr, maskWord(extractedWordStr));
+                        // Map.of()는 null을 허용하지 않으므로 HashMap 사용
+                        Map<String, Object> wordData = new HashMap<>();
+                        wordData.put("word_id", wordId);
+                        wordData.put("pz_word_id", extractedWord.get("pz_word_id"));
+                        wordData.put("hint_id", extractedWord.get("hint_id")); // null 허용
+                        wordData.put("position", word);
+                        wordData.put("type", "intersection_connected");
+                        wordData.put("extracted_word", maskWord(extractedWordStr));
+                        wordData.put("hint", extractedWord.get("hint"));
+                        extractedWords.add(wordData);
+                        confirmedWords.put(wordId, extractedWordStr);
+                        log.info("[2-4-{}] 단어 ID {} - 확정 완료 (현재 확정 단어 수: {}/{})", 
+                            retryCount, wordId, confirmedWords.size(), wordPositions.size());
                     }
                 }
                 
                 if (!extractionFailed && extractedWords.size() == wordPositions.size()) {
-                    log.info("테마별 단어 추출 성공: 템플릿 ID={}, 테마={}, 단어 수={}", 
-                        template.getId(), theme, extractedWords.size());
+                    log.info("[2-4-{}] 테마별 단어 추출 성공: 템플릿 ID={}, 테마={}, 단어 수={}", 
+                        retryCount, template.getId(), theme, extractedWords.size());
                     break;
                 } else {
-                    log.warn("테마별 단어 추출 실패 (재시도 {}): 추출된 단어={}/{}", 
-                        retryCount, extractedWords.size(), wordPositions.size());
+                    log.warn("[2-4-{}] 테마별 단어 추출 실패 (재시도 {}): 템플릿 ID={}, 추출된 단어={}/{}", 
+                        retryCount, retryCount, template.getId(), extractedWords.size(), wordPositions.size());
                 }
             }
             
@@ -303,9 +385,6 @@ public class PuzzleGridTemplateService {
                         // 6. 교차점이 있으면 확정된 단어들의 교차점 음절 추출
                         List<Map<String, Object>> confirmedIntersectionSyllables = new ArrayList<>();
                         
-                        System.out.println("교차점 발견 - 단어 ID " + wordId + 
-                            ", 교차점 개수: " + intersections.size());
-                        
                         for (Map<String, Object> intersection : intersections) {
                             Integer connectedWordId = (Integer) intersection.get("connected_word_id");
                             String connectedWord = confirmedWords.get(connectedWordId);
@@ -332,23 +411,29 @@ public class PuzzleGridTemplateService {
                             word, level, confirmedIntersectionSyllables, confirmedWords);
                         
                         if ((Boolean) extractedWord.get("success")) {
+                            String extractedWordStr = (String) extractedWord.get("word");
+                            log.info("[2-4-{}] 단어 ID {} - 교차점 단어 추출 성공: '{}' (마스킹: '{}')", 
+                                retryCount, wordId, extractedWordStr, maskWord(extractedWordStr));
                             extractedWords.add(Map.of(
                                 "word_id", wordId,
                                 "pz_word_id", extractedWord.get("pz_word_id"),
                                 "hint_id", extractedWord.get("hint_id"),
                                 "position", word,
                                 "type", "intersection_connected",
-                                "extracted_word", maskWord((String) extractedWord.get("word")),
+                                "extracted_word", maskWord(extractedWordStr),
                                 "hint", extractedWord.get("hint")
                             ));
-                            confirmedWords.put(wordId, (String) extractedWord.get("word"));
+                            confirmedWords.put(wordId, extractedWordStr);
+                            log.info("[2-4-{}] 단어 ID {} - 확정 완료 (현재 확정 단어 수: {}/{})", 
+                                retryCount, wordId, confirmedWords.size(), wordPositions.size());
                         } else {
-                            log.error("=== 교차점 단어 추출 실패 ===");
-                            log.error("단어 ID: {}, 길이: {}, 위치: {}", wordId, word.get("length"), word.get("position"));
-                            log.error("레벨: {}, 단어 난이도: {}, 힌트 난이도: {}", 
+                            log.error("[2-4-{}] 단어 ID {} - 교차점 단어 추출 실패", retryCount, wordId);
+                            log.error("  - 길이: {}, 위치: ({}, {})", 
+                                word.get("length"), word.get("start_x"), word.get("start_y"));
+                            log.error("  - 레벨: {}, 단어 난이도: {}, 힌트 난이도: {}", 
                                 level.getLevel(), level.getWordDifficulty(), level.getHintDifficulty());
-                            log.error("교차점 개수: {}, 확정된 교차점 음절: {}", intersections.size(), confirmedIntersectionSyllables);
-                            log.error("시도 횟수: {}", retryCount);
+                            log.error("  - 교차점 개수: {}, 확정된 교차점 음절: {}", intersections.size(), confirmedIntersectionSyllables);
+                            log.error("  - 시도 횟수: {}/{}", retryCount, maxRetries);
                             
                             // 교차점 단어 추출 실패 정보 저장
                             try {
@@ -373,10 +458,13 @@ public class PuzzleGridTemplateService {
                 
                 // 모든 단어가 성공적으로 추출되었으면 루프 종료
                 if (!extractionFailed) {
-                    System.out.println("단어 추출 성공 - 시도 횟수: " + retryCount);
+                    log.info("[2-4-{}] === 단어 추출 성공 ===", retryCount);
+                    log.info("[2-4-{}] 추출된 단어 수: {}/{}, 시도 횟수: {}", retryCount, extractedWords.size(), wordPositions.size(), retryCount);
                     break;
                 } else {
-                    System.out.println("단어 추출 실패 - 재시도: " + retryCount);
+                    log.warn("[2-4-{}] === 단어 추출 실패 - 재시도 예정 ===", retryCount);
+                    log.warn("[2-4-{}] 추출된 단어 수: {}/{}, 시도 횟수: {}/{}", 
+                        retryCount, extractedWords.size(), wordPositions.size(), retryCount, maxRetries);
                 }
             }
             
@@ -598,24 +686,25 @@ public class PuzzleGridTemplateService {
      * 테마별 독립 단어 추출 (cat2 조건 추가)
      */
     private Map<String, Object> extractIndependentWord(Map<String, Object> word, PuzzleLevel level, Map<Integer, String> confirmedWords, String theme) {
+        Integer length = (Integer) word.get("length");
         try {
-            Integer length = (Integer) word.get("length");
-            
             // 이미 사용된 단어들 목록 생성
             List<String> usedWords = new ArrayList<>(confirmedWords.values());
             
             // 새로운 난이도 규칙 적용
             List<Integer> allowedDifficulties = getAllowedDifficulties(level.getWordDifficulty());
             
-            // 조건에 맞는 단어 찾기
+            // 조건에 맞는 단어 찾기 (기존 퍼즐 로직과 동일, WHERE 조건에 cat2만 추가)
             List<PzWord> words;
             if (theme != null && !theme.isEmpty()) {
-                // 테마별 단어 추출 (cat2 조건 추가)
+                // 테마별 단어 추출 (일시적으로 cat2 LIKE 'K-%' 조건 사용)
                 if (usedWords.isEmpty()) {
-                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLength(theme, allowedDifficulties, length);
+                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLength(allowedDifficulties, length);
                 } else {
-                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(theme, allowedDifficulties, length, usedWords);
+                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(allowedDifficulties, length, usedWords);
                 }
+                log.info("[DEBUG] 테마별 단어 조회 결과 - 길이: {}, 난이도: {}, 조회된 단어 수: {}, 사용된 단어 수: {}", 
+                    length, allowedDifficulties, words.size(), usedWords.size());
             } else {
                 // 기존 방식 (테마 조건 없음)
                 if (usedWords.isEmpty()) {
@@ -626,25 +715,51 @@ public class PuzzleGridTemplateService {
             }
             
             if (words.isEmpty()) {
+                log.error("[DEBUG] 단어 추출 실패 상세 - 길이: {}, 난이도: {}, 테마: {}, 사용된 단어: {}", 
+                    length, allowedDifficulties, theme, usedWords);
                 return Map.of("word", "추출 실패");
             }
             
-            // 랜덤하게 단어 선택
-            PzWord selectedWord = words.get(new Random().nextInt(words.size()));
-            
-            // 힌트 찾기
-            List<PzHint> hints = hintRepository.findByWordIdAndDifficulty(selectedWord.getId(), level.getHintDifficulty());
-            String hint = hints.isEmpty() ? "힌트가 없습니다." : hints.get(0).getHintText();
-            
-            return Map.of(
-                "word", selectedWord.getWord(),
-                "pz_word_id", selectedWord.getId(),
-                "hint_id", hints.isEmpty() ? null : hints.get(0).getId(),
-                "hint", hint
-            );
+            try {
+                // 랜덤하게 단어 선택
+                int randomIndex = new Random().nextInt(words.size());
+                log.info("[DEBUG] 단어 선택 시도 - 총 단어 수: {}, 선택 인덱스: {}", words.size(), randomIndex);
+                PzWord selectedWord = words.get(randomIndex);
+                log.info("[DEBUG] 단어 선택 성공 - 단어: {}, ID: {}", selectedWord.getWord(), selectedWord.getId());
+                
+                // 힌트 찾기 (게임 중 클릭 시에만 사용되므로 실패해도 계속 진행)
+                try {
+                    List<PzHint> hints = hintRepository.findByWordIdAndDifficulty(selectedWord.getId(), level.getHintDifficulty());
+                    String hint = hints.isEmpty() ? "힌트가 없습니다." : hints.get(0).getHintText();
+                    Integer hintId = hints.isEmpty() ? null : hints.get(0).getId();
+                    
+                    log.info("[DEBUG] 힌트 조회 완료 - 힌트 존재: {}, 힌트 ID: {}", !hints.isEmpty(), hintId);
+                    
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("word", selectedWord.getWord());
+                    result.put("pz_word_id", selectedWord.getId());
+                    result.put("hint_id", hintId);
+                    result.put("hint", hint);
+                    return result;
+                } catch (Exception hintException) {
+                    log.warn("[DEBUG] 힌트 조회 실패 (계속 진행) - 단어 ID: {}, 오류: {}", selectedWord.getId(), hintException.getMessage());
+                    // 힌트 조회 실패해도 단어는 반환
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("word", selectedWord.getWord());
+                    result.put("pz_word_id", selectedWord.getId());
+                    result.put("hint_id", null);
+                    result.put("hint", "힌트 조회 중 오류 발생");
+                    return result;
+                }
+            } catch (Exception selectionException) {
+                log.error("[DEBUG] 단어 선택 중 예외 발생 - 길이: {}, 단어 수: {}, 오류: {}", 
+                    length, words.size(), selectionException.getMessage(), selectionException);
+                return Map.of("word", "추출 실패");
+            }
             
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("[DEBUG] extractIndependentWord 전체 예외 - 길이: {}, 테마: {}, 오류: {}", 
+                length, theme, e.getMessage(), e);
             return Map.of("word", "추출 실패");
         }
     }
@@ -679,14 +794,14 @@ public class PuzzleGridTemplateService {
             // 새로운 난이도 규칙 적용
             List<Integer> allowedDifficulties = getAllowedDifficulties(level.getWordDifficulty());
             
-            // 조건에 맞는 단어들 찾기
+            // 조건에 맞는 단어들 찾기 (기존 퍼즐 로직과 동일, WHERE 조건에 cat2만 추가)
             List<PzWord> words;
             if (theme != null && !theme.isEmpty()) {
-                // 테마별 단어 추출 (cat2 조건 추가)
+                // 테마별 단어 추출 (일시적으로 cat2 LIKE 'K-%' 조건 사용)
                 if (usedWords.isEmpty()) {
-                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLength(theme, allowedDifficulties, length);
+                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLength(allowedDifficulties, length);
                 } else {
-                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(theme, allowedDifficulties, length, usedWords);
+                    words = wordRepository.findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(allowedDifficulties, length, usedWords);
                 }
             } else {
                 // 기존 방식 (테마 조건 없음)

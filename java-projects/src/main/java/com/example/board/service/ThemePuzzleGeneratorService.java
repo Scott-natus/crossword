@@ -34,30 +34,33 @@ public class ThemePuzzleGeneratorService {
     @Transactional
     public Map<String, Object> generateThemePuzzle(String theme) {
         try {
-            log.info("테마별 퍼즐 생성 시작: {} (레벨 1 템플릿 기반)", theme);
+            log.info("=== [1단계: 테마별 퍼즐 생성 시작] ===");
+            log.info("테마: {}, 레벨: 1 (템플릿 기반)", theme);
             
-            // 1. 레벨 1 템플릿 랜덤 선택
-            List<PuzzleGridTemplate> templates = puzzleGridTemplateRepository
+            // 1. 템플릿 추출 (기존 퍼즐 게임과 동일한 방식: ORDER BY RANDOM() LIMIT 1)
+            log.info("[1-1] 레벨 1 템플릿 조회 시작... (ORDER BY RANDOM() LIMIT 1)");
+            Optional<PuzzleGridTemplate> templateOpt = puzzleGridTemplateRepository
                 .findRandomByLevelIdAndIsActiveTrue(1);
             
-            if (templates.isEmpty()) {
-                log.error("레벨 1 활성 템플릿이 없습니다.");
+            if (templateOpt.isEmpty()) {
+                log.error("[1-1 실패] 레벨 1 활성 템플릿이 없습니다.");
                 return Map.of(
                     "success", false,
                     "message", "레벨 1 템플릿이 없습니다."
                 );
             }
             
-            // 첫 번째 템플릿 선택 (이미 RANDOM()으로 정렬됨)
-            PuzzleGridTemplate selectedTemplate = templates.get(0);
-            log.info("선택된 템플릿 ID: {}", selectedTemplate.getId());
+            PuzzleGridTemplate selectedTemplate = templateOpt.get();
+            log.info("[1-1 성공] 템플릿 추출 완료 - 템플릿 ID: {} (랜덤 선택)", selectedTemplate.getId());
             
             // 2. 템플릿 기반 단어 추출 (cat2 조건 추가)
+            log.info("[2단계: 템플릿 기반 단어 추출 시작]");
+            log.info("[2-0] 테마 조건: cat2 = '{}'", theme);
             Map<String, Object> extractResult = puzzleGridTemplateService
                 .extractWordsWithTheme(selectedTemplate.getId(), theme);
             
             if (!Boolean.TRUE.equals(extractResult.get("success"))) {
-                log.error("테마별 단어 추출 실패: {}", extractResult.get("message"));
+                log.error("[2단계 실패] 테마별 단어 추출 실패: {}", extractResult.get("message"));
                 return Map.of(
                     "success", false,
                     "message", extractResult.get("message") != null 
@@ -71,17 +74,22 @@ public class ThemePuzzleGeneratorService {
             List<Map<String, Object>> extractedWords = (List<Map<String, Object>>) extractResult.get("extracted_words");
             
             if (extractedWords == null || extractedWords.isEmpty()) {
-                log.error("추출된 단어가 없습니다.");
+                log.error("[2단계 실패] 추출된 단어가 없습니다.");
                 return Map.of(
                     "success", false,
                     "message", "추출된 단어가 없습니다."
                 );
             }
             
-            // 힌트 조회
-            List<Map<String, Object>> hints = getHintsForExtractedWords(extractedWords);
+            log.info("[2단계 성공] 단어 추출 완료 - 추출된 단어 수: {}", extractedWords.size());
             
-            // 퍼즐 데이터 구성
+            // 힌트 조회
+            log.info("[3단계: 힌트 조회 시작]");
+            List<Map<String, Object>> hints = getHintsForExtractedWords(extractedWords);
+            log.info("[3단계 성공] 힌트 조회 완료 - 힌트 수: {}", hints.size());
+            
+            // 4. 퍼즐 데이터 구성 및 저장
+            log.info("[4단계: 퍼즐 데이터 구성 및 저장 시작]");
             Map<String, Object> puzzleData = new HashMap<>();
             puzzleData.put("success", true);
             puzzleData.put("puzzleId", generatePuzzleId());
@@ -98,8 +106,9 @@ public class ThemePuzzleGeneratorService {
             
             puzzleData.put("generatedAt", new Date());
             
-            log.info("테마별 퍼즐 생성 완료: {} - 템플릿 ID: {}, 단어 {}개", 
-                theme, selectedTemplate.getId(), extractedWords.size());
+            log.info("[4단계 성공] 퍼즐 데이터 구성 완료");
+            log.info("=== [완료] 테마별 퍼즐 생성 성공: {} - 템플릿 ID: {}, 단어 {}개, 힌트 {}개 ===", 
+                theme, selectedTemplate.getId(), extractedWords.size(), hints.size());
             
             return puzzleData;
             

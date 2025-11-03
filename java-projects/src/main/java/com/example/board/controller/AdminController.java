@@ -278,4 +278,22 @@ public class AdminController {
             return ResponseEntity.notFound().build();
         }
     }
+    
+    /**
+     * 테마별 퍼즐 관리 페이지
+     */
+    @GetMapping("/admin/theme-puzzles")
+    public ResponseEntity<String> themePuzzleManagement() {
+        try {
+            log.info("테마별 퍼즐 관리 페이지 접근");
+            Resource resource = new ClassPathResource("static/admin/theme-puzzles/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            return ResponseEntity.ok().headers(headers).body(content);
+        } catch (IOException e) {
+            log.error("테마별 퍼즐 관리 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테마별 퍼즐 관리 - 크로스워드 퍼즐 관리자</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .stats-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stats-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .theme-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .theme-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .theme-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .puzzle-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .puzzle-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transform: translateX(5px);
+        }
+
+        .puzzle-item.inactive {
+            opacity: 0.6;
+            background: #e9ecef;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+
+        .badge-active {
+            background-color: #28a745;
+        }
+
+        .badge-inactive {
+            background-color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <!-- 관리자 헤더 -->
+    <div class="admin-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-puzzle-piece me-3"></i>테마별 퍼즐 관리</h1>
+                    <p class="mb-0">테마별 일일 퍼즐을 조회하고 재생성할 수 있습니다.</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="/admin/" class="btn btn-light">
+                        <i class="fas fa-home me-2"></i>메인 대시보드
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 퍼즐 관리 네비게이션 -->
+    <div class="container mb-4">
+        <div class="card">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-primary">
+                        <i class="fas fa-puzzle-piece me-2"></i>퍼즐 관리 바로가기
+                    </h6>
+                    <div class="d-flex gap-2">
+                        <a href="/admin/" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-home me-1"></i>퍼즐관리
+                        </a>
+                        <a href="/admin/words" class="btn btn-primary btn-sm">
+                            <i class="fas fa-list me-1"></i>단어관리
+                        </a>
+                        <a href="/admin/theme-puzzles" class="btn btn-success btn-sm">
+                            <i class="fas fa-puzzle-piece me-1"></i>테마별 퍼즐
+                        </a>
+                        <a href="/admin/hint-generator" class="btn btn-info btn-sm">
+                            <i class="fas fa-magic me-1"></i>AI 힌트관리
+                        </a>
+                        <a href="/admin/levels" class="btn btn-success btn-sm">
+                            <i class="fas fa-layer-group me-1"></i>레벨관리
+                        </a>
+                        <a href="/admin/templates" class="btn btn-warning btn-sm">
+                            <i class="fas fa-th me-1"></i>그리드 템플릿관리
+                        </a>
+                        <a href="/admin/users" class="btn btn-danger btn-sm">
+                            <i class="fas fa-users me-1"></i>사용자관리
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 필터 및 액션 -->
+    <div class="container mb-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-filter me-2"></i>필터
+                        </h5>
+                        <div class="mb-3">
+                            <label for="daysFilter" class="form-label">조회 기간</label>
+                            <select id="daysFilter" class="form-select">
+                                <option value="7">최근 7일</option>
+                                <option value="30" selected>최근 30일</option>
+                                <option value="60">최근 60일</option>
+                                <option value="90">최근 90일</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="loadThemePuzzles()">
+                            <i class="fas fa-sync me-2"></i>조회
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-info-circle me-2"></i>통계
+                        </h5>
+                        <div id="statsContainer">
+                            <p class="text-muted">조회 후 통계가 표시됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 테마별 퍼즐 목록 -->
+    <div class="container">
+        <div id="themePuzzlesContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">로딩 중...</span>
+                </div>
+                <p class="mt-3 text-muted">퍼즐 목록을 불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 재생성 확인 모달 -->
+    <div class="modal fade" id="regenerateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-sync me-2"></i>퍼즐 재생성 확인
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>해당 테마의 퍼즐을 재생성하시겠습니까?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        기존 퍼즐 데이터는 삭제되고 새로운 퍼즐로 대체됩니다.
+                    </div>
+                    <div id="regenerateInfo"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" id="confirmRegenerateBtn">
+                        <i class="fas fa-check me-2"></i>재생성
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script>
+        let currentTheme = null;
+        let currentDate = null;
+
+        // 페이지 로드 시 퍼즐 목록 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadThemePuzzles();
+        });
+
+        // 테마별 퍼즐 목록 로드
+        async function loadThemePuzzles() {
+            const days = document.getElementById('daysFilter').value;
+            const container = document.getElementById('themePuzzlesContainer');
+            
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">로딩 중...</span>
+                    </div>
+                    <p class="mt-3 text-muted">퍼즐 목록을 불러오는 중...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/admin/api/theme-puzzles?days=${days}`);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    renderThemePuzzles(data.data);
+                    updateStats(data.data);
+                } else {
+                    container.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            퍼즐 목록을 불러오는데 실패했습니다: ${data.message || '알 수 없는 오류'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('퍼즐 목록 로드 오류:', error);
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        퍼즐 목록을 불러오는데 실패했습니다: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 퍼즐 목록 렌더링
+        function renderThemePuzzles(themes) {
+            const container = document.getElementById('themePuzzlesContainer');
+            
+            if (themes.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        조회된 퍼즐이 없습니다.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            themes.forEach(themeData => {
+                const themeName = themeData.theme;
+                const puzzleCount = themeData.puzzleCount || 0;
+                const puzzles = themeData.puzzles || [];
+
+                html += `
+                    <div class="theme-card">
+                        <div class="theme-header">
+                            <div>
+                                <span class="theme-title">
+                                    <i class="fas fa-star me-2"></i>${themeName}
+                                </span>
+                                <span class="badge bg-primary ms-2">${puzzleCount}개</span>
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="openRegenerateModal('${themeName}')">
+                                <i class="fas fa-sync me-2"></i>오늘 퍼즐 재생성
+                            </button>
+                        </div>
+                        <div id="puzzle-list-${themeName}">
+                `;
+
+                if (puzzles.length === 0) {
+                    html += `
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            이 기간 동안 생성된 퍼즐이 없습니다.
+                        </div>
+                    `;
+                } else {
+                    puzzles.forEach(puzzle => {
+                        const isActive = puzzle.isActive;
+                        const puzzleDate = puzzle.puzzleDate;
+                        const wordCount = puzzle.wordCount || 0;
+                        const statusBadge = isActive 
+                            ? '<span class="badge badge-active">활성</span>'
+                            : '<span class="badge badge-inactive">비활성</span>';
+                        
+                        html += `
+                            <div class="puzzle-item ${!isActive ? 'inactive' : ''}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${puzzleDate}</strong>
+                                        ${statusBadge}
+                                        <span class="badge bg-info ms-2">단어 ${wordCount}개</span>
+                                        <span class="badge bg-secondary ms-2">퍼즐 ID: ${puzzle.puzzleId}</span>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="regeneratePuzzle('${themeName}', '${puzzleDate}')">
+                                            <i class="fas fa-sync me-1"></i>재생성
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 통계 업데이트
+        function updateStats(themes) {
+            const statsContainer = document.getElementById('statsContainer');
+            let totalPuzzles = 0;
+            let activePuzzles = 0;
+
+            themes.forEach(theme => {
+                const puzzles = theme.puzzles || [];
+                totalPuzzles += puzzles.length;
+                activePuzzles += puzzles.filter(p => p.isActive).length;
+            });
+
+            statsContainer.innerHTML = `
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="stats-number">${totalPuzzles}</div>
+                            <div class="stats-label">전체 퍼즐</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="stats-number text-success">${activePuzzles}</div>
+                            <div class="stats-label">활성 퍼즐</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 재생성 모달 열기
+        function openRegenerateModal(theme) {
+            currentTheme = theme;
+            currentDate = null;
+            
+            const modal = new bootstrap.Modal(document.getElementById('regenerateModal'));
+            const infoDiv = document.getElementById('regenerateInfo');
+            
+            infoDiv.innerHTML = `
+                <p><strong>테마:</strong> ${theme}</p>
+                <p><strong>날짜:</strong> 오늘 (${new Date().toLocaleDateString()})</p>
+            `;
+            
+            modal.show();
+        }
+
+        // 재생성 확인 버튼 클릭
+        document.getElementById('confirmRegenerateBtn').addEventListener('click', async function() {
+            if (!currentTheme) return;
+
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>재생성 중...';
+
+            try {
+                const dateParam = currentDate ? `&date=${currentDate}` : '';
+                const response = await fetch(
+                    `/admin/api/theme-puzzles/${currentTheme}/regenerate${dateParam}`,
+                    { method: 'POST' }
+                );
+                
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('퍼즐이 성공적으로 재생성되었습니다.');
+                    bootstrap.Modal.getInstance(document.getElementById('regenerateModal')).hide();
+                    loadThemePuzzles();
+                } else {
+                    alert('퍼즐 재생성에 실패했습니다: ' + (data.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('퍼즐 재생성 오류:', error);
+                alert('퍼즐 재생성 중 오류가 발생했습니다: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        // 개별 퍼즐 재생성
+        async function regeneratePuzzle(theme, date) {
+            if (!confirm(`해당 퍼즐을 재생성하시겠습니까?\n테마: ${theme}\n날짜: ${date}`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `/admin/api/theme-puzzles/${theme}/regenerate?date=${date}`,
+                    { method: 'POST' }
+                );
+                
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('퍼즐이 성공적으로 재생성되었습니다.');
+                    loadThemePuzzles();
+                } else {
+                    alert('퍼즐 재생성에 실패했습니다: ' + (data.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('퍼즐 재생성 오류:', error);
+                alert('퍼즐 재생성 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
+

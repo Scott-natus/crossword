@@ -292,16 +292,20 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     List<PzWord> findForPuzzleGenerationByDifficultyInAndLengthExcludingUsed(@Param("difficulties") List<Integer> difficulties, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
     
     /**
-     * 테마별 퍼즐 생성용 단어 조회 (cat2 조건 추가)
+     * 테마별 퍼즐 생성용 단어 조회 (기존 퍼즐 로직과 동일, cat2 조건 제거 - 단어 수 부족 확인용)
+     * - 힌트 존재 여부 체크 제거 (게임 중 클릭 시에만 조회)
+     * - 일시적으로 cat2 조건 제거 (단어 수 부족 확인용)
      */
-    @Query("SELECT w FROM PzWord w WHERE w.cat2 = :cat2 AND w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true AND w.confYn = 'Y' AND EXISTS (SELECT 1 FROM PzHint h WHERE h.word = w)")
-    List<PzWord> findForThemePuzzleGenerationByDifficultyInAndLength(@Param("cat2") String cat2, @Param("difficulties") List<Integer> difficulties, @Param("length") Integer length);
+    @Query("SELECT w FROM PzWord w WHERE w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true")
+    List<PzWord> findForThemePuzzleGenerationByDifficultyInAndLength(@Param("difficulties") List<Integer> difficulties, @Param("length") Integer length);
     
     /**
-     * 테마별 퍼즐 생성용 단어 조회 (cat2 조건 추가, 사용된 단어 제외)
+     * 테마별 퍼즐 생성용 단어 조회 (사용된 단어 제외, cat2 조건 제거 - 단어 수 부족 확인용)
+     * - 힌트 존재 여부 체크 제거 (게임 중 클릭 시에만 조회)
+     * - 일시적으로 cat2 조건 제거 (단어 수 부족 확인용)
      */
-    @Query("SELECT w FROM PzWord w WHERE w.cat2 = :cat2 AND w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true AND w.confYn = 'Y' AND w.word NOT IN :usedWords AND EXISTS (SELECT 1 FROM PzHint h WHERE h.word = w)")
-    List<PzWord> findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(@Param("cat2") String cat2, @Param("difficulties") List<Integer> difficulties, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
+    @Query("SELECT w FROM PzWord w WHERE w.difficulty IN :difficulties AND w.length = :length AND w.isActive = true AND w.word NOT IN :usedWords")
+    List<PzWord> findForThemePuzzleGenerationByDifficultyInAndLengthExcludingUsed(@Param("difficulties") List<Integer> difficulties, @Param("length") Integer length, @Param("usedWords") List<String> usedWords);
     
     @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     PzWord findByLengthAndDifficultyInAndIsActiveTrueRandom(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties);

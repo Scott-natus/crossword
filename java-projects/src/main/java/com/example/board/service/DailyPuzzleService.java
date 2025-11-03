@@ -41,13 +41,17 @@ public class DailyPuzzleService {
                 ThemeDailyPuzzle puzzle = puzzleOpt.get();
                 log.info("기존 퍼즐 조회: {} - 퍼즐 ID: {}", theme, puzzle.getPuzzleId());
                 
-                // TODO: Phase 2에서 실제 퍼즐 데이터 저장/조회 로직 구현
-                // 현재는 puzzleId만 있고 실제 데이터가 없으므로 재생성
-                // return themePuzzleGeneratorService.getPuzzleData(puzzle.getPuzzleId());
+                // 저장된 퍼즐 데이터 조회
+                Map<String, Object> savedPuzzleData = puzzle.getPuzzleDataAsMap();
                 
-                // Phase 2 완성 전까지는 재생성 (실제로는 스케줄러가 미리 생성해야 함)
-                log.warn("퍼즐 데이터 저장 로직 미완성으로 재생성: {}", theme);
-                return generateTodayPuzzle(theme, date);
+                if (savedPuzzleData != null && !savedPuzzleData.isEmpty()) {
+                    log.info("저장된 퍼즐 데이터 조회 성공: {} - 퍼즐 ID: {}", theme, puzzle.getPuzzleId());
+                    return savedPuzzleData;
+                } else {
+                    // 저장된 데이터가 없으면 재생성 (fallback)
+                    log.warn("저장된 퍼즐 데이터가 없어 재생성: {} - 퍼즐 ID: {}", theme, puzzle.getPuzzleId());
+                    return generateTodayPuzzle(theme, date);
+                }
             }
             
             // 퍼즐이 없으면 생성 (fallback - 스케줄러가 실행되지 않았을 경우)
@@ -66,38 +70,52 @@ public class DailyPuzzleService {
     @Transactional
     public Map<String, Object> generateTodayPuzzle(String theme, LocalDate date) {
         try {
-            log.info("오늘의 테마별 퍼즐 생성: {} - {}", theme, date);
+            log.info("[4단계 상세] 오늘의 테마별 퍼즐 생성 및 저장 시작");
+            log.info("[4-1] 테마: {}, 날짜: {}", theme, date);
             
             // 새 퍼즐 생성
+            log.info("[4-2] 퍼즐 생성 호출 시작...");
             Map<String, Object> puzzleData = themePuzzleGeneratorService.generateThemePuzzle(theme);
             
             if (puzzleData == null || !(Boolean) puzzleData.get("success")) {
+                log.error("[4-2 실패] 퍼즐 생성 실패");
                 throw new RuntimeException("퍼즐 생성에 실패했습니다.");
             }
+            log.info("[4-2 성공] 퍼즐 생성 완료 - 퍼즐 ID: {}", puzzleData.get("puzzleId"));
             
             // 기존 퍼즐 조회 (UNIQUE 제약조건 때문에 theme + puzzle_date 조합은 하나만 존재)
             // isActive 여부와 관계없이 조회하여 UNIQUE 제약조건 위반 방지
+            log.info("[4-3] 기존 퍼즐 레코드 조회 시작...");
             Optional<ThemeDailyPuzzle> existingPuzzleOpt = themeDailyPuzzleRepository
                 .findByThemeAndPuzzleDate(theme, date);
             
             ThemeDailyPuzzle dailyPuzzle;
             if (existingPuzzleOpt.isPresent()) {
                 // 기존 레코드 업데이트
+                log.info("[4-3] 기존 레코드 발견 - ID: {}", existingPuzzleOpt.get().getId());
                 dailyPuzzle = existingPuzzleOpt.get();
                 dailyPuzzle.setPuzzleId((Integer) puzzleData.get("puzzleId"));
                 dailyPuzzle.setIsActive(true);
-                log.info("기존 퍼즐 레코드 업데이트: {} - {}", theme, date);
+                // 퍼즐 데이터 저장
+                dailyPuzzle.setPuzzleDataFromMap(puzzleData);
+                log.info("[4-4] 기존 퍼즐 레코드 업데이트 완료: {} - {}", theme, date);
             } else {
                 // 새 레코드 생성
+                log.info("[4-3] 기존 레코드 없음 - 새 레코드 생성");
                 dailyPuzzle = new ThemeDailyPuzzle();
                 dailyPuzzle.setTheme(theme);
                 dailyPuzzle.setPuzzleDate(date);
                 dailyPuzzle.setPuzzleId((Integer) puzzleData.get("puzzleId"));
                 dailyPuzzle.setIsActive(true);
-                log.info("새 퍼즐 레코드 생성: {} - {}", theme, date);
+                // 퍼즐 데이터 저장
+                dailyPuzzle.setPuzzleDataFromMap(puzzleData);
+                log.info("[4-4] 새 퍼즐 레코드 생성 완료: {} - {}", theme, date);
             }
             
+            log.info("[4-5] DB 저장 시작...");
             themeDailyPuzzleRepository.save(dailyPuzzle);
+            log.info("[4-5 성공] 퍼즐 데이터 저장 완료: {} - 퍼즐 ID: {}", theme, dailyPuzzle.getPuzzleId());
+            log.info("[4단계 성공] === 데일리 테마별 퍼즐 저장 완료 ===");
             
             log.info("오늘의 테마별 퍼즐 생성 완료: {} - 퍼즐 ID: {}", theme, dailyPuzzle.getPuzzleId());
             

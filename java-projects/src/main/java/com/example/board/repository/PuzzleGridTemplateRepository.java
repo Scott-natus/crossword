@@ -21,10 +21,10 @@ public interface PuzzleGridTemplateRepository extends JpaRepository<PuzzleGridTe
     List<PuzzleGridTemplate> findByLevelIdAndIsActiveTrue(Integer levelId);
     
     /**
-     * 레벨별 랜덤 템플릿 조회
+     * 레벨별 랜덤 템플릿 조회 (기존 퍼즐 게임과 동일한 방식)
      */
-    @Query("SELECT t FROM PuzzleGridTemplate t WHERE t.levelId = :levelId AND t.isActive = true ORDER BY RANDOM()")
-    List<PuzzleGridTemplate> findRandomByLevelIdAndIsActiveTrue(@Param("levelId") Integer levelId);
+    @Query(value = "SELECT * FROM puzzle_grid_templates WHERE level_id = :levelId AND is_active = true ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    Optional<PuzzleGridTemplate> findRandomByLevelIdAndIsActiveTrue(@Param("levelId") Integer levelId);
     
     /**
      * 레벨별 첫 번째 템플릿 조회

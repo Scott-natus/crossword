@@ -31,6 +31,8 @@ public class AdminApiController {
     private final GameSessionService gameSessionService;
     private final LevelManagementService levelManagementService;
     private final com.example.board.service.DatabaseSyncService databaseSyncService;
+    private final com.example.board.service.DailyPuzzleService dailyPuzzleService;
+    private final com.example.board.repository.ThemeDailyPuzzleRepository themeDailyPuzzleRepository;
     
     /**
      * 시스템 통계 조회
@@ -317,6 +319,132 @@ public class AdminApiController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "시스템 상태 확인 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 테마별 퍼즐 목록 조회 (테마별 그룹화)
+     */
+    @GetMapping("/theme-puzzles")
+    public ResponseEntity<Map<String, Object>> getThemePuzzles(
+            @RequestParam(required = false) String theme,
+            @RequestParam(required = false) Integer days) {
+        try {
+            log.info("테마별 퍼즐 목록 조회 요청 - 테마: {}, 일수: {}", theme, days);
+            
+            java.time.LocalDate startDate = java.time.LocalDate.now();
+            if (days != null && days > 0) {
+                startDate = startDate.minusDays(days);
+            } else {
+                startDate = startDate.minusDays(30); // 기본 30일
+            }
+            
+            java.util.List<String> themes = java.util.Arrays.asList("K-POP", "K-DRAMA", "K-MOVIE", "K-CULTURE");
+            java.util.Map<String, Object> result = new HashMap<>();
+            java.util.List<java.util.Map<String, Object>> themePuzzleList = new java.util.ArrayList<>();
+            
+            for (String t : themes) {
+                if (theme != null && !theme.equals(t)) {
+                    continue;
+                }
+                
+                java.util.List<com.example.board.entity.ThemeDailyPuzzle> puzzles = themeDailyPuzzleRepository
+                    .findByThemeAndPuzzleDateAfterOrderByPuzzleDateDesc(t, startDate);
+                
+                java.util.List<java.util.Map<String, Object>> puzzleList = new java.util.ArrayList<>();
+                for (com.example.board.entity.ThemeDailyPuzzle puzzle : puzzles) {
+                    java.util.Map<String, Object> puzzleMap = new HashMap<>();
+                    puzzleMap.put("id", puzzle.getId());
+                    puzzleMap.put("theme", puzzle.getTheme());
+                    puzzleMap.put("puzzleDate", puzzle.getPuzzleDate().toString());
+                    puzzleMap.put("puzzleId", puzzle.getPuzzleId());
+                    puzzleMap.put("isActive", puzzle.getIsActive());
+                    puzzleMap.put("createdAt", puzzle.getCreatedAt());
+                    puzzleMap.put("updatedAt", puzzle.getUpdatedAt());
+                    
+                    // 퍼즐 데이터에서 단어 수 추출
+                    java.util.Map<String, Object> puzzleData = puzzle.getPuzzleDataAsMap();
+                    if (puzzleData != null && puzzleData.containsKey("words")) {
+                        @SuppressWarnings("unchecked")
+                        java.util.List<java.util.Map<String, Object>> words = 
+                            (java.util.List<java.util.Map<String, Object>>) puzzleData.get("words");
+                        puzzleMap.put("wordCount", words != null ? words.size() : 0);
+                    } else {
+                        puzzleMap.put("wordCount", 0);
+                    }
+                    
+                    puzzleList.add(puzzleMap);
+                }
+                
+                java.util.Map<String, Object> themeData = new HashMap<>();
+                themeData.put("theme", t);
+                themeData.put("puzzleCount", puzzles.size());
+                themeData.put("puzzles", puzzleList);
+                themePuzzleList.add(themeData);
+            }
+            
+            result.put("success", true);
+            result.put("data", themePuzzleList);
+            result.put("startDate", startDate.toString());
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("테마별 퍼즐 목록 조회 중 오류 발생: {}", e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "퍼즐 목록 조회 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 테마별 퍼즐 재생성
+     */
+    @PostMapping("/theme-puzzles/{theme}/regenerate")
+    public ResponseEntity<Map<String, Object>> regenerateThemePuzzle(
+            @PathVariable String theme,
+            @RequestParam(required = false) String date) {
+        try {
+            log.info("테마별 퍼즐 재생성 요청 - 테마: {}, 날짜: {}", theme, date);
+            
+            java.time.LocalDate puzzleDate;
+            if (date != null && !date.isEmpty()) {
+                puzzleDate = java.time.LocalDate.parse(date);
+            } else {
+                puzzleDate = java.time.LocalDate.now();
+            }
+            
+            // 퍼즐 재생성
+            Map<String, Object> puzzleData = dailyPuzzleService.generateTodayPuzzle(theme, puzzleDate);
+            
+            if (puzzleData != null && Boolean.TRUE.equals(puzzleData.get("success"))) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "퍼즐이 성공적으로 재생성되었습니다.");
+                response.put("theme", theme);
+                response.put("puzzleDate", puzzleDate.toString());
+                response.put("puzzleId", puzzleData.get("puzzleId"));
+                
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "퍼즐 재생성에 실패했습니다.");
+                
+                return ResponseEntity.ok(response);
+            }
+            
+        } catch (Exception e) {
+            log.error("테마별 퍼즐 재생성 중 오류 발생: 테마={}, 날짜={}, error={}", theme, date, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "퍼즐 재생성 중 오류가 발생했습니다: " + e.getMessage());
             
             return ResponseEntity.internalServerError().body(response);
         }
