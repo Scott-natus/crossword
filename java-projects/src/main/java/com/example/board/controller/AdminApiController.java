@@ -296,6 +296,27 @@ public class AdminApiController {
     }
     
     /**
+     * 전체 테이블 동기화 실행
+     */
+    @PostMapping("/db-sync/sync-all")
+    public ResponseEntity<Map<String, Object>> syncAllTables() {
+        try {
+            log.info("전체 테이블 동기화 요청");
+            Map<String, Object> result = databaseSyncService.syncAllTables();
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("전체 테이블 동기화 중 오류 발생: {}", e.getMessage());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "전체 동기화 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
      * 시스템 상태 확인
      */
     @GetMapping("/health")

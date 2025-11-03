@@ -105,6 +105,33 @@
     </div>
 
     <div class="container-fluid">
+        <!-- 전체 동기화 버튼 영역 -->
+        <div class="row mb-2">
+            <div class="col-12">
+                <div class="server-panel" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; min-height: auto;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0" style="color: white;">
+                                <i class="fas fa-sync-alt me-2"></i>전체 테이블 동기화
+                            </h5>
+                            <small class="opacity-75">모든 테이블을 한 번에 동기화합니다</small>
+                        </div>
+                        <button id="syncAllBtn" class="btn btn-light" onclick="syncAllTables()">
+                            <i class="fas fa-sync-alt me-2"></i>전체 동기화 실행
+                        </button>
+                    </div>
+                    <div id="syncAllResult" class="mt-2" style="color: white; font-size: 0.9rem;"></div>
+                    <div id="syncAllProgress" class="mt-2" style="display: none;">
+                        <div class="progress" style="height: 20px;">
+                            <div id="syncAllProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="syncAllStatus" class="mt-1 text-center" style="font-size: 0.85rem;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <!-- 좌측: 개발 서버 -->
             <div class="col-md-6">
@@ -331,6 +358,118 @@
                     // 버튼 복원
                     $('#syncBtn').prop('disabled', false);
                     $('#syncBtn').html(`<i class="fas fa-arrow-right me-2"></i>동기화 실행: ${selectedTableName}`);
+                }
+            });
+        }
+
+        // 전체 테이블 동기화 실행
+        function syncAllTables() {
+            if (!confirm('모든 테이블을 운영 서버로 동기화하시겠습니까?\n\n주의: 운영 서버의 모든 테이블 데이터가 삭제되고 개발 서버의 데이터로 교체됩니다.\n이 작업은 시간이 오래 걸릴 수 있습니다.')) {
+                return;
+            }
+
+            // 버튼 비활성화 및 로딩 표시
+            $('#syncAllBtn').prop('disabled', true);
+            $('#syncAllBtn').html('<i class="fas fa-spinner fa-spin me-2"></i>동기화 중...');
+            $('#syncAllResult').html('<div><i class="fas fa-spinner fa-spin me-2"></i>전체 동기화를 시작합니다...</div>');
+            $('#syncAllProgress').show();
+            $('#syncAllProgressBar').css('width', '0%').text('0%');
+            $('#syncAllStatus').text('초기화 중...');
+
+            $.ajax({
+                url: '/admin/api/db-sync/sync-all',
+                type: 'POST',
+                timeout: 600000, // 10분 타임아웃
+                success: function(response) {
+                    if (response.success) {
+                        const successCount = response.successCount || 0;
+                        const failCount = response.failCount || 0;
+                        const totalTables = response.totalTables || 0;
+                        const totalSyncedRows = response.totalSyncedRows || 0;
+                        
+                        let resultHtml = `
+                            <div class="alert alert-light">
+                                <h5><i class="fas fa-check-circle me-2"></i>전체 동기화 완료!</h5>
+                                <p class="mb-1"><strong>${response.message}</strong></p>
+                                <hr style="border-color: rgba(255,255,255,0.3);">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <strong>전체 테이블:</strong> ${totalTables}개
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>성공:</strong> <span style="color: #28a745;">${successCount}개</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>실패:</strong> <span style="color: #dc3545;">${failCount}개</span>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <strong>총 동기화된 로우:</strong> ${totalSyncedRows.toLocaleString()}건
+                                </div>
+                            </div>
+                        `;
+                        
+                        // 실패한 테이블이 있으면 상세 정보 표시
+                        if (failCount > 0 && response.tableResults) {
+                            resultHtml += '<details class="mt-2"><summary style="cursor: pointer; color: #ffc107;">실패한 테이블 상세 보기</summary>';
+                            resultHtml += '<div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">';
+                            response.tableResults.forEach(function(tableResult) {
+                                if (!tableResult.success) {
+                                    resultHtml += `
+                                        <div style="padding: 8px; margin: 5px 0; background: rgba(220,53,69,0.2); border-radius: 5px;">
+                                            <strong>${tableResult.tableName}:</strong> ${tableResult.message || '동기화 실패'}
+                                        </div>
+                                    `;
+                                }
+                            });
+                            resultHtml += '</div></details>';
+                        }
+                        
+                        $('#syncAllResult').html(resultHtml);
+                        $('#syncAllProgressBar').css('width', '100%').text('100%');
+                        $('#syncAllStatus').text('동기화 완료');
+                        
+                        // 운영 서버 테이블 목록 새로고침
+                        setTimeout(function() {
+                            loadRemoteTables();
+                        }, 2000);
+                    } else {
+                        $('#syncAllResult').html(`
+                            <div class="alert alert-light">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <strong>동기화 실패</strong><br>
+                                ${response.message || '전체 동기화 중 오류가 발생했습니다.'}
+                            </div>
+                        `);
+                        $('#syncAllProgressBar').css('width', '0%').text('0%');
+                        $('#syncAllStatus').text('동기화 실패');
+                    }
+                    
+                    // 버튼 복원
+                    $('#syncAllBtn').prop('disabled', false);
+                    $('#syncAllBtn').html('<i class="fas fa-sync-alt me-2"></i>전체 동기화 실행');
+                },
+                error: function(xhr) {
+                    let errorMessage = '서버 오류가 발생했습니다.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.status === 0) {
+                        errorMessage = '서버 연결이 끊어졌습니다. 타임아웃일 수 있습니다.';
+                    }
+                    
+                    $('#syncAllResult').html(`
+                        <div class="alert alert-light">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>동기화 실패</strong><br>
+                            ${errorMessage}
+                        </div>
+                    `);
+                    $('#syncAllProgressBar').css('width', '0%').text('0%');
+                    $('#syncAllStatus').text('동기화 실패');
+                    
+                    // 버튼 복원
+                    $('#syncAllBtn').prop('disabled', false);
+                    $('#syncAllBtn').html('<i class="fas fa-sync-alt me-2"></i>전체 동기화 실행');
                 }
             });
         }

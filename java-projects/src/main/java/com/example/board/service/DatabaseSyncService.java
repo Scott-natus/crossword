@@ -190,6 +190,7 @@ public class DatabaseSyncService {
     
     /**
      * 테이블 동기화 (개발 서버 → 운영 서버)
+     * 연결을 자동으로 생성하고 닫습니다.
      */
     public Map<String, Object> syncTable(String tableName) {
         Map<String, Object> result = new HashMap<>();
@@ -230,6 +231,155 @@ public class DatabaseSyncService {
             log.error("테이블 동기화 중 오류 발생 (테이블: {}): {}", tableName, e.getMessage(), e);
             result.put("success", false);
             result.put("message", "동기화 중 오류 발생: " + e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 테이블 동기화 (개발 서버 → 운영 서버)
+     * 기존 연결을 재사용합니다. (전체 동기화용)
+     */
+    private Map<String, Object> syncTableWithConnection(String tableName, Connection localConn, Connection remoteConn) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            log.info("테이블 동기화 시작: {}", tableName);
+            
+            // 1. 로컬에서 데이터 조회
+            List<Map<String, Object>> localData = getTableData(localConn, tableName);
+            
+            // 2. 원격 테이블이 없으면 생성
+            createTableIfNotExists(remoteConn, tableName, localConn);
+            
+            // 3. 테이블 코멘트 동기화
+            syncTableComment(remoteConn, tableName, localConn);
+            
+            // 4. 기존 데이터 삭제
+            try (PreparedStatement truncateStmt = remoteConn.prepareStatement("TRUNCATE TABLE " + tableName + " CASCADE")) {
+                truncateStmt.execute();
+            }
+            
+            // 5. 원격에 데이터 삽입
+            if (!localData.isEmpty()) {
+                insertDataToRemote(remoteConn, tableName, localData);
+            }
+            
+            result.put("success", true);
+            result.put("message", String.format("테이블 '%s' 동기화 완료 (%d건)", tableName, localData.size()));
+            result.put("syncedRows", localData.size());
+            
+            log.info("테이블 동기화 완료: {} ({}건)", tableName, localData.size());
+            
+        } catch (Exception e) {
+            log.error("테이블 동기화 중 오류 발생 (테이블: {}): {}", tableName, e.getMessage(), e);
+            result.put("success", false);
+            result.put("message", "동기화 중 오류 발생: " + e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 모든 테이블 동기화 (개발 서버 → 운영 서버)
+     * 모든 테이블을 순차적으로 동기화하고 결과를 반환합니다.
+     * 연결을 한 번만 열고 모든 테이블에 재사용합니다.
+     */
+    public Map<String, Object> syncAllTables() {
+        Map<String, Object> result = new HashMap<>();
+        List<Map<String, Object>> tableResults = new ArrayList<>();
+        
+        // 연결을 한 번만 열고 재사용
+        Connection localConn = null;
+        Connection remoteConn = null;
+        
+        try {
+            log.info("전체 테이블 동기화 시작");
+            
+            // 1. 연결 열기 (한 번만)
+            localConn = getLocalConnection();
+            remoteConn = getRemoteConnection();
+            
+            log.info("로컬/원격 데이터베이스 연결 완료");
+            
+            // 2. 로컬 테이블 목록 조회
+            List<Map<String, Object>> localTables = getLocalTables();
+            
+            if (localTables == null || localTables.isEmpty()) {
+                result.put("success", false);
+                result.put("message", "동기화할 테이블이 없습니다.");
+                return result;
+            }
+            
+            int totalTables = localTables.size();
+            int successCount = 0;
+            int failCount = 0;
+            long totalSyncedRows = 0;
+            
+            // 3. 각 테이블 동기화 실행 (순차적으로, 같은 연결 재사용)
+            for (Map<String, Object> tableInfo : localTables) {
+                String tableName = (String) tableInfo.get("tableName");
+                if (tableName == null) continue;
+                
+                // 연결을 재사용하는 메서드 호출
+                Map<String, Object> syncResult = syncTableWithConnection(tableName, localConn, remoteConn);
+                
+                Map<String, Object> tableResult = new HashMap<>();
+                tableResult.put("tableName", tableName);
+                tableResult.put("success", syncResult.get("success"));
+                tableResult.put("message", syncResult.get("message"));
+                tableResult.put("syncedRows", syncResult.get("syncedRows"));
+                
+                tableResults.add(tableResult);
+                
+                if (Boolean.TRUE.equals(syncResult.get("success"))) {
+                    successCount++;
+                    Object syncedRows = syncResult.get("syncedRows");
+                    if (syncedRows instanceof Number) {
+                        totalSyncedRows += ((Number) syncedRows).longValue();
+                    }
+                } else {
+                    failCount++;
+                }
+                
+                log.info("테이블 동기화 진행: {}/{} - {}", successCount + failCount, totalTables, tableName);
+            }
+            
+            // 4. 결과 정리
+            result.put("success", true);
+            result.put("message", String.format("전체 동기화 완료: 성공 %d개, 실패 %d개, 총 %d건", 
+                successCount, failCount, totalSyncedRows));
+            result.put("totalTables", totalTables);
+            result.put("successCount", successCount);
+            result.put("failCount", failCount);
+            result.put("totalSyncedRows", totalSyncedRows);
+            result.put("tableResults", tableResults);
+            
+            log.info("전체 테이블 동기화 완료: 성공 {}개, 실패 {}개", successCount, failCount);
+            
+        } catch (Exception e) {
+            log.error("전체 테이블 동기화 중 오류 발생: {}", e.getMessage(), e);
+            result.put("success", false);
+            result.put("message", "전체 동기화 중 오류 발생: " + e.getMessage());
+            result.put("tableResults", tableResults); // 부분 결과라도 반환
+        } finally {
+            // 5. 연결 닫기
+            if (localConn != null) {
+                try {
+                    localConn.close();
+                    log.debug("로컬 연결 종료");
+                } catch (SQLException e) {
+                    log.warn("로컬 연결 종료 중 오류: {}", e.getMessage());
+                }
+            }
+            if (remoteConn != null) {
+                try {
+                    remoteConn.close();
+                    log.debug("원격 연결 종료");
+                } catch (SQLException e) {
+                    log.warn("원격 연결 종료 중 오류: {}", e.getMessage());
+                }
+            }
         }
         
         return result;
@@ -377,7 +527,8 @@ public class DatabaseSyncService {
                 String isNullable = rs.getString("is_nullable");
                 String defaultValue = rs.getString("column_default");
                 
-                StringBuilder colDef = new StringBuilder("    ").append(colName).append(" ");
+                // 컬럼명을 따옴표로 감싸서 PostgreSQL 예약어 문제 해결
+                StringBuilder colDef = new StringBuilder("    \"").append(colName).append("\" ");
                 
                 // 데이터 타입 처리
                 switch (dataType) {
@@ -462,7 +613,8 @@ public class DatabaseSyncService {
             pkStmt.setString(1, tableName);
             ResultSet pkRs = pkStmt.executeQuery();
             while (pkRs.next()) {
-                pkColumns.add(pkRs.getString("column_name"));
+                // PRIMARY KEY 컬럼명도 따옴표로 감싸기
+                pkColumns.add("\"" + pkRs.getString("column_name") + "\"");
             }
         }
         
@@ -491,10 +643,11 @@ public class DatabaseSyncService {
                     int end = defaultVal.indexOf("'", start);
                     if (start > 0 && end > start) {
                         String seqName = defaultVal.substring(start, end);
+                        // 컬럼명을 따옴표로 감싸기
                         sql.append(";\nCREATE SEQUENCE IF NOT EXISTS ").append(seqName)
-                           .append(" OWNED BY ").append(tableName).append(".").append(colName)
+                           .append(" OWNED BY ").append(tableName).append(".\"").append(colName).append("\"")
                            .append(";\nALTER TABLE ").append(tableName)
-                           .append(" ALTER COLUMN ").append(colName)
+                           .append(" ALTER COLUMN \"").append(colName).append("\"")
                            .append(" SET DEFAULT nextval('").append(seqName).append("')");
                     }
                 }
@@ -514,9 +667,14 @@ public class DatabaseSyncService {
         Map<String, Object> firstRow = data.get(0);
         List<String> columns = new ArrayList<>(firstRow.keySet());
         
-        // INSERT 문 생성
+        // INSERT 문 생성 (컬럼명을 따옴표로 감싸서 PostgreSQL 예약어 문제 해결)
         String placeholders = String.join(", ", java.util.Collections.nCopies(columns.size(), "?"));
-        String columnNames = String.join(", ", columns);
+        // 모든 컬럼명을 따옴표로 감싸기
+        List<String> quotedColumns = new ArrayList<>();
+        for (String column : columns) {
+            quotedColumns.add("\"" + column + "\"");
+        }
+        String columnNames = String.join(", ", quotedColumns);
         String insertSql = String.format("INSERT INTO %s (%s) VALUES (%s)", tableName, columnNames, placeholders);
         
         try (PreparedStatement insertStmt = remoteConn.prepareStatement(insertSql)) {
