@@ -343,16 +343,38 @@
             clearAlerts();
         }
         
+        // 현재 URL에서 테마 경로 가져오기
+        function getThemeGamePath() {
+            const path = window.location.pathname;
+            
+            // 테마별 경로 매핑
+            if (path.startsWith('/K-Drama') || path.startsWith('/K-DRAMA')) {
+                return '/K-Drama';
+            } else if (path.startsWith('/K-pop') || path.startsWith('/K-POP')) {
+                return '/K-pop';
+            } else if (path.startsWith('/K-movie') || path.startsWith('/K-MOVIE')) {
+                return '/K-movie';
+            } else if (path.startsWith('/K-Culture') || path.startsWith('/K-CULTURE')) {
+                return '/K-Culture';
+            } else {
+                // 기본 경로
+                return '/Korean/game';
+            }
+        }
+        
         // 게스트로 시작 (기존 게스트 ID 우선 사용)
         function startAsGuest() {
             // localStorage에서 기존 게스트 ID 확인
             let guestId = localStorage.getItem('crossword_guest_id');
             
+            // 테마별 게임 경로 가져오기
+            const gamePath = getThemeGamePath();
+            
             if (guestId) {
                 // 기존 게스트 - URL 파라미터 없이 이동 (localStorage에서 읽음)
                 console.log('기존 게스트 ID 사용:', guestId);
                 localStorage.setItem('crossword_user_type', 'guest');
-                window.location.href = '/Korean/game';
+                window.location.href = gamePath;
             } else {
                 // 최초 게스트 - 새 ID 생성 후 URL 파라미터와 함께 이동
                 if (window.crypto && window.crypto.randomUUID) {
@@ -365,7 +387,7 @@
                 console.log('새 게스트 ID 생성:', guestId);
                 
                 // 최초 진입 시에만 URL 파라미터 사용
-                window.location.href = '/Korean/game?guest_id=' + guestId;
+                window.location.href = gamePath + '?guest_id=' + guestId;
             }
         }
         
@@ -435,7 +457,8 @@
                     showAlert('loginAlert', '로그인 성공! 게임을 시작합니다.', 'success');
                     
                     setTimeout(() => {
-                        window.location.href = '/Korean/game';
+                        const gamePath = getThemeGamePath();
+                        window.location.href = gamePath;
                     }, 1000);
                 } else {
                     showAlert('loginAlert', data.message || '로그인에 실패했습니다.', 'danger');
@@ -481,7 +504,8 @@
                     showAlert('registerAlert', '회원가입 성공! 게임을 시작합니다.', 'success');
                     
                     setTimeout(() => {
-                        window.location.href = '/Korean/game';
+                        const gamePath = getThemeGamePath();
+                        window.location.href = gamePath;
                     }, 1000);
                 } else {
                     showAlert('registerAlert', data.message || '회원가입에 실패했습니다.', 'danger');
@@ -498,7 +522,8 @@
         
         // 게임 시작 (인증된 사용자용)
         function startGame() {
-            window.location.href = '/Korean/game';
+            const gamePath = getThemeGamePath();
+            window.location.href = gamePath;
         }
         
         // 로그아웃 기능

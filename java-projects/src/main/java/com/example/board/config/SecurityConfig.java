@@ -25,10 +25,10 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/", "/index.html", "/puzzle", "/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
-                .requestMatchers("/Korean/**", "/K-pop/**", "/K-movie/**", "/K-Drama/**", "/K-Culture/**").permitAll()
+                .requestMatchers("/", "/index.html", "/game.html", "/puzzle", "/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
+                .requestMatchers("/Korean/**", "/K-pop/**", "/K-POP/**", "/K-movie/**", "/K-MOVIE/**", "/K-Drama/**", "/K-DRAMA/**", "/K-Culture/**", "/K-CULTURE/**").permitAll()
                 .requestMatchers("/board/**").permitAll()
-                .requestMatchers("/api/puzzle/**", "/api/auth/**").permitAll()
+                .requestMatchers("/api/puzzle/**", "/api/auth/**", "/api/theme-puzzle/**").permitAll()
                 .requestMatchers("/admin/api/**").permitAll() // 관리자 API는 인증 제외 (페이지는 인증)
                 .requestMatchers("/admin/templates/create").permitAll() // 템플릿 생성 페이지는 인증 제외
                 .requestMatchers("/login").permitAll()

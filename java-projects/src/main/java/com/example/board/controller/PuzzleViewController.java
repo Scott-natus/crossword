@@ -1,14 +1,10 @@
 package com.example.board.controller;
 
-import com.example.board.service.DailyPuzzleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-
-import java.time.LocalDate;
-import java.util.Map;
 
 /**
  * 퍼즐게임 화면 라우팅 컨트롤러
@@ -19,7 +15,8 @@ import java.util.Map;
 @Slf4j
 public class PuzzleViewController {
     
-    private final DailyPuzzleService dailyPuzzleService;
+    // 향후 퍼즐 데이터 사전 로드가 필요할 경우를 위해 유지
+    // private final DailyPuzzleService dailyPuzzleService;
     
     /**
      * 퍼즐게임 화면들 - 모두 static/index.html 서빙
@@ -29,58 +26,58 @@ public class PuzzleViewController {
         return "forward:/game.html";
     }
     
-    @GetMapping("/K-pop")
-    public String kpop(Model model) {
-        return loadThemePuzzle("K-POP", model);
+    @GetMapping({"/K-pop", "/K-POP"})
+    public String kpop(Model model, 
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String guestId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String game) {
+        return loadThemePuzzle("K-POP", model, guestId, game);
     }
     
-    @GetMapping("/K-movie")
-    public String kmovie(Model model) {
-        return loadThemePuzzle("K-MOVIE", model);
+    @GetMapping({"/K-movie", "/K-MOVIE"})
+    public String kmovie(Model model,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String guestId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String game) {
+        return loadThemePuzzle("K-MOVIE", model, guestId, game);
     }
     
-    @GetMapping("/K-Drama")
-    public String kdrama(Model model) {
-        return loadThemePuzzle("K-DRAMA", model);
+    @GetMapping({"/K-Drama", "/K-DRAMA"})
+    public String kdrama(Model model,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String guestId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String game) {
+        return loadThemePuzzle("K-DRAMA", model, guestId, game);
     }
     
-    @GetMapping("/K-Culture")
-    public String kculture(Model model) {
-        return loadThemePuzzle("K-CULTURE", model);
+    @GetMapping({"/K-Culture", "/K-CULTURE"})
+    public String kculture(Model model,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String guestId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String game) {
+        return loadThemePuzzle("K-CULTURE", model, guestId, game);
     }
     
     /**
      * 테마별 퍼즐 로드 공통 메서드
+     * 바로 게임 화면으로 이동하여 오늘의 퍼즐 게임 시작
      */
-    private String loadThemePuzzle(String theme, Model model) {
+    private String loadThemePuzzle(String theme, Model model, 
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String guestId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String game) {
         try {
-            log.info("테마별 퍼즐 로드 시작: {}", theme);
+            log.info("테마별 퍼즐 게임 시작: {} - guestId: {}", theme, guestId);
             
-            // 오늘 날짜의 퍼즐 조회
-            LocalDate today = LocalDate.now();
-            Map<String, Object> puzzleData = dailyPuzzleService.getTodayPuzzle(theme, today);
-            
-            if (puzzleData == null || !Boolean.TRUE.equals(puzzleData.get("success"))) {
-                log.warn("오늘 날짜의 {} 테마 퍼즐이 없거나 생성에 실패했습니다.", theme);
-                model.addAttribute("theme", theme);
-                model.addAttribute("error", "오늘의 퍼즐이 아직 준비되지 않았습니다.");
-                return "forward:/index.html";
+            // 테마 정보 모델에 추가 (게임 화면에서 사용)
+            model.addAttribute("theme", theme);
+            if (guestId != null) {
+                model.addAttribute("guestId", guestId);
             }
             
-            // 퍼즐 데이터를 모델에 추가
-            model.addAttribute("theme", theme);
-            model.addAttribute("puzzleDate", today);
-            model.addAttribute("puzzleData", puzzleData);
-            
-            log.info("테마별 퍼즐 로드 완료: {} - 퍼즐 ID: {}", theme, puzzleData.get("puzzleId"));
-            
-            return "forward:/index.html";
+            // 바로 게임 화면으로 이동
+            return "forward:/game.html";
             
         } catch (Exception e) {
-            log.error("테마별 퍼즐 로드 중 오류 발생: {} - {}", theme, e.getMessage(), e);
+            log.error("테마별 퍼즐 화면 로드 중 오류 발생: {} - {}", theme, e.getMessage(), e);
             model.addAttribute("theme", theme);
-            model.addAttribute("error", "퍼즐을 불러오는 중 오류가 발생했습니다: " + e.getMessage());
-            return "forward:/index.html";
+            model.addAttribute("error", "화면을 불러오는 중 오류가 발생했습니다: " + e.getMessage());
+            return "forward:/game.html"; // 오류 발생 시에도 게임 화면으로 이동
         }
     }
 }

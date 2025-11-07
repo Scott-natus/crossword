@@ -218,6 +218,13 @@ public class PuzzleGameController {
             
             // 게임 데이터 업데이트
             UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
+            
+            // 퍼즐 데이터가 없으면 게임 상태만 저장 (테마별 퍼즐의 경우)
+            if (game.getCurrentPuzzleData() == null) {
+                logger.warn("퍼즐 데이터가 없는 상태에서 정답 확인 - gameId: {}, wordId: {}", game.getId(), wordId);
+                // 게임 상태만 업데이트 (퍼즐 데이터는 나중에 저장됨)
+            }
+            
             Map<String, Object> response = new HashMap<>();
             
             if (isCorrect) {
@@ -819,13 +826,21 @@ public class PuzzleGameController {
             Map<String, Object> gameState = game.getCurrentGameState();
             
             if (puzzleData != null && gameState != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> template = (Map<String, Object>) puzzleData.get("template");
+                
+                if (template == null) {
+                    System.out.println("템플릿 데이터가 없음 - 새 퍼즐 생성");
+                    return createNewPuzzle(game, level);
+                }
+                
                 System.out.println("기존 퍼즐 데이터 복원 성공");
                 
                 // 레벨 클리어 횟수 조회
                 Long clearCount = puzzleGameRecordService.getClearCountByUserAndLevel(game.getUserId(), level.getLevel());
                 
                 Map<String, Object> result = new HashMap<>();
-                result.put("template", puzzleData.get("template"));
+                result.put("template", template);
                 result.put("level", level);
                 result.put("game", game);
                 result.put("game_state", gameState);
@@ -863,9 +878,15 @@ public class PuzzleGameController {
                 throw new RuntimeException("퍼즐 생성에 실패했습니다.");
             }
             
+            @SuppressWarnings("unchecked")
+            Map<String, Object> template = (Map<String, Object>) extractionResult.get("template");
+            if (template == null) {
+                throw new RuntimeException("템플릿 데이터가 없습니다.");
+            }
+            
             // 퍼즐 데이터와 게임 상태 분리 저장
             Map<String, Object> puzzleData = new HashMap<>();
-            puzzleData.put("template", extractionResult.get("template"));
+            puzzleData.put("template", template);
             puzzleData.put("extracted_words", extractionResult.get("extracted_words"));
             
             Map<String, Object> gameState = new HashMap<>();
@@ -886,7 +907,7 @@ public class PuzzleGameController {
             Long clearCount = puzzleGameRecordService.getClearCountByUserAndLevel(game.getUserId(), level.getLevel());
             
             Map<String, Object> result = new HashMap<>();
-            result.put("template", extractionResult.get("template"));
+            result.put("template", template);
             result.put("level", level);
             result.put("game", game);
             result.put("game_state", gameState);
@@ -927,36 +948,59 @@ public class PuzzleGameController {
     private void updateGameStateWithCorrectAnswer(UserPuzzleGame game, Long wordId, String answer) {
         try {
             Map<String, Object> gameState = game.getCurrentGameState();
-            if (gameState != null) {
-                @SuppressWarnings("unchecked")
-                List<Long> answeredWords = (List<Long>) gameState.get("answered_words");
-                if (answeredWords == null) {
-                    answeredWords = new ArrayList<>();
-                }
-                
-                @SuppressWarnings("unchecked")
-                Map<String, String> answeredWordsWithAnswers = (Map<String, String>) gameState.get("answered_words_with_answers");
-                if (answeredWordsWithAnswers == null) {
-                    answeredWordsWithAnswers = new HashMap<>();
-                }
-                
-                // 정답 단어 추가
-                if (!answeredWords.contains(wordId)) {
-                    answeredWords.add(wordId);
-                }
-                answeredWordsWithAnswers.put(wordId.toString(), answer);
-                
-                gameState.put("answered_words", answeredWords);
-                gameState.put("answered_words_with_answers", answeredWordsWithAnswers);
-                
-                // 게임 상태 업데이트
-                game.setCurrentGameState(gameState);
-                userPuzzleGameService.save(game);
-                
-                // 게임 상태 업데이트 완료
+            
+            // 게임 상태가 없으면 초기화
+            if (gameState == null) {
+                gameState = new HashMap<>();
+                gameState.put("answered_words", new ArrayList<Long>());
+                gameState.put("answered_words_with_answers", new HashMap<String, String>());
+                gameState.put("wrong_answers", new ArrayList<Long>());
+                gameState.put("hints_used", new ArrayList<Long>());
+                gameState.put("additional_hints", new ArrayList<Long>());
+                gameState.put("started_at", java.time.LocalDateTime.now().toString());
             }
+            
+            @SuppressWarnings("unchecked")
+            List<Long> answeredWords = (List<Long>) gameState.get("answered_words");
+            if (answeredWords == null) {
+                answeredWords = new ArrayList<>();
+            }
+            
+            @SuppressWarnings("unchecked")
+            Map<String, String> answeredWordsWithAnswers = (Map<String, String>) gameState.get("answered_words_with_answers");
+            if (answeredWordsWithAnswers == null) {
+                answeredWordsWithAnswers = new HashMap<>();
+            }
+            
+            // 정답 단어 추가
+            if (!answeredWords.contains(wordId)) {
+                answeredWords.add(wordId);
+            }
+            answeredWordsWithAnswers.put(wordId.toString(), answer);
+            
+            gameState.put("answered_words", answeredWords);
+            gameState.put("answered_words_with_answers", answeredWordsWithAnswers);
+            
+            // 퍼즐 데이터가 없으면 현재 게임의 퍼즐 데이터 유지 (테마별 퍼즐 포함)
+            if (game.getCurrentPuzzleData() == null) {
+                logger.warn("퍼즐 데이터가 없습니다. 게임 상태만 저장합니다. - gameId: {}", game.getId());
+            } else {
+                // 활성 퍼즐이 있는지 확인하고 없으면 설정
+                if (!game.hasActivePuzzle()) {
+                    game.setHasActivePuzzle(true);
+                    game.setCurrentPuzzleStartedAt(java.time.LocalDateTime.now());
+                }
+            }
+            
+            // 게임 상태 업데이트
+            game.setCurrentGameState(gameState);
+            userPuzzleGameService.save(game);
+            
+            logger.info("게임 상태 업데이트 완료 - gameId: {}, wordId: {}, answeredWords: {}", 
+                game.getId(), wordId, answeredWords.size());
+            
         } catch (Exception e) {
-            System.err.println("게임 상태 업데이트 중 오류: " + e.getMessage());
+            logger.error("게임 상태 업데이트 중 오류: {}", e.getMessage(), e);
             e.printStackTrace();
         }
     }
