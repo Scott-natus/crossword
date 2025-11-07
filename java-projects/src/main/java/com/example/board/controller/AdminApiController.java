@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 관리자 API 컨트롤러
@@ -33,6 +34,10 @@ public class AdminApiController {
     private final com.example.board.service.DatabaseSyncService databaseSyncService;
     private final com.example.board.service.DailyPuzzleService dailyPuzzleService;
     private final com.example.board.repository.ThemeDailyPuzzleRepository themeDailyPuzzleRepository;
+    private final com.example.board.service.ThemePuzzleInitializerService themePuzzleInitializerService;
+    private final com.example.board.service.ThemePuzzleEditService themePuzzleEditService;
+    private final com.example.board.service.DailyPuzzleSchedulerService dailyPuzzleSchedulerService;
+    private final com.example.board.repository.UserPuzzleCompletionRepository userPuzzleCompletionRepository;
     
     /**
      * 시스템 통계 조회
@@ -346,21 +351,13 @@ public class AdminApiController {
     }
     
     /**
-     * 테마별 퍼즐 목록 조회 (테마별 그룹화)
+     * 테마별 퍼즐 목록 조회 (테마별 그룹화, 각 테마별 최신 5개만)
      */
     @GetMapping("/theme-puzzles")
     public ResponseEntity<Map<String, Object>> getThemePuzzles(
-            @RequestParam(required = false) String theme,
-            @RequestParam(required = false) Integer days) {
+            @RequestParam(required = false) String theme) {
         try {
-            log.info("테마별 퍼즐 목록 조회 요청 - 테마: {}, 일수: {}", theme, days);
-            
-            java.time.LocalDate startDate = java.time.LocalDate.now();
-            if (days != null && days > 0) {
-                startDate = startDate.minusDays(days);
-            } else {
-                startDate = startDate.minusDays(30); // 기본 30일
-            }
+            log.info("테마별 퍼즐 목록 조회 요청 - 테마: {} (각 테마별 최신 5개)", theme);
             
             java.util.List<String> themes = java.util.Arrays.asList("K-POP", "K-DRAMA", "K-MOVIE", "K-CULTURE");
             java.util.Map<String, Object> result = new HashMap<>();
@@ -371,8 +368,9 @@ public class AdminApiController {
                     continue;
                 }
                 
+                // 각 테마별로 최신 5개만 조회
                 java.util.List<com.example.board.entity.ThemeDailyPuzzle> puzzles = themeDailyPuzzleRepository
-                    .findByThemeAndPuzzleDateAfterOrderByPuzzleDateDesc(t, startDate);
+                    .findTop5ByThemeOrderByPuzzleDateDesc(t);
                 
                 java.util.List<java.util.Map<String, Object>> puzzleList = new java.util.ArrayList<>();
                 for (com.example.board.entity.ThemeDailyPuzzle puzzle : puzzles) {
@@ -401,14 +399,13 @@ public class AdminApiController {
                 
                 java.util.Map<String, Object> themeData = new HashMap<>();
                 themeData.put("theme", t);
-                themeData.put("puzzleCount", puzzles.size());
+                themeData.put("puzzleCount", puzzleList.size());
                 themeData.put("puzzles", puzzleList);
                 themePuzzleList.add(themeData);
             }
             
             result.put("success", true);
             result.put("data", themePuzzleList);
-            result.put("startDate", startDate.toString());
             
             return ResponseEntity.ok(result);
             
@@ -466,6 +463,397 @@ public class AdminApiController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "퍼즐 재생성 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 테마별 퍼즐 초기화 (3일치 미리 생성)
+     */
+    @PostMapping("/theme-puzzles/initialize")
+    public ResponseEntity<Map<String, Object>> initializeThemePuzzles(
+            @RequestParam(required = false) Integer days) {
+        try {
+            log.info("테마별 퍼즐 초기화 요청 - 일수: {}", days);
+            
+            int targetDays = (days != null && days > 0) ? days : 3; // 기본값 3일
+            
+            Map<String, Object> result = themePuzzleInitializerService.initializePuzzles(targetDays);
+            result.put("success", true);
+            result.put("message", "퍼즐 초기화가 완료되었습니다.");
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("테마별 퍼즐 초기화 중 오류 발생: {}", e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "퍼즐 초기화 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 특정 테마의 퍼즐 초기화
+     */
+    @PostMapping("/theme-puzzles/{theme}/initialize")
+    public ResponseEntity<Map<String, Object>> initializeThemePuzzle(
+            @PathVariable String theme,
+            @RequestParam(required = false) Integer days) {
+        try {
+            log.info("특정 테마 퍼즐 초기화 요청 - 테마: {}, 일수: {}", theme, days);
+            
+            int targetDays = (days != null && days > 0) ? days : 3; // 기본값 3일
+            
+            Map<String, Object> result = themePuzzleInitializerService.initializeThemePuzzles(theme, targetDays);
+            result.put("success", true);
+            result.put("message", "퍼즐 초기화가 완료되었습니다.");
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("특정 테마 퍼즐 초기화 중 오류 발생: 테마={}, error={}", theme, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "퍼즐 초기화 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 퍼즐 초기화 상태 확인
+     */
+    @GetMapping("/theme-puzzles/initialize/status")
+    public ResponseEntity<Map<String, Object>> getInitializationStatus(
+            @RequestParam(required = false) Integer days) {
+        try {
+            log.info("퍼즐 초기화 상태 확인 요청 - 일수: {}", days);
+            
+            int targetDays = (days != null && days > 0) ? days : 3; // 기본값 3일
+            
+            Map<String, Object> result = themePuzzleInitializerService.getInitializationStatus(targetDays);
+            result.put("success", true);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("퍼즐 초기화 상태 확인 중 오류 발생: {}", e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "퍼즐 초기화 상태 확인 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 퍼즐 상세 정보 조회
+     */
+    @GetMapping("/theme-puzzles/{id}/detail")
+    public ResponseEntity<Map<String, Object>> getPuzzleDetail(@PathVariable Integer id) {
+        try {
+            log.info("퍼즐 상세 정보 조회 요청 - ID: {}", id);
+            
+            Map<String, Object> detail = themePuzzleEditService.getPuzzleDetail(id);
+            detail.put("success", true);
+            
+            return ResponseEntity.ok(detail);
+            
+        } catch (Exception e) {
+            log.error("퍼즐 상세 정보 조회 중 오류 발생: ID={}, error={}", id, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "퍼즐 상세 정보 조회 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 템플릿 수정
+     */
+    @PutMapping("/theme-puzzles/{id}/template")
+    public ResponseEntity<Map<String, Object>> updateTemplate(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            log.info("템플릿 수정 요청 - 퍼즐 ID: {}, 요청: {}", id, request);
+            
+            Integer templateId = (Integer) request.get("templateId");
+            Boolean regenerateWords = request.containsKey("regenerateWords") 
+                ? (Boolean) request.get("regenerateWords") 
+                : false;
+            
+            if (templateId == null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "템플릿 ID가 필요합니다.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            Map<String, Object> result = themePuzzleEditService.updateTemplate(id, templateId, regenerateWords);
+            result.put("success", true);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("템플릿 수정 중 오류 발생: 퍼즐 ID={}, error={}", id, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "템플릿 수정 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 단어 수정
+     */
+    @PutMapping("/theme-puzzles/{id}/word/{wordIndex}")
+    public ResponseEntity<Map<String, Object>> updateWord(
+            @PathVariable Integer id,
+            @PathVariable Integer wordIndex,
+            @RequestBody Map<String, Object> request) {
+        try {
+            log.info("단어 수정 요청 - 퍼즐 ID: {}, 단어 인덱스: {}, 요청: {}", id, wordIndex, request);
+            
+            String newWord = (String) request.get("word");
+            String newHint = request.containsKey("hint") ? (String) request.get("hint") : null;
+            
+            if (newWord == null || newWord.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "단어가 필요합니다.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            Map<String, Object> result = themePuzzleEditService.updateWord(id, wordIndex, newWord, newHint);
+            result.put("success", true);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("단어 수정 중 오류 발생: 퍼즐 ID={}, 단어 인덱스={}, error={}", id, wordIndex, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "단어 수정 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 단어별 힌트 조회 (pz_hints 테이블에서 조회)
+     */
+    @GetMapping("/theme-puzzles/{id}/word-hints")
+    public ResponseEntity<Map<String, Object>> getWordHints(
+            @PathVariable Integer id,
+            @RequestParam Integer wordId) {
+        try {
+            log.info("단어별 힌트 조회 요청 - 퍼즐 ID: {}, 단어 ID: {}", id, wordId);
+            
+            List<com.example.board.entity.PzHint> hints = pzHintService.getHintsByWordId(wordId);
+            
+            List<Map<String, Object>> hintsList = new java.util.ArrayList<>();
+            for (com.example.board.entity.PzHint hint : hints) {
+                Map<String, Object> hintMap = new HashMap<>();
+                hintMap.put("id", hint.getId());
+                hintMap.put("hint_text", hint.getHintText());
+                hintMap.put("difficulty", hint.getDifficulty());
+                hintMap.put("is_primary", hint.getIsPrimary());
+                hintsList.add(hintMap);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("hints", hintsList);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("단어별 힌트 조회 중 오류 발생: 퍼즐 ID={}, 단어 ID={}, error={}", id, wordId, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "힌트 조회 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 힌트 수정 (여러 힌트를 한 번에 수정)
+     */
+    @PutMapping("/theme-puzzles/{id}/hints")
+    public ResponseEntity<Map<String, Object>> updateHints(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            log.info("힌트 수정 요청 - 퍼즐 ID: {}, 요청: {}", id, request);
+            
+            String word = (String) request.get("word");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hints = (List<Map<String, Object>>) request.get("hints");
+            
+            if (word == null || word.isEmpty() || hints == null || hints.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "단어와 힌트 목록이 필요합니다.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            Map<String, Object> result = themePuzzleEditService.updateHints(id, word, hints);
+            result.put("success", true);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("힌트 수정 중 오류 발생: 퍼즐 ID={}, error={}", id, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "힌트 수정 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 힌트 수정 (단일 힌트 - 기존 호환성 유지)
+     */
+    @PutMapping("/theme-puzzles/{id}/hint")
+    public ResponseEntity<Map<String, Object>> updateHint(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            log.info("힌트 수정 요청 - 퍼즐 ID: {}, 요청: {}", id, request);
+            
+            String word = (String) request.get("word");
+            String newHint = (String) request.get("hint");
+            
+            if (word == null || word.isEmpty() || newHint == null || newHint.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "단어와 힌트가 필요합니다.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            Map<String, Object> result = themePuzzleEditService.updateHint(id, word, newHint);
+            result.put("success", true);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("힌트 수정 중 오류 발생: 퍼즐 ID={}, error={}", id, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "힌트 수정 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 테마별 퍼즐 통계 조회
+     */
+    @GetMapping("/theme-puzzles/{id}/stats")
+    public ResponseEntity<Map<String, Object>> getPuzzleStats(@PathVariable Integer id) {
+        try {
+            log.info("퍼즐 통계 조회 요청 - 퍼즐 ID: {}", id);
+            
+            Optional<com.example.board.entity.ThemeDailyPuzzle> puzzleOpt = themeDailyPuzzleRepository.findById(id);
+            if (puzzleOpt.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "퍼즐을 찾을 수 없습니다.");
+                return ResponseEntity.status(404).body(response);
+            }
+            
+            com.example.board.entity.ThemeDailyPuzzle puzzle = puzzleOpt.get();
+            String theme = puzzle.getTheme();
+            java.time.LocalDate puzzleDate = puzzle.getPuzzleDate();
+            
+            // 완료 기록 통계
+            long participantCount = userPuzzleCompletionRepository.countByThemeAndPuzzleDate(theme, puzzleDate);
+            Double avgCompletionTime = userPuzzleCompletionRepository.findAverageCompletionTimeByThemeAndDate(theme, puzzleDate);
+            Integer bestTime = userPuzzleCompletionRepository.findBestCompletionTimeByThemeAndDate(theme, puzzleDate);
+            
+            // 완료 기록 목록 조회 (평균 힌트 사용, 평균 오답 횟수 계산용)
+            List<com.example.board.entity.UserPuzzleCompletion> completions = 
+                userPuzzleCompletionRepository.findByThemeAndPuzzleDateOrderByCompletionTimeAsc(theme, puzzleDate);
+            
+            double avgHintsUsed = 0;
+            double avgWrongAttempts = 0;
+            if (!completions.isEmpty()) {
+                int totalHints = completions.stream().mapToInt(c -> c.getHintsUsed() != null ? c.getHintsUsed() : 0).sum();
+                int totalWrong = completions.stream().mapToInt(c -> c.getWrongAttempts() != null ? c.getWrongAttempts() : 0).sum();
+                avgHintsUsed = (double) totalHints / completions.size();
+                avgWrongAttempts = (double) totalWrong / completions.size();
+            }
+            
+            // 통계 데이터 구성
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("theme", theme);
+            stats.put("puzzleDate", puzzleDate.toString());
+            stats.put("participantCount", participantCount);
+            stats.put("avgCompletionTime", avgCompletionTime != null ? Math.round(avgCompletionTime) : 0);
+            stats.put("bestTime", bestTime != null ? bestTime : 0);
+            stats.put("avgHintsUsed", Math.round(avgHintsUsed * 10) / 10.0);
+            stats.put("avgWrongAttempts", Math.round(avgWrongAttempts * 10) / 10.0);
+            stats.put("completionRate", 0); // 완료율은 전체 접근자 수가 없어서 일단 0으로 표시
+            
+            // SNS 공유 통계 (현재는 로그만 있으므로 0으로 표시)
+            stats.put("shareCount", 0);
+            stats.put("facebookShares", 0);
+            stats.put("twitterShares", 0);
+            stats.put("kakaoShares", 0);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", stats);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("퍼즐 통계 조회 중 오류 발생: 퍼즐 ID={}, error={}", id, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "퍼즐 통계 조회 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 퍼즐 생성 상태 모니터링 (3일치)
+     */
+    @GetMapping("/theme-puzzles/monitor")
+    public ResponseEntity<Map<String, Object>> getPuzzleGenerationMonitor() {
+        try {
+            log.info("퍼즐 생성 상태 모니터링 요청");
+            
+            Map<String, Object> result = dailyPuzzleSchedulerService.getThreeDayStatus();
+            result.put("success", true);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("퍼즐 생성 상태 모니터링 중 오류 발생: {}", e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "퍼즐 생성 상태 모니터링 중 오류가 발생했습니다: " + e.getMessage());
             
             return ResponseEntity.internalServerError().body(response);
         }

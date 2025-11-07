@@ -37,9 +37,11 @@ public class UserPuzzleCompletion {
     private Integer completionTime;
     
     @Column(name = "hints_used", nullable = false)
+    @Builder.Default
     private Integer hintsUsed = 0;
     
     @Column(name = "wrong_attempts", nullable = false)
+    @Builder.Default
     private Integer wrongAttempts = 0;
     
     @Column(name = "completed_at")

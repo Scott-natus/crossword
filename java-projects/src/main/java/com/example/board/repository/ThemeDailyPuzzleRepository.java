@@ -16,7 +16,7 @@ import java.util.Optional;
  * 테마별 일일 퍼즐 레포지토리
  */
 @Repository
-public interface ThemeDailyPuzzleRepository extends JpaRepository<ThemeDailyPuzzle, Long> {
+public interface ThemeDailyPuzzleRepository extends JpaRepository<ThemeDailyPuzzle, Integer> {
     
     /**
      * 테마와 날짜로 활성 퍼즐 조회
@@ -32,6 +32,11 @@ public interface ThemeDailyPuzzleRepository extends JpaRepository<ThemeDailyPuzz
      * 테마별 퍼즐 목록 조회
      */
     List<ThemeDailyPuzzle> findByThemeOrderByPuzzleDateDesc(String theme);
+    
+    /**
+     * 테마별 최신 5개 퍼즐 조회
+     */
+    List<ThemeDailyPuzzle> findTop5ByThemeOrderByPuzzleDateDesc(String theme);
     
     /**
      * 특정 날짜 이후의 퍼즐 목록 조회
