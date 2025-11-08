@@ -13,7 +13,7 @@ import java.util.List;
  * 사용자 퍼즐 완료 기록 레포지토리
  */
 @Repository
-public interface UserPuzzleCompletionRepository extends JpaRepository<UserPuzzleCompletion, Long> {
+public interface UserPuzzleCompletionRepository extends JpaRepository<UserPuzzleCompletion, Integer> {
     
     /**
      * 테마와 날짜로 완료 기록 조회 (완료 시간 순)

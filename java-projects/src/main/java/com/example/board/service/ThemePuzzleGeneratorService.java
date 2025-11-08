@@ -269,7 +269,7 @@ public class ThemePuzzleGeneratorService {
     /**
      * 추출된 단어들의 힌트 조회 (템플릿 기반)
      */
-    private List<Map<String, Object>> getHintsForExtractedWords(List<Map<String, Object>> extractedWords) {
+    public List<Map<String, Object>> getHintsForExtractedWords(List<Map<String, Object>> extractedWords) {
         try {
             log.info("추출된 단어별 힌트 조회 시작: {}개 단어", extractedWords.size());
             

@@ -40,6 +40,9 @@ public class GridTemplateController {
     @Autowired
     private TemplateValidationService templateValidationService;
 
+    @Autowired
+    private com.example.board.service.TemplateGenerationService templateGenerationService;
+
     /**
      * 그리드 템플릿 관리 API 연결 테스트
      */
@@ -421,6 +424,96 @@ public class GridTemplateController {
             errorResponse.put("success", false);
             errorResponse.put("error", "그리드 렌더링 중 오류가 발생했습니다: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * 템플릿 자동 생성 (템플릿 생성2)
+     * 레벨 조건(단어 개수, 교차점 개수)에 맞는 그리드를 자동으로 생성
+     * 
+     * @param request 레벨 ID, 단어 개수, 교차점 개수
+     * @return 생성된 템플릿 데이터
+     */
+    @PostMapping("/generate-template")
+    public ResponseEntity<Map<String, Object>> generateTemplate(@RequestBody Map<String, Object> request) {
+        try {
+            log.info("템플릿 자동 생성 요청: {}", request);
+            
+            Integer levelId = (Integer) request.get("levelId");
+            Integer wordCount = (Integer) request.get("wordCount");
+            Integer intersectionCount = (Integer) request.get("intersectionCount");
+            
+            if (levelId == null || wordCount == null || intersectionCount == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "필수 파라미터가 누락되었습니다: levelId, wordCount, intersectionCount");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // 템플릿 자동 생성 알고리즘 실행
+            Map<String, Object> generatedTemplate = templateGenerationService.generateTemplate(
+                wordCount, intersectionCount);
+            
+            // 그리드를 JSON 문자열로 변환
+            int[][] gridPattern = (int[][]) generatedTemplate.get("gridPattern");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> wordPositions = (List<Map<String, Object>>) generatedTemplate.get("wordPositions");
+            
+            Map<String, Object> templateData = new HashMap<>();
+            templateData.put("gridWidth", generatedTemplate.get("gridWidth"));
+            templateData.put("gridHeight", generatedTemplate.get("gridHeight"));
+            templateData.put("gridPattern", convertGridToJson(gridPattern));
+            templateData.put("wordPositions", convertWordPositionsToJson(wordPositions));
+            templateData.put("wordCount", generatedTemplate.get("wordCount"));
+            templateData.put("intersectionCount", generatedTemplate.get("intersectionCount"));
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "템플릿이 성공적으로 생성되었습니다.");
+            response.put("data", templateData);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("템플릿 자동 생성 중 오류 발생", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "템플릿 생성 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+    
+    /**
+     * 그리드 배열을 JSON 문자열로 변환
+     */
+    private String convertGridToJson(int[][] grid) {
+        try {
+            List<List<Integer>> gridList = new ArrayList<>();
+            for (int[] row : grid) {
+                List<Integer> rowList = new ArrayList<>();
+                for (int cell : row) {
+                    rowList.add(cell);
+                }
+                gridList.add(rowList);
+            }
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.writeValueAsString(gridList);
+        } catch (Exception e) {
+            log.error("그리드 JSON 변환 오류", e);
+            return "[]";
+        }
+    }
+    
+    /**
+     * 단어 위치 리스트를 JSON 문자열로 변환
+     */
+    private String convertWordPositionsToJson(List<Map<String, Object>> wordPositions) {
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.writeValueAsString(wordPositions);
+        } catch (Exception e) {
+            log.error("단어 위치 JSON 변환 오류", e);
+            return "[]";
         }
     }
 }

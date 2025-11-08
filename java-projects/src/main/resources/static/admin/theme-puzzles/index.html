@@ -270,48 +270,98 @@
         </div>
     </div>
 
-    <!-- 단어 수정 모달 (단어정제 기능 포함) -->
+    <!-- 단어 교체 모달 (단어 검색 및 재미나이 생성 포함) -->
     <div class="modal fade" id="wordEditModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
                     <h5 class="modal-title">
-                        <i class="fas fa-edit me-2"></i>단어 수정 및 힌트 관리
+                        <i class="fas fa-exchange-alt me-2"></i>단어 교체
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- 단어 정보 섹션 -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label for="wordInput" class="form-label"><strong>단어</strong></label>
-                            <input type="text" class="form-control" id="wordInput" required>
+                    <!-- 현재 단어 정보 -->
+                    <div class="alert alert-info mb-3">
+                        <strong>현재 단어:</strong> <span id="currentWordDisplay"></span>
+                    </div>
+                    
+                    <!-- 탭 메뉴 -->
+                    <ul class="nav nav-tabs mb-3" id="wordReplaceTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="search-tab" data-bs-toggle="tab" data-bs-target="#search-pane" type="button" role="tab">
+                                <i class="fas fa-search me-1"></i>단어 검색
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="generate-tab" data-bs-toggle="tab" data-bs-target="#generate-pane" type="button" role="tab">
+                                <i class="fas fa-magic me-1"></i>재미나이로 생성
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- 탭 콘텐츠 -->
+                    <div class="tab-content" id="wordReplaceTabContent">
+                        <!-- 단어 검색 탭 -->
+                        <div class="tab-pane fade show active" id="search-pane" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="wordSearchInput" class="form-label"><strong>단어 검색</strong></label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="wordSearchInput" placeholder="단어를 입력하세요...">
+                                    <button class="btn btn-primary" type="button" id="wordSearchBtn">
+                                        <i class="fas fa-search me-1"></i>검색
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="wordSearchResults" class="mt-3">
+                                <!-- 검색 결과가 여기에 표시됩니다 -->
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><strong>단어 ID</strong></label>
-                            <input type="text" class="form-control" id="wordIdInput" readonly>
+                        
+                        <!-- 재미나이 생성 탭 -->
+                        <div class="tab-pane fade" id="generate-pane" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="geminiPromptInput" class="form-label"><strong>프롬프트 입력</strong></label>
+                                <textarea class="form-control" id="geminiPromptInput" rows="3" placeholder="예: K-POP 아이돌 그룹 이름, K-DRAMA 드라마 제목 등..."></textarea>
+                                <small class="form-text text-muted">프롬프트를 입력하면 재미나이 API가 단어와 힌트를 생성합니다.</small>
+                            </div>
+                            <button class="btn btn-primary" type="button" id="generateWordBtn">
+                                <i class="fas fa-magic me-1"></i>단어 생성
+                            </button>
+                            <div id="geminiResultContainer" class="mt-3" style="display: none;">
+                                <!-- 재미나이 생성 결과가 여기에 표시됩니다 -->
+                            </div>
                         </div>
                     </div>
-
-                    <!-- 힌트 관리 섹션 -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6><strong>힌트 관리</strong></h6>
-                                <button type="button" class="btn btn-success btn-sm" id="addHintFieldBtn">
-                                    <i class="fas fa-plus me-1"></i>힌트 추가
-                                </button>
+                    
+                    <!-- 선택된 단어 정보 -->
+                    <div id="selectedWordInfo" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <strong>선택된 단어 정보</strong>
                             </div>
-                            <div id="wordHintsContainer">
-                                <!-- 힌트 필드들이 여기에 동적으로 추가됩니다 -->
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>단어:</strong> <span id="selectedWordText"></span></p>
+                                        <p><strong>카테고리:</strong> <span id="selectedWordCategory"></span></p>
+                                        <p><strong>난이도:</strong> <span id="selectedWordDifficulty"></span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>힌트:</strong></p>
+                                        <ul id="selectedWordHints" class="list-unstyled">
+                                            <!-- 힌트 목록 -->
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-primary" id="confirmWordEditBtn">
-                        <i class="fas fa-check me-2"></i>저장
+                    <button type="button" class="btn btn-primary" id="confirmWordReplaceBtn" disabled>
+                        <i class="fas fa-check me-2"></i>단어 교체
                     </button>
                 </div>
             </div>
@@ -1180,32 +1230,290 @@
             }
         });
 
-        // 단어 수정 모달 열기
+        // 단어 교체 모달 관련 변수
+        let selectedWordId = null;
+        let selectedWordData = null;
+        
+        // 단어 교체 모달 열기
         function openWordEditModal(wordIndex) {
             currentWordIndex = wordIndex;
             const word = currentPuzzleData.words[wordIndex];
             
-            document.getElementById('wordInput').value = word.word || '';
-            document.getElementById('hintInput').value = word.hint || '';
+            // 현재 단어 정보 표시
+            document.getElementById('currentWordDisplay').textContent = word.word || '';
+            
+            // 초기화
+            selectedWordId = null;
+            selectedWordData = null;
+            document.getElementById('wordSearchInput').value = '';
+            document.getElementById('wordSearchResults').innerHTML = '';
+            document.getElementById('geminiPromptInput').value = '';
+            document.getElementById('geminiResultContainer').style.display = 'none';
+            document.getElementById('selectedWordInfo').style.display = 'none';
+            document.getElementById('confirmWordReplaceBtn').disabled = true;
+            
+            // 첫 번째 탭 활성화
+            const firstTab = document.querySelector('#wordReplaceTabs button[data-bs-target="#search-pane"]');
+            if (firstTab) {
+                firstTab.click();
+            }
             
             const modal = new bootstrap.Modal(document.getElementById('wordEditModal'));
             modal.show();
         }
-
-        // 단어 수정 확인
-        document.getElementById('confirmWordEditBtn').addEventListener('click', async function() {
-            const word = document.getElementById('wordInput').value.trim();
-            const hint = document.getElementById('hintInput').value.trim();
+        
+        // 단어 검색
+        document.getElementById('wordSearchBtn').addEventListener('click', async function() {
+            const query = document.getElementById('wordSearchInput').value.trim();
+            const resultsContainer = document.getElementById('wordSearchResults');
             
-            if (!word) {
-                alert('단어를 입력해주세요.');
+            if (!query) {
+                resultsContainer.innerHTML = '<div class="alert alert-warning">검색어를 입력해주세요.</div>';
+                return;
+            }
+            
+            resultsContainer.innerHTML = '<div class="text-center"><span class="spinner-border spinner-border-sm"></span> 검색 중...</div>';
+            
+            try {
+                const response = await fetch(`/admin/api/words/search?query=${encodeURIComponent(query)}&page=0&size=20`);
+                const data = await response.json();
+                
+                if (data.success && data.words && data.words.length > 0) {
+                    let html = '<div class="list-group">';
+                    data.words.forEach(word => {
+                        html += `
+                            <a href="#" class="list-group-item list-group-item-action word-search-item" data-word-id="${word.id}">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">${word.word}</h6>
+                                    <small>ID: ${word.id}</small>
+                                </div>
+                                <p class="mb-1">
+                                    <span class="badge bg-secondary">${word.category || '기타'}</span>
+                                    <span class="badge bg-info">난이도: ${word.difficulty || 'N/A'}</span>
+                                    <span class="badge bg-primary">길이: ${word.length || 'N/A'}</span>
+                                </p>
+                            </a>
+                        `;
+                    });
+                    html += '</div>';
+                    resultsContainer.innerHTML = html;
+                    
+                    // 클릭 이벤트 추가
+                    document.querySelectorAll('.word-search-item').forEach(item => {
+                        item.addEventListener('click', async function(e) {
+                            e.preventDefault();
+                            const wordId = parseInt(this.dataset.wordId);
+                            await selectWordFromSearch(wordId);
+                        });
+                    });
+                } else {
+                    resultsContainer.innerHTML = '<div class="alert alert-info">검색 결과가 없습니다.</div>';
+                }
+            } catch (error) {
+                console.error('단어 검색 오류:', error);
+                resultsContainer.innerHTML = '<div class="alert alert-danger">검색 중 오류가 발생했습니다: ' + error.message + '</div>';
+            }
+        });
+        
+        // 검색된 단어 선택
+        async function selectWordFromSearch(wordId) {
+            try {
+                // 단어 정보 조회 (힌트 포함)
+                const hintsResponse = await fetch(`/admin/api/theme-puzzles/${currentPuzzleId}/word-hints?wordId=${wordId}`);
+                const hintsData = await hintsResponse.json();
+                
+                // 단어 검색 API로 단어 정보 가져오기
+                const wordResponse = await fetch(`/admin/api/words/search?query=&page=0&size=1000`);
+                const wordData = await wordResponse.json();
+                const word = wordData.words.find(w => w.id === wordId);
+                
+                if (!word) {
+                    alert('단어 정보를 찾을 수 없습니다.');
+                    return;
+                }
+                
+                selectedWordId = wordId;
+                selectedWordData = {
+                    id: word.id,
+                    word: word.word,
+                    category: word.category,
+                    difficulty: word.difficulty,
+                    hints: hintsData.hints || []
+                };
+                
+                displaySelectedWord();
+            } catch (error) {
+                console.error('단어 선택 오류:', error);
+                alert('단어 선택 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+        
+        // 재미나이로 단어 생성
+        document.getElementById('generateWordBtn').addEventListener('click', async function() {
+            const prompt = document.getElementById('geminiPromptInput').value.trim();
+            const resultContainer = document.getElementById('geminiResultContainer');
+            
+            if (!prompt) {
+                alert('프롬프트를 입력해주세요.');
+                return;
+            }
+            
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>생성 중...';
+            resultContainer.style.display = 'none';
+            
+            try {
+                const response = await fetch('/admin/api/words/generate-from-prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 생성 결과 표시
+                    let html = `
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <strong>생성된 단어 및 힌트</strong>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>단어:</strong> ${data.word}</p>
+                                <p><strong>카테고리:</strong> ${data.category || '기타'}</p>
+                                <p><strong>난이도:</strong> ${data.difficulty || 2}</p>
+                                <p><strong>힌트:</strong></p>
+                                <ul>
+                    `;
+                    
+                    if (data.hints) {
+                        Object.entries(data.hints).forEach(([level, hint]) => {
+                            const levelName = level === '1' ? '쉬움' : level === '2' ? '보통' : '어려움';
+                            html += `<li><strong>${levelName}:</strong> ${hint || 'N/A'}</li>`;
+                        });
+                    }
+                    
+                    html += `
+                                </ul>
+                                <button class="btn btn-success mt-2" id="confirmGeneratedWordBtn">
+                                    <i class="fas fa-check me-1"></i>이 단어 사용하기
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    resultContainer.innerHTML = html;
+                    resultContainer.style.display = 'block';
+                    
+                    // 확인 버튼 이벤트
+                    document.getElementById('confirmGeneratedWordBtn').addEventListener('click', async function() {
+                        await saveAndSelectGeneratedWord(data);
+                    });
+                } else {
+                    resultContainer.innerHTML = '<div class="alert alert-danger">단어 생성에 실패했습니다: ' + (data.message || '알 수 없는 오류') + '</div>';
+                    resultContainer.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('단어 생성 오류:', error);
+                resultContainer.innerHTML = '<div class="alert alert-danger">단어 생성 중 오류가 발생했습니다: ' + error.message + '</div>';
+                resultContainer.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+        
+        // 재미나이로 생성된 단어 저장 및 선택
+        async function saveAndSelectGeneratedWord(data) {
+            try {
+                // 먼저 DB에 저장
+                const saveResponse = await fetch('/admin/api/words/save-generated', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        word: data.word,
+                        category: data.category,
+                        difficulty: data.difficulty,
+                        hints: data.hints
+                    })
+                });
+                
+                const saveData = await saveResponse.json();
+                
+                if (saveData.success) {
+                    // 저장된 단어 선택
+                    selectedWordId = saveData.wordId;
+                    selectedWordData = {
+                        id: saveData.wordId,
+                        word: saveData.word,
+                        category: data.category,
+                        difficulty: data.difficulty,
+                        hints: Object.entries(data.hints || {}).map(([level, hint]) => ({
+                            difficulty: parseInt(level),
+                            hint_text: hint,
+                            is_primary: level === '2'
+                        }))
+                    };
+                    
+                    displaySelectedWord();
+                    
+                    // 검색 탭으로 전환
+                    const searchTab = document.querySelector('#wordReplaceTabs button[data-bs-target="#search-pane"]');
+                    if (searchTab) {
+                        searchTab.click();
+                    }
+                } else {
+                    alert('단어 저장에 실패했습니다: ' + (saveData.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('단어 저장 오류:', error);
+                alert('단어 저장 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+        
+        // 선택된 단어 정보 표시
+        function displaySelectedWord() {
+            if (!selectedWordData) return;
+            
+            document.getElementById('selectedWordText').textContent = selectedWordData.word;
+            document.getElementById('selectedWordCategory').textContent = selectedWordData.category || '기타';
+            document.getElementById('selectedWordDifficulty').textContent = selectedWordData.difficulty || 'N/A';
+            
+            const hintsList = document.getElementById('selectedWordHints');
+            hintsList.innerHTML = '';
+            
+            if (selectedWordData.hints && selectedWordData.hints.length > 0) {
+                selectedWordData.hints.forEach(hint => {
+                    const levelName = hint.difficulty === 1 ? '쉬움' : hint.difficulty === 2 ? '보통' : '어려움';
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${levelName}:</strong> ${hint.hint_text || hint.hintText || 'N/A'}`;
+                    hintsList.appendChild(li);
+                });
+            } else {
+                hintsList.innerHTML = '<li>힌트 없음</li>';
+            }
+            
+            document.getElementById('selectedWordInfo').style.display = 'block';
+            document.getElementById('confirmWordReplaceBtn').disabled = false;
+        }
+        
+        // 단어 교체 확인
+        document.getElementById('confirmWordReplaceBtn').addEventListener('click', async function() {
+            if (!selectedWordId) {
+                alert('단어를 선택해주세요.');
                 return;
             }
 
             const btn = this;
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>저장 중...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>교체 중...';
 
             try {
                 const response = await fetch(`/admin/api/theme-puzzles/${currentPuzzleId}/word/${currentWordIndex}`, {
@@ -1214,24 +1522,23 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        word: word,
-                        hint: hint || null
+                        word: selectedWordId.toString() // wordId를 문자열로 전달
                     })
                 });
                 
                 const data = await response.json();
 
                 if (data.success) {
-                    alert('단어가 성공적으로 수정되었습니다.');
+                    alert('단어가 성공적으로 교체되었습니다.');
                     bootstrap.Modal.getInstance(document.getElementById('wordEditModal')).hide();
                     // 퍼즐 상세 정보 다시 로드
                     await openPuzzleDetailModal(currentPuzzleId);
                 } else {
-                    alert('단어 수정에 실패했습니다: ' + (data.message || '알 수 없는 오류'));
+                    alert('단어 교체에 실패했습니다: ' + (data.message || '알 수 없는 오류'));
                 }
             } catch (error) {
-                console.error('단어 수정 오류:', error);
-                alert('단어 수정 중 오류가 발생했습니다: ' + error.message);
+                console.error('단어 교체 오류:', error);
+                alert('단어 교체 중 오류가 발생했습니다: ' + error.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;

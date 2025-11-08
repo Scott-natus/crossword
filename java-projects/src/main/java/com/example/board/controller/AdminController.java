@@ -198,6 +198,29 @@ public class AdminController {
     }
     
     /**
+     * 템플릿 생성2 페이지 (자동 생성)
+     */
+    @GetMapping("/admin/templates/create2")
+    public ResponseEntity<String> createTemplate2() {
+        try {
+            log.info("템플릿 생성2 페이지 접근");
+            
+            Resource resource = new ClassPathResource("static/admin/templates/create2.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            log.error("템플릿 생성2 페이지 로드 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    /**
      * 레벨 관리 페이지
      */
     @GetMapping("/admin/levels")

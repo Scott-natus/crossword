@@ -70,14 +70,14 @@ public class PuzzleViewController {
                 model.addAttribute("guestId", guestId);
             }
             
-            // 바로 게임 화면으로 이동
-            return "forward:/game.html";
+            // 테마별 게임 전용 UI로 이동
+            return "forward:/theme-game.html";
             
         } catch (Exception e) {
             log.error("테마별 퍼즐 화면 로드 중 오류 발생: {} - {}", theme, e.getMessage(), e);
             model.addAttribute("theme", theme);
             model.addAttribute("error", "화면을 불러오는 중 오류가 발생했습니다: " + e.getMessage());
-            return "forward:/game.html"; // 오류 발생 시에도 게임 화면으로 이동
+            return "forward:/theme-game.html"; // 오류 발생 시에도 테마별 게임 화면으로 이동
         }
     }
 }

@@ -2,7 +2,9 @@ package com.example.board.controller;
 
 import com.example.board.entity.User;
 import com.example.board.entity.UserPuzzleGame;
+import com.example.board.entity.UserPuzzleCompletion;
 import com.example.board.repository.UserRepository;
+import com.example.board.repository.UserPuzzleCompletionRepository;
 import com.example.board.service.DailyPuzzleService;
 import com.example.board.service.UserPuzzleGameService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class ThemePuzzleApiController {
     private final DailyPuzzleService dailyPuzzleService;
     private final UserPuzzleGameService userPuzzleGameService;
     private final UserRepository userRepository;
+    private final UserPuzzleCompletionRepository userPuzzleCompletionRepository;
     
     /**
      * 테마별 오늘의 퍼즐 조회
@@ -309,6 +312,137 @@ public class ThemePuzzleApiController {
         } catch (Exception e) {
             log.error("테마별 퍼즐 데이터 저장 중 오류: gameId={}, theme={}, error={}", 
                 game.getId(), theme, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 테마별 퍼즐 완료 기록 저장
+     * 
+     * @param theme 테마
+     * @param request 완료 정보 (completionTime, hintsUsed, wrongAttempts, puzzleDate, guestId)
+     * @return 저장 결과
+     */
+    @PostMapping("/{theme}/complete")
+    public ResponseEntity<Map<String, Object>> completePuzzle(
+            @PathVariable String theme,
+            @RequestBody Map<String, Object> request) {
+        
+        try {
+            log.info("퍼즐 완료 기록 저장 요청: {} - {}", theme, request);
+            
+            // 요청 데이터 추출
+            Integer completionTime = (Integer) request.get("completionTime");
+            Integer hintsUsed = request.containsKey("hintsUsed") ? (Integer) request.get("hintsUsed") : 0;
+            Integer wrongAttempts = request.containsKey("wrongAttempts") ? (Integer) request.get("wrongAttempts") : 0;
+            String puzzleDateStr = (String) request.get("puzzleDate");
+            String guestId = (String) request.get("guestId");
+            
+            if (completionTime == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "완료 시간이 필요합니다.");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            LocalDate puzzleDate = puzzleDateStr != null ? LocalDate.parse(puzzleDateStr) : LocalDate.now();
+            
+            // 사용자 ID 확인 (게스트 또는 인증된 사용자)
+            String userId = null;
+            if (guestId != null && !guestId.isEmpty()) {
+                try {
+                    Long guestUserId = getOrCreateGuestUser(guestId);
+                    userId = guestUserId.toString();
+                } catch (Exception e) {
+                    log.error("게스트 사용자 조회 실패: {}", e.getMessage());
+                    userId = guestId; // 게스트 ID를 그대로 사용
+                }
+            }
+            
+            // 완료 기록 저장
+            UserPuzzleCompletion completion = UserPuzzleCompletion.builder()
+                .userId(userId)
+                .theme(theme)
+                .puzzleDate(puzzleDate)
+                .completionTime(completionTime)
+                .hintsUsed(hintsUsed != null ? hintsUsed : 0)
+                .wrongAttempts(wrongAttempts != null ? wrongAttempts : 0)
+                .build();
+            
+            userPuzzleCompletionRepository.save(completion);
+            
+            log.info("퍼즐 완료 기록 저장 완료: theme={}, puzzleDate={}, completionTime={}초", 
+                theme, puzzleDate, completionTime);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "완료 기록이 저장되었습니다.");
+            response.put("completionId", completion.getId());
+            response.put("theme", theme);
+            response.put("puzzleDate", puzzleDate.toString());
+            response.put("completionTime", completionTime);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("퍼즐 완료 기록 저장 중 오류 발생: {} - {}", theme, e.getMessage(), e);
+            
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "완료 기록 저장 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * SNS 공유 통계 저장
+     * 
+     * @param theme 테마
+     * @param request 공유 정보 (platform: facebook, twitter, kakao, puzzleDate, guestId)
+     * @return 저장 결과
+     */
+    @PostMapping("/{theme}/share")
+    public ResponseEntity<Map<String, Object>> saveShareStats(
+            @PathVariable String theme,
+            @RequestBody Map<String, Object> request) {
+        
+        try {
+            log.info("SNS 공유 통계 저장 요청: {} - {}", theme, request);
+            
+            String platform = (String) request.get("platform");
+            String puzzleDateStr = (String) request.get("puzzleDate");
+            String guestId = (String) request.get("guestId");
+            
+            if (platform == null || platform.isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "공유 플랫폼이 필요합니다.");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            LocalDate puzzleDate = puzzleDateStr != null ? LocalDate.parse(puzzleDateStr) : LocalDate.now();
+            
+            // 공유 통계 저장 (현재는 로그만 기록, 추후 별도 테이블 생성 가능)
+            log.info("SNS 공유 통계: theme={}, platform={}, puzzleDate={}, guestId={}", 
+                theme, platform, puzzleDate, guestId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "공유 통계가 기록되었습니다.");
+            response.put("theme", theme);
+            response.put("platform", platform);
+            response.put("puzzleDate", puzzleDate.toString());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("SNS 공유 통계 저장 중 오류 발생: {} - {}", theme, e.getMessage(), e);
+            
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "공유 통계 저장 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
 }

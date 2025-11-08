@@ -214,11 +214,11 @@ public class ThemePuzzleEditService {
     }
     
     /**
-     * 단어 수정
+     * 단어 수정 (단어 교체 시 힌트 자동 업데이트)
      * @param puzzleId 퍼즐 ID
      * @param wordIndex 단어 인덱스 (words 리스트 내 인덱스)
-     * @param newWord 새로운 단어
-     * @param newHint 새로운 힌트
+     * @param newWord 새로운 단어 (또는 wordId)
+     * @param newHint 새로운 힌트 (선택사항, 없으면 DB에서 자동 조회)
      */
     @Transactional
     public Map<String, Object> updateWord(Integer puzzleId, Integer wordIndex, String newWord, String newHint) {
@@ -247,11 +247,55 @@ public class ThemePuzzleEditService {
             // 단어 수정
             Map<String, Object> wordToUpdate = words.get(wordIndex);
             String oldWord = (String) wordToUpdate.get("word");
-            wordToUpdate.put("word", newWord);
             
-            // 힌트 수정
-            if (newHint != null && !newHint.isEmpty()) {
-                wordToUpdate.put("hint", newHint);
+            // newWord가 wordId인지 단어 텍스트인지 확인
+            Integer newWordId = null;
+            String actualNewWord = newWord;
+            
+            try {
+                newWordId = Integer.parseInt(newWord);
+                // wordId로 단어 조회
+                Optional<com.example.board.entity.PzWord> wordOpt = pzWordRepository.findById(newWordId);
+                if (wordOpt.isPresent()) {
+                    actualNewWord = wordOpt.get().getWord();
+                    newWordId = wordOpt.get().getId();
+                } else {
+                    throw new RuntimeException("단어를 찾을 수 없습니다: wordId=" + newWordId);
+                }
+            } catch (NumberFormatException e) {
+                // newWord가 단어 텍스트인 경우
+                Optional<com.example.board.entity.PzWord> wordOpt = pzWordRepository.findByWordAndIsActiveTrue(newWord);
+                if (wordOpt.isPresent()) {
+                    newWordId = wordOpt.get().getId();
+                    actualNewWord = wordOpt.get().getWord();
+                } else {
+                    throw new RuntimeException("단어를 찾을 수 없습니다: word=" + newWord);
+                }
+            }
+            
+            wordToUpdate.put("word", actualNewWord);
+            wordToUpdate.put("pz_word_id", newWordId);
+            
+            // 힌트 자동 업데이트 (pz_hints 테이블에서 조회)
+            String primaryHint = newHint;
+            if (primaryHint == null || primaryHint.isEmpty()) {
+                // pz_hints 테이블에서 기본 힌트 조회
+                List<PzHint> hints = pzHintService.getHintsByWordId(newWordId);
+                if (!hints.isEmpty()) {
+                    // is_primary가 true인 힌트를 우선, 없으면 첫 번째 힌트
+                    Optional<PzHint> primaryHintOpt = hints.stream()
+                        .filter(h -> Boolean.TRUE.equals(h.getIsPrimary()))
+                        .findFirst();
+                    if (primaryHintOpt.isPresent()) {
+                        primaryHint = primaryHintOpt.get().getHintText();
+                    } else {
+                        primaryHint = hints.get(0).getHintText();
+                    }
+                }
+            }
+            
+            if (primaryHint != null && !primaryHint.isEmpty()) {
+                wordToUpdate.put("hint", primaryHint);
                 
                 // hints 리스트도 업데이트
                 @SuppressWarnings("unchecked")
@@ -259,8 +303,9 @@ public class ThemePuzzleEditService {
                 if (hints != null) {
                     for (Map<String, Object> hint : hints) {
                         if (oldWord.equals(hint.get("word"))) {
-                            hint.put("word", newWord);
-                            hint.put("hint", newHint);
+                            hint.put("word", actualNewWord);
+                            hint.put("hint", primaryHint);
+                            hint.put("wordId", newWordId);
                             break;
                         }
                     }
@@ -271,14 +316,16 @@ public class ThemePuzzleEditService {
             puzzle.setPuzzleDataFromMap(puzzleData);
             themeDailyPuzzleRepository.save(puzzle);
             
-            log.info("단어 수정 완료: 퍼즐 ID={}, 단어 인덱스={}, 새 단어={}", puzzleId, wordIndex, newWord);
+            log.info("단어 수정 완료: 퍼즐 ID={}, 단어 인덱스={}, 새 단어={}, wordId={}", 
+                puzzleId, wordIndex, actualNewWord, newWordId);
             
             return Map.of(
                 "success", true,
                 "message", "단어가 성공적으로 수정되었습니다.",
                 "puzzleId", puzzleId,
                 "wordIndex", wordIndex,
-                "newWord", newWord
+                "newWord", actualNewWord,
+                "wordId", newWordId
             );
             
         } catch (Exception e) {

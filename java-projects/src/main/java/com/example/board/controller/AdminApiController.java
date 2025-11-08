@@ -38,6 +38,15 @@ public class AdminApiController {
     private final com.example.board.service.ThemePuzzleEditService themePuzzleEditService;
     private final com.example.board.service.DailyPuzzleSchedulerService dailyPuzzleSchedulerService;
     private final com.example.board.repository.UserPuzzleCompletionRepository userPuzzleCompletionRepository;
+    private final com.example.board.repository.PzWordRepository pzWordRepository;
+    private final com.example.board.repository.PzHintRepository pzHintRepository;
+    private final com.example.board.service.HintGeneratorManagementService hintGeneratorManagementService;
+    
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key:}")
+    private String geminiApiKey;
+    
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent}")
+    private String geminiApiUrl;
     
     /**
      * 시스템 통계 조회
@@ -854,6 +863,345 @@ public class AdminApiController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "퍼즐 생성 상태 모니터링 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 단어 검색 API
+     */
+    @GetMapping("/words/search")
+    public ResponseEntity<Map<String, Object>> searchWords(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            log.info("단어 검색 요청 - query: {}, page: {}, size: {}", query, page, size);
+            
+            org.springframework.data.domain.Pageable pageable = 
+                org.springframework.data.domain.PageRequest.of(page, size);
+            
+            org.springframework.data.domain.Page<com.example.board.entity.PzWord> wordPage;
+            
+            if (query != null && !query.trim().isEmpty()) {
+                wordPage = pzWordRepository.findByWordContainingIgnoreCaseAndIsActive(
+                    query.trim(), true, pageable);
+            } else {
+                List<com.example.board.entity.PzWord> words = pzWordRepository.findByIsActiveTrue();
+                // List를 Page로 변환
+                int start = (int) pageable.getOffset();
+                int end = Math.min((start + pageable.getPageSize()), words.size());
+                List<com.example.board.entity.PzWord> pageContent = words.subList(start, end);
+                wordPage = new org.springframework.data.domain.PageImpl<>(pageContent, pageable, words.size());
+            }
+            
+            List<Map<String, Object>> wordsList = new java.util.ArrayList<>();
+            for (com.example.board.entity.PzWord word : wordPage.getContent()) {
+                Map<String, Object> wordMap = new HashMap<>();
+                wordMap.put("id", word.getId());
+                wordMap.put("word", word.getWord());
+                wordMap.put("length", word.getLength());
+                wordMap.put("category", word.getCategory());
+                wordMap.put("difficulty", word.getDifficulty());
+                wordMap.put("isActive", word.getIsActive());
+                wordsList.add(wordMap);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("words", wordsList);
+            response.put("totalElements", wordPage.getTotalElements());
+            response.put("totalPages", wordPage.getTotalPages());
+            response.put("currentPage", wordPage.getNumber());
+            response.put("pageSize", wordPage.getSize());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("단어 검색 중 오류 발생: query={}, error={}", query, e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "단어 검색 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 재미나이 API로 단어+힌트 생성 (프롬프트 기반)
+     */
+    @PostMapping("/words/generate-from-prompt")
+    public ResponseEntity<Map<String, Object>> generateWordFromPrompt(
+            @RequestBody Map<String, Object> request) {
+        try {
+            log.info("재미나이 API로 단어+힌트 생성 요청 - prompt: {}", request.get("prompt"));
+            
+            String prompt = (String) request.get("prompt");
+            if (prompt == null || prompt.trim().isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "프롬프트가 필요합니다.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            // 재미나이 API 호출하여 단어 추출
+            
+            // 단어 추출 프롬프트 구성
+            String wordExtractionPrompt = "다음 프롬프트에서 십자낱말 퍼즐에 적합한 한글 단어 하나를 추출해주세요.\n\n" +
+                "프롬프트: " + prompt + "\n\n" +
+                "**응답 형식 (다른 설명 없이):**\n" +
+                "단어: [추출된 한글 단어]\n" +
+                "카테고리: [단어의 카테고리]\n" +
+                "난이도: [1-5 사이의 숫자]\n\n" +
+                "쉬움: [매우 쉬운 힌트]\n" +
+                "보통: [보통 난이도 힌트]\n" +
+                "어려움: [조금 어려운 힌트]";
+            
+            // Gemini API 호출
+            Map<String, Object> body = new HashMap<>();
+            Map<String, Object> content = new HashMap<>();
+            Map<String, Object> part = new HashMap<>();
+            part.put("text", wordExtractionPrompt);
+            content.put("parts", java.util.List.of(part));
+            body.put("contents", java.util.List.of(content));
+            
+            Map<String, Object> generationConfig = new HashMap<>();
+            generationConfig.put("temperature", 0.7);
+            generationConfig.put("topK", 40);
+            generationConfig.put("topP", 0.95);
+            generationConfig.put("maxOutputTokens", 1024);
+            body.put("generationConfig", generationConfig);
+            
+            String url = geminiApiUrl + "?key=" + geminiApiKey;
+            
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            org.springframework.http.HttpEntity<Map<String, Object>> req = 
+                new org.springframework.http.HttpEntity<>(body, headers);
+            
+            org.springframework.web.client.RestTemplate restTemplate = 
+                new org.springframework.web.client.RestTemplate();
+            org.springframework.http.ResponseEntity<String> resp;
+            try {
+                resp = restTemplate.postForEntity(url, req, String.class);
+            } catch (Exception ex) {
+                log.error("Gemini API 호출 예외: url={}, error={}", url, ex.getMessage(), ex);
+                throw new RuntimeException("Gemini API 호출 예외: " + ex.getMessage());
+            }
+            
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
+                log.error("Gemini API 호출 실패: status={}, body={}", resp.getStatusCode(), resp.getBody());
+                throw new RuntimeException("Gemini API 호출 실패: " + resp.getStatusCode());
+            }
+            
+            // 응답 파싱
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper = 
+                new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode root;
+            try {
+                root = objectMapper.readTree(resp.getBody());
+            } catch (Exception e) {
+                log.error("Gemini API 응답 파싱 실패: body={}, error={}", resp.getBody(), e.getMessage(), e);
+                throw new RuntimeException("Gemini API 응답 파싱 실패: " + e.getMessage());
+            }
+            String text = root.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
+            
+            // 단어, 카테고리, 난이도, 힌트 추출
+            String word = extractWordFromResponse(text);
+            String category = extractCategoryFromResponse(text);
+            Integer difficulty = extractDifficultyFromResponse(text);
+            Map<Integer, String> hints = extractHintsFromResponse(text);
+            
+            if (word == null || word.trim().isEmpty()) {
+                throw new RuntimeException("단어를 추출할 수 없습니다.");
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("word", word.trim());
+            response.put("category", category != null ? category.trim() : "기타");
+            response.put("difficulty", difficulty != null ? difficulty : 2);
+            response.put("hints", hints);
+            response.put("rawResponse", text);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("재미나이 API로 단어+힌트 생성 중 오류 발생: error={}", e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "단어+힌트 생성 중 오류가 발생했습니다: " + e.getMessage());
+            
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+    
+    /**
+     * 재미나이 API 응답에서 단어 추출
+     */
+    private String extractWordFromResponse(String text) {
+        if (text == null) return null;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("단어\\s*:\\s*([^\\n]+)");
+        java.util.regex.Matcher m = p.matcher(text);
+        if (m.find()) {
+            return m.group(1).trim().replaceAll("^\\[|\\]$", "");
+        }
+        return null;
+    }
+    
+    /**
+     * 재미나이 API 응답에서 카테고리 추출
+     */
+    private String extractCategoryFromResponse(String text) {
+        if (text == null) return null;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("카테고리\\s*:\\s*([^\\n]+)");
+        java.util.regex.Matcher m = p.matcher(text);
+        if (m.find()) {
+            return m.group(1).trim().replaceAll("^\\[|\\]$", "");
+        }
+        return null;
+    }
+    
+    /**
+     * 재미나이 API 응답에서 난이도 추출
+     */
+    private Integer extractDifficultyFromResponse(String text) {
+        if (text == null) return null;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("난이도\\s*:\\s*(\\d+)");
+        java.util.regex.Matcher m = p.matcher(text);
+        if (m.find()) {
+            try {
+                return Integer.parseInt(m.group(1).trim());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 재미나이 API 응답에서 힌트 추출
+     */
+    private Map<Integer, String> extractHintsFromResponse(String text) {
+        Map<Integer, String> hints = new HashMap<>();
+        if (text == null) return hints;
+        
+        hints.put(1, extractHintByLabel(text, "쉬움"));
+        hints.put(2, extractHintByLabel(text, "보통"));
+        hints.put(3, extractHintByLabel(text, "어려움"));
+        
+        return hints;
+    }
+    
+    /**
+     * 재미나이 API 응답에서 라벨별 힌트 추출
+     */
+    private String extractHintByLabel(String text, String label) {
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile(label + "\\s*:\\s*([^\\n\\[\\]]+)");
+        java.util.regex.Matcher m = p.matcher(text);
+        if (m.find()) {
+            return m.group(1).trim();
+        }
+        return null;
+    }
+    
+    /**
+     * 재미나이 API로 생성된 단어+힌트를 DB에 저장
+     */
+    @PostMapping("/words/save-generated")
+    public ResponseEntity<Map<String, Object>> saveGeneratedWord(
+            @RequestBody Map<String, Object> request) {
+        try {
+            log.info("생성된 단어+힌트 저장 요청 - word: {}", request.get("word"));
+            
+            String word = (String) request.get("word");
+            String category = (String) request.get("category");
+            Integer difficulty = request.get("difficulty") != null ? 
+                ((Number) request.get("difficulty")).intValue() : 2;
+            @SuppressWarnings("unchecked")
+            Map<Integer, String> hints = (Map<Integer, String>) request.get("hints");
+            
+            if (word == null || word.trim().isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "단어가 필요합니다.");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            // 단어가 이미 존재하는지 확인
+            Optional<com.example.board.entity.PzWord> existingWordOpt = 
+                pzWordRepository.findByWordAndIsActiveTrue(word.trim());
+            
+            com.example.board.entity.PzWord pzWord;
+            if (existingWordOpt.isPresent()) {
+                pzWord = existingWordOpt.get();
+                log.info("기존 단어 사용: wordId={}, word={}", pzWord.getId(), pzWord.getWord());
+            } else {
+                // 새 단어 생성
+                pzWord = new com.example.board.entity.PzWord();
+                pzWord.setWord(word.trim());
+                pzWord.setLength(word.trim().length());
+                pzWord.setCategory(category != null ? category.trim() : "기타");
+                pzWord.setDifficulty(difficulty);
+                pzWord.setIsActive(true);
+                pzWord.setConfYn("N");
+                pzWord.setCreatedAt(java.time.LocalDateTime.now());
+                pzWord.setUpdatedAt(java.time.LocalDateTime.now());
+                pzWord = pzWordRepository.save(pzWord);
+                log.info("새 단어 생성: wordId={}, word={}", pzWord.getId(), pzWord.getWord());
+            }
+            
+            // 힌트 저장
+            if (hints != null && !hints.isEmpty()) {
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                
+                for (Map.Entry<Integer, String> entry : hints.entrySet()) {
+                    Integer level = entry.getKey();
+                    String hintText = entry.getValue();
+                    
+                    if (hintText == null || hintText.trim().isEmpty()) {
+                        continue;
+                    }
+                    
+                    // 기존 힌트 확인 (같은 단어, 같은 난이도)
+                    List<com.example.board.entity.PzHint> existingHints = 
+                        pzHintRepository.findByWordIdAndDifficulty(pzWord.getId(), level);
+                    
+                    if (existingHints.isEmpty()) {
+                        // 새 힌트 생성
+                        com.example.board.entity.PzHint hint = new com.example.board.entity.PzHint();
+                        hint.setWord(pzWord);
+                        hint.setHintText(hintText.trim());
+                        hint.setDifficulty(level);
+                        hint.setIsPrimary(level == 2);
+                        hint.setHintType("TEXT");
+                        hint.setLanguageCode("ko");
+                        hint.setCreatedAt(now);
+                        hint.setUpdatedAt(now);
+                        pzHintRepository.save(hint);
+                        log.info("새 힌트 생성: wordId={}, level={}, hint={}", 
+                            pzWord.getId(), level, hintText.trim());
+                    }
+                }
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "단어와 힌트가 성공적으로 저장되었습니다.");
+            response.put("wordId", pzWord.getId());
+            response.put("word", pzWord.getWord());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("생성된 단어+힌트 저장 중 오류 발생: error={}", e.getMessage(), e);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "단어+힌트 저장 중 오류가 발생했습니다: " + e.getMessage());
             
             return ResponseEntity.internalServerError().body(response);
         }

@@ -1,0 +1,137 @@
+/* 테마별 게임 전용 스타일 */
+
+/* 테마 게임 헤더 스타일 */
+.theme-game-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem 1.5rem;
+    border-radius: 0.375rem 0.375rem 0 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 80px;
+}
+
+.theme-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+    color: white;
+}
+
+.theme-name {
+    font-size: 1.2rem;
+    font-weight: normal;
+    opacity: 0.9;
+}
+
+/* 완료 모달 스타일 */
+.completion-stats {
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.completion-stats p {
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.completion-stats strong {
+    color: #495057;
+}
+
+/* SNS 공유 버튼 스타일 */
+.sns-share-buttons {
+    margin-top: 1.5rem;
+}
+
+.share-btn {
+    min-width: 150px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.share-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.share-btn.facebook {
+    background-color: #1877f2;
+    border-color: #1877f2;
+    color: white;
+}
+
+.share-btn.facebook:hover {
+    background-color: #166fe5;
+    border-color: #166fe5;
+}
+
+.share-btn.twitter {
+    background-color: #1da1f2;
+    border-color: #1da1f2;
+    color: white;
+}
+
+.share-btn.twitter:hover {
+    background-color: #1a91da;
+    border-color: #1a91da;
+}
+
+.share-btn.kakao {
+    background-color: #FEE500;
+    border-color: #FEE500;
+    color: #000;
+}
+
+.share-btn.kakao:hover {
+    background-color: #FDD835;
+    border-color: #FDD835;
+}
+
+/* 레벨/진행단계 UI 숨김 (테마별 게임에서는 사용하지 않음) */
+.level-gauge,
+#level-name,
+#current-level,
+.gauge-container,
+.gauge-segments,
+.gauge-text {
+    display: none !important;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .theme-game-header {
+        padding: 1rem;
+        min-height: 60px;
+    }
+    
+    .theme-title {
+        font-size: 1.2rem;
+    }
+    
+    .theme-name {
+        font-size: 1rem;
+    }
+    
+    .share-btn {
+        min-width: 120px;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .completion-stats {
+        padding: 1rem;
+    }
+    
+    .completion-stats p {
+        font-size: 1rem;
+    }
+}
+
