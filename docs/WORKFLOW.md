@@ -1383,3 +1383,106 @@ spring:session:sessions:a8cbd598-032b-4af6-8795-f2785ccd3634  ← 추가 접근 
 - **Redis 초기화**: `redis-cli FLUSHALL`
 
 ---
+
+# 2025-11-09 작업 내역 (템플릿 자동 생성 기능 구현)
+
+## 작업 개요
+템플릿 생성2 페이지 구현 및 템플릿 자동 생성 알고리즘 개발
+
+## 주요 작업 내용
+
+### 1. 템플릿 생성2 페이지 구현
+- **파일**: `java-projects/src/main/resources/static/admin/templates/create2.html`
+- **기능**: 레벨 조건에 맞는 그리드를 자동으로 생성하는 기능
+- **UI 구성**: 
+  - 레벨 선택 콤보박스
+  - 템플릿 자동 생성 버튼
+  - 생성된 템플릿 미리보기
+  - 템플릿 승인/다시 생성 버튼
+  - 템플릿 저장 기능
+
+### 2. 레벨 선택 콤보박스 리스팅 기능
+- **문제**: 레벨 선택 콤보박스가 비어있음
+- **원인**: JavaScript 에러로 인해 `loadLevels()` 함수가 실행되지 않음
+- **해결**:
+  - `clearGrid`, `grid_size` 요소가 없어서 발생하는 에러 수정
+  - 조건부 체크로 존재하지 않는 요소에 대한 이벤트 리스너 추가 방지
+  - `loadLevels()` 함수에 디버깅 로그 추가
+- **API**: `/admin/api/level-management/levels-ajax` 사용
+
+### 3. 템플릿 자동 생성 서비스 구현
+- **파일**: `java-projects/src/main/java/com/example/board/service/TemplateGenerationService.java`
+- **알고리즘**:
+  1. 단어 길이 랜덤 생성 (2~4글자)
+  2. 첫 번째 단어 랜덤 배치 (가로/세로 랜덤)
+  3. 두 번째 단어부터 순차 배치
+     - 교차점 우선 배치 시도
+     - 교차점이 없으면 인접하지 않은 위치에 배치
+  4. 최대 10,000회 시도하여 조건을 만족하는 템플릿 생성
+
+### 4. 그리드 패턴 규칙 수정
+- **기존 규칙** (잘못된 구현):
+  - 1 (흰색) = 단어가 들어가는 칸
+  - 2 (검은색) = 의미 없는 칸
+- **수정된 규칙**:
+  - **2 (검은색) = 단어가 들어가는 칸**
+  - **1 (흰색) = 의미 없는 칸 (빈 공간)**
+- **수정 파일**: `TemplateGenerationService.java`의 `createGridFromWordPositions()` 메서드
+
+### 5. 단어 배치 규칙 강화
+- **같은 방향 단어 인접 규칙 추가**:
+  - 같은 방향 단어(가로-가로, 세로-세로)도 인접하면 안 됨
+  - 교차점은 가로-세로 단어만 가능
+- **수정 파일**: `TemplateGenerationService.java`의 `canPlaceWord()` 메서드
+- **추가된 검증**:
+  ```java
+  // 같은 방향 단어는 인접하면 안 됨 (교차점이 없으므로)
+  if (isWordAdjacent(newWordCells, placedWordCells)) {
+      return false; // 인접함 - 배치 불가
+  }
+  ```
+
+### 6. API 엔드포인트 추가
+- **파일**: `java-projects/src/main/java/com/example/board/controller/GridTemplateController.java`
+- **엔드포인트**: `POST /admin/api/grid-template-management/generate-template`
+- **파라미터**:
+  - `levelId`: 레벨 ID
+  - `wordCount`: 단어 개수
+  - `intersectionCount`: 최소 교차점 개수
+- **응답**: 생성된 템플릿 데이터 (gridPattern, wordPositions, gridWidth, gridHeight 등)
+
+### 7. 관리자 페이지 메뉴 추가
+- **파일**: `java-projects/src/main/resources/static/admin/index.html`
+- **추가된 메뉴**: "템플릿 생성2" (자동 생성 기능)
+
+## 구현된 규칙
+
+### 단어 배치 규칙
+1. **같은 방향 단어**: 겹치면 안 됨 + 인접하면 안 됨
+2. **다른 방향 단어**: 교차점으로만 만날 수 있음 (인접하면 안 됨)
+3. **교차점**: 가로 단어와 세로 단어만 교차 가능 (같은 방향 단어는 교차 불가)
+
+### 그리드 패턴 규칙
+- **검은색 칸(2)**: 단어가 들어가는 칸
+- **흰색 칸(1)**: 의미 없는 칸 (빈 공간)
+- **검은색 칸 인접 규칙**: 같은 단어의 경계 검은색 칸은 인접 가능, 다른 단어와 관련된 검은색 칸은 인접 불가
+
+## 수정된 파일 목록
+1. `java-projects/src/main/java/com/example/board/service/TemplateGenerationService.java` (신규)
+2. `java-projects/src/main/java/com/example/board/controller/GridTemplateController.java`
+3. `java-projects/src/main/java/com/example/board/controller/AdminController.java`
+4. `java-projects/src/main/resources/static/admin/templates/create2.html` (신규)
+5. `java-projects/src/main/resources/static/admin/index.html`
+
+## 테스트 결과
+- ✅ 레벨 선택 콤보박스 정상 작동
+- ✅ 템플릿 자동 생성 API 정상 작동
+- ✅ 단어 3개, 교차점 1개 조건에서 템플릿 생성 성공
+- ✅ 단어 3개, 교차점 2개 조건에서 템플릿 생성 성공
+- ✅ 그리드 패턴 규칙 수정 완료 (검은색=단어, 흰색=빈칸)
+- ✅ 같은 방향 단어 인접 규칙 추가 완료
+
+## 다음 작업 예정
+1. 템플릿 생성 알고리즘 성능 최적화
+2. 생성된 템플릿 품질 검증 로직 강화
+3. 다양한 레벨 조건에 대한 테스트
