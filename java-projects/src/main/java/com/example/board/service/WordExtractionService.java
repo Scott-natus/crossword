@@ -128,15 +128,28 @@ public class WordExtractionService {
 
             // 5회 시도 후에도 실패한 경우
             if (extractedWords.size() != wordPositions.size()) {
-                Integer failedWordId = wordPositions.stream()
+                // 실패한 단어 ID 목록 수집
+                List<Integer> failedWordIds = wordPositions.stream()
                         .map(wp -> (Integer) wp.get("id"))
                         .filter(id -> !confirmedWords.containsKey(id))
-                        .findFirst()
-                        .orElse(null);
-
-                return createErrorResponse(
-                        "단어 ID " + failedWordId + "에서 확정된 음절들과 매칭되는 단어를 찾을 수 없습니다.",
-                        queryLog, retryCount);
+                        .collect(java.util.stream.Collectors.toList());
+                
+                log.warn("단어 추출 실패 - 성공: {}/{}, 실패한 단어 ID: {}", 
+                        extractedWords.size(), wordPositions.size(), failedWordIds);
+                
+                // 실패한 단어들도 결과에 포함 (extracted_word는 null)
+                for (Integer failedWordId : failedWordIds) {
+                    Map<String, Object> failedWord = findWordById(failedWordId, wordPositions);
+                    if (failedWord != null) {
+                        extractedWords.add(createExtractedWordResult(failedWordId, failedWord, "extraction_failed", 
+                                Map.of("word", null, "hint", "단어 추출 실패")));
+                    }
+                }
+                
+                // 경고 메시지와 함께 부분 성공 응답 반환
+                Map<String, Object> response = createSuccessResponse(template, extractedWords, wordPositions, retryCount, queryLog);
+                response.put("warning", "일부 단어 추출에 실패했습니다. 실패한 단어 ID: " + failedWordIds);
+                return response;
             }
 
             // 8. 성공 응답 생성
@@ -533,30 +546,50 @@ public class WordExtractionService {
     private Map<String, Object> createSuccessResponse(PzGridTemplate template, List<Map<String, Object>> extractedWords,
                                                      List<Map<String, Object>> wordPositions, int retryCount,
                                                      List<Map<String, Object>> queryLog) {
-        return Map.of(
-                "success", true,
-                "template", Map.of(
-                        "id", template.getId(),
-                        "template_name", template.getTemplateName(),
-                        "level_id", template.getLevelId()
-                ),
-                "extracted_words", Map.of(
-                        "grid_info", Map.of(
-                                "width", template.getGridWidth(),
-                                "height", template.getGridHeight(),
-                                "pattern", template.getGridPattern()
-                        ),
-                        "word_order", extractedWords
-                ),
-                "word_analysis", Map.of(
-                        "total_words", wordPositions.size(),
-                        "extracted_words", extractedWords.size(),
-                        "required_word_count", template.getWordCount(),
-                        "required_intersection_count", template.getIntersectionCount(),
-                        "retry_count", retryCount
-                ),
-                "query_log", queryLog
-        );
+        // gridPattern을 JSON 문자열에서 파싱 (8081 로직 참고)
+        Object gridPatternObj = null;
+        try {
+            if (template.getGridPattern() != null && !template.getGridPattern().isEmpty()) {
+                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                gridPatternObj = objectMapper.readValue(template.getGridPattern(), 
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, 
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, Integer.class)));
+            }
+        } catch (Exception e) {
+            log.warn("그리드 패턴 파싱 실패, 원본 문자열 사용: {}", e.getMessage());
+            gridPatternObj = template.getGridPattern();
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("template", Map.of(
+                "id", template.getId(),
+                "template_name", template.getTemplateName(),
+                "level_id", template.getLevelId()
+        ));
+        
+        Map<String, Object> gridInfo = new HashMap<>();
+        gridInfo.put("width", template.getGridWidth());
+        gridInfo.put("height", template.getGridHeight());
+        gridInfo.put("pattern", gridPatternObj != null ? gridPatternObj : template.getGridPattern());
+        
+        Map<String, Object> extractedWordsData = new HashMap<>();
+        extractedWordsData.put("grid_info", gridInfo);
+        extractedWordsData.put("word_order", extractedWords);
+        
+        response.put("extracted_words", extractedWordsData);
+        
+        Map<String, Object> wordAnalysis = new HashMap<>();
+        wordAnalysis.put("total_words", wordPositions.size());
+        wordAnalysis.put("extracted_words", extractedWords.size());
+        wordAnalysis.put("required_word_count", template.getWordCount());
+        wordAnalysis.put("required_intersection_count", template.getIntersectionCount());
+        wordAnalysis.put("retry_count", retryCount);
+        
+        response.put("word_analysis", wordAnalysis);
+        response.put("query_log", queryLog);
+        
+        return response;
     }
 
     /**
@@ -570,10 +603,8 @@ public class WordExtractionService {
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
         response.put("message", message);
+        response.put("retry_count", retryCount);
         response.put("query_log", queryLog);
-        if (retryCount > 0) {
-            response.put("retry_count", retryCount);
-        }
         return response;
     }
 

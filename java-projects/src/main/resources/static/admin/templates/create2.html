@@ -922,6 +922,9 @@
                         <button type="button" class="btn btn-sm btn-outline-success ms-2" onclick="extractWords(${template.id})">
                             <i class="fas fa-magic"></i> 단어 추출
                         </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteTemplate(${template.id}, '${template.templateName}')">
+                            <i class="fas fa-trash"></i> 삭제
+                        </button>
                     </div>`
                 ).join('');
                 
@@ -1170,12 +1173,21 @@
             });
         }
 
-        // 번호 옵션 생성 (Laravel과 동일)
+        // 번호 옵션 생성
         function generateNumberOptions(wordPositions, selectedValue = '') {
             let options = '';
-            wordPositions.forEach(word => {
-                const selected = word.id.toString() === selectedValue ? 'selected' : '';
-                options += `<option value="${word.id}" ${selected}>${word.id}</option>`;
+            // 넘버링 순서대로 정렬
+            const sortedWords = [...wordPositions].sort((a, b) => {
+                const numA = a.number || a.selectedNumber || a.id || 999;
+                const numB = b.number || b.selectedNumber || b.id || 999;
+                return numA - numB;
+            });
+            
+            sortedWords.forEach(word => {
+                const number = word.number || word.selectedNumber || word.id;
+                const value = number.toString();
+                const selected = value === selectedValue.toString() ? 'selected' : '';
+                options += `<option value="${value}" ${selected}>${number}</option>`;
             });
             return options;
         }
@@ -1314,6 +1326,10 @@
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.indexOf('application/json') !== -1) {
                     const data = await response.json();
+                    console.log('단어 추출 응답 데이터:', data);
+                    console.log('extracted_words:', data.extracted_words);
+                    console.log('word_order 개수:', data.extracted_words?.word_order?.length);
+                    console.log('word_analysis:', data.word_analysis);
                     showWordExtractionResult(data);
                 } else {
                     const text = await response.text();
@@ -1325,10 +1341,41 @@
                 content.innerHTML = `
                     <div class="alert alert-danger">
                         <h5>단어 추출 실패</h5>
-                        <p>${error.message}</p>
+                        <p><strong>오류 메시지:</strong> ${error.message}</p>
+                        <p class="text-muted small">단어 추출은 최대 5회까지 자동으로 재시도됩니다. 모든 시도가 실패한 경우, 템플릿의 단어 위치나 교차점 조건을 확인해주세요.</p>
                         <button class="btn btn-secondary" onclick="closeWordExtractionModal()">닫기</button>
                     </div>
                 `;
+            });
+        }
+        
+        // 템플릿 삭제 함수
+        function deleteTemplate(templateId, templateName) {
+            if (!confirm(`템플릿 "${templateName}"을(를) 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                return;
+            }
+            
+            fetch(`/admin/api/grid-template-management/template/${templateId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('템플릿이 삭제되었습니다.');
+                    // 레벨 조건 다시 로드하여 목록 갱신
+                    if (levelConditions) {
+                        fetchLevelConditions(levelConditions.level);
+                    }
+                } else {
+                    alert('템플릿 삭제 실패: ' + (data.message || data.error || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('템플릿 삭제 오류:', error);
+                alert('템플릿 삭제 중 오류가 발생했습니다: ' + error.message);
             });
         }
 
@@ -1337,18 +1384,51 @@
             
             const content = document.getElementById('wordExtractionContent');
             
+            if (!data.success) {
+                // 실패한 경우 상세 오류 메시지 표시
+                const errorMessage = data.message || data.error || '알 수 없는 오류가 발생했습니다.';
+                const retryCount = data.retry_count || 0;
+                content.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>❌ 단어 추출 실패</h5>
+                        <p><strong>오류 메시지:</strong> ${errorMessage}</p>
+                        <p class="text-muted small">
+                            <strong>시도 횟수:</strong> ${retryCount}/5회<br>
+                            단어 추출은 최대 5회까지 자동으로 재시도됩니다. 모든 시도가 실패한 경우, 다음을 확인해주세요:
+                        </p>
+                        <ul class="text-muted small">
+                            <li>템플릿의 단어 위치 정보가 올바른지 확인</li>
+                            <li>교차점 조건이 올바른지 확인</li>
+                            <li>데이터베이스에 해당 조건에 맞는 단어가 충분한지 확인</li>
+                        </ul>
+                        <button class="btn btn-secondary mt-2" onclick="closeWordExtractionModal()">닫기</button>
+                    </div>
+                `;
+                return;
+            }
+            
             if (data.success && data.extracted_words) {
                 const extractedWords = data.extracted_words;
                 
+                // word_analysis 정보 사용 (백엔드에서 계산된 정확한 값)
+                const wordAnalysis = data.word_analysis || {};
+                const totalWords = wordAnalysis.total_words || extractedWords.word_order?.length || 0;
+                const extractedWordsCount = wordAnalysis.extracted_words || extractedWords.word_order?.length || 0;
+                const requiredWordCount = wordAnalysis.required_word_count || totalWords;
+                const requiredIntersectionCount = wordAnalysis.required_intersection_count || 0;
+                
                 // 통계 계산
-                const totalWords = extractedWords.word_order.length;
-                const independentWords = extractedWords.word_order.filter(word => word.type === 'no_intersection').length;
-                const connectedWords = totalWords - independentWords;
+                const independentWords = extractedWords.word_order?.filter(word => word.type === 'no_intersection').length || 0;
+                const connectedWords = extractedWordsCount - independentWords;
+                
+                // 경고 메시지 확인
+                const warningMessage = data.warning ? `<div class="alert alert-warning mb-2"><small>${data.warning}</small></div>` : '';
                 
                 content.innerHTML = `
                     <div class="alert alert-success mb-3">
                         <h6>✅ 단어 배치 순서 결정 완료!</h6>
-                        <p>총 ${totalWords}개의 단어가 성공적으로 배치되었습니다.</p>
+                        <p>총 ${extractedWordsCount}개의 단어가 성공적으로 배치되었습니다.${totalWords !== extractedWordsCount ? ` (전체 ${totalWords}개 중)` : ''}</p>
+                        ${warningMessage}
                     </div>
                     
                     <div class="row">
@@ -1357,11 +1437,15 @@
                             <table class="table table-sm">
                                 <tr>
                                     <td>총 단어 수:</td>
-                                    <td><span class="badge bg-primary">${totalWords}</span></td>
+                                    <td><span class="badge bg-primary">${totalWords}</span> (필요: ${requiredWordCount})</td>
                                 </tr>
                                 <tr>
-                                    <td>배치 순서:</td>
-                                    <td><span class="badge bg-success">${totalWords}개</span></td>
+                                    <td>추출된 단어:</td>
+                                    <td><span class="badge ${extractedWordsCount === totalWords ? 'bg-success' : 'bg-warning'}">${extractedWordsCount}개</span></td>
+                                </tr>
+                                <tr>
+                                    <td>교차점:</td>
+                                    <td><span class="badge bg-info">${requiredIntersectionCount}개</span></td>
                                 </tr>
                             </table>
                             
@@ -1386,18 +1470,37 @@
                         <div class="col-md-6">
                             <h6>📋 결정된 단어 배치 순서</h6>
                             <div class="word-order-list" style="max-height: 400px; overflow-y: auto;">
-                                ${extractedWords.word_order.map((item, index) => `
+                                ${(extractedWords.word_order || []).map((item, index) => {
+                                    // length 계산 (없을 경우)
+                                    let wordLength = item.position.length;
+                                    if (!wordLength) {
+                                        if (item.position.direction === 'horizontal') {
+                                            wordLength = (item.position.end_x || 0) - (item.position.start_x || 0) + 1;
+                                        } else {
+                                            wordLength = (item.position.end_y || 0) - (item.position.start_y || 0) + 1;
+                                        }
+                                    }
+                                    
+                                    // 좌표 값 안전하게 처리
+                                    const startX = item.position.start_x !== undefined ? item.position.start_x : '';
+                                    const startY = item.position.start_y !== undefined ? item.position.start_y : '';
+                                    const endX = item.position.end_x !== undefined ? item.position.end_x : '';
+                                    const endY = item.position.end_y !== undefined ? item.position.end_y : '';
+                                    const direction = item.position.direction || 'horizontal';
+                                    const wordId = item.word_id !== undefined ? item.word_id : index + 1;
+                                    
+                                    return `
                                     <div class="card mb-2">
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <div class="flex-grow-1">
                                                     <h6 class="card-title mb-1">
-                                                        ${index + 1} 단어 ${item.word_id} (${item.position.length}글자)
+                                                        ${index + 1} 단어 ${wordId} (${wordLength}글자)
                                                     </h6>
                                                     <div class="mt-1">
                                             <small class="text-muted">
-                                                            ${item.position.direction === 'horizontal' ? '가로' : '세로'} 
-                                                            (${item.position.start_x},${item.position.start_y}) → (${item.position.end_x},${item.position.end_y})
+                                                            ${direction === 'horizontal' ? '가로' : '세로'} 
+                                                            (${startX},${startY}) → (${endX},${endY})
                                             </small>
                                         </div>
                                                     ${item.extracted_word ? `
@@ -1415,7 +1518,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                `).join('')}
+                                `;
+                                }).join('')}
                             </div>
                         </div>
                     </div>
@@ -1424,21 +1528,34 @@
                     <div class="mt-3">
                         <h6>실행된 데이터베이스 쿼리</h6>
                         <div id="queryLog" class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px;">
-                            <p class="text-muted">쿼리 로그가 여기에 표시됩니다...</p>
+                            ${(data.query_log && data.query_log.length > 0) ? 
+                                data.query_log.map(log => 
+                                    `<div class="mb-2"><strong>${log.type || 'query'}:</strong> ${log.sql || ''} <small class="text-muted">(${log.description || ''})</small></div>`
+                                ).join('') : 
+                                '<p class="text-muted">쿼리 로그가 없습니다.</p>'
+                            }
                         </div>
                     </div>
                 `;
                 
                 // 그리드 렌더링 (공용 함수 사용)
                 setTimeout(() => {
+                    console.log('그리드 렌더링 시도:', extractedWords.grid_info);
                     
                     // 그리드 패턴과 단어 위치 데이터 확인
                     if (extractedWords.grid_info && extractedWords.grid_info.pattern) {
-                        // gridPattern이 이미 문자열이므로 그대로 사용
+                        // gridPattern이 배열인지 문자열인지 확인
+                        let gridPattern = extractedWords.grid_info.pattern;
+                        if (Array.isArray(gridPattern)) {
+                            // 배열이면 JSON 문자열로 변환
+                            gridPattern = JSON.stringify(gridPattern);
+                        }
+                        
                         const template = {
-                            gridPattern: extractedWords.grid_info.pattern,
-                            wordPositions: JSON.stringify(extractedWords.word_order)
+                            gridPattern: gridPattern,
+                            wordPositions: JSON.stringify(extractedWords.word_order || [])
                         };
+                        console.log('템플릿 데이터:', template);
                         renderGridFromAPI(template, '#extractionGridVisualization', 30, true);
                     } else {
                         console.error('그리드 데이터가 없습니다:', extractedWords);
@@ -1816,6 +1933,8 @@
                     cell.style.backgroundColor = currentGrid[i][j] === 2 ? 'black' : 'white';
                     cell.style.color = currentGrid[i][j] === 2 ? 'white' : 'black';
                     cell.textContent = currentGrid[i][j] === 2 ? '■' : '□';
+                    cell.dataset.x = j;
+                    cell.dataset.y = i;
                     
                     row.appendChild(cell);
                 }
@@ -1829,39 +1948,161 @@
             const horizontalList = document.getElementById('generatedHorizontalWordPositionsList');
             const verticalList = document.getElementById('generatedVerticalWordPositionsList');
             
-            horizontalList.innerHTML = '';
-            verticalList.innerHTML = '';
-
-            const horizontalWords = wordPositions.filter(w => w.direction === 'horizontal');
-            const verticalWords = wordPositions.filter(w => w.direction === 'vertical');
-
-            if (horizontalWords.length === 0) {
+            if (!horizontalList || !verticalList) {
+                console.error('컨테이너 요소를 찾을 수 없습니다!');
+                return;
+            }
+            
+            if (wordPositions.length === 0) {
                 horizontalList.innerHTML = '<p class="text-muted text-center">가로형 단어가 없습니다</p>';
-            } else {
-                horizontalWords.forEach(word => {
-                    const wordItem = document.createElement('div');
-                    wordItem.className = 'word-position-item mb-2 p-2 border rounded';
-                    wordItem.innerHTML = `
-                        <small class="text-muted">${word.direction === 'horizontal' ? '가로' : '세로'}</small>
-                        <div>시작: (${word.start_x}, ${word.start_y}) → 끝: (${word.end_x}, ${word.end_y})</div>
-                    `;
-                    horizontalList.appendChild(wordItem);
-                });
-            }
-
-            if (verticalWords.length === 0) {
                 verticalList.innerHTML = '<p class="text-muted text-center">세로형 단어가 없습니다</p>';
+                return;
+            }
+            
+            // 기존 선택된 번호들 저장
+            const existingSelections = {};
+            document.querySelectorAll('.word-number-select').forEach(select => {
+                if (select.value) {
+                    existingSelections[select.dataset.wordId] = select.value;
+                }
+            });
+            
+            // 가로형과 세로형 분리
+            const horizontalWords = wordPositions.filter(word => word.direction === 'horizontal');
+            const verticalWords = wordPositions.filter(word => word.direction === 'vertical');
+            
+            // 가로형 단어 목록 생성
+            let horizontalHtml = '';
+            if (horizontalWords.length === 0) {
+                horizontalHtml = '<p class="text-muted text-center">가로형 단어가 없습니다</p>';
             } else {
-                verticalWords.forEach(word => {
-                    const wordItem = document.createElement('div');
-                    wordItem.className = 'word-position-item mb-2 p-2 border rounded';
-                    wordItem.innerHTML = `
-                        <small class="text-muted">${word.direction === 'horizontal' ? '가로' : '세로'}</small>
-                        <div>시작: (${word.start_x}, ${word.start_y}) → 끝: (${word.end_x}, ${word.end_y})</div>
+                horizontalWords.forEach((word, index) => {
+                    const length = word.length || (word.end_x - word.start_x + 1);
+                    const startPos = `(${word.start_x},${word.start_y})`;
+                    const endPos = `(${word.end_x},${word.end_y})`;
+                    
+                    // 템플릿에서 가져온 번호를 우선 사용, 없으면 기존 선택된 번호 사용
+                    const selectedValue = word.selectedNumber || word.number || existingSelections[word.id] || '';
+                    
+                    horizontalHtml += `
+                        <div class="word-position-item mb-2 p-2 border rounded" data-word-id="${word.id}" data-direction="horizontal">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <small class="text-muted">${startPos} 에서 ${endPos}</small><br>
+                                    <strong>가로 ${length}칸</strong>
+                                </div>
+                                <div class="ms-2">
+                                    <select class="form-select form-select-sm word-number-select" 
+                                            data-word-id="${word.id}" 
+                                            style="width: 80px;">
+                                        <option value="">번호</option>
+                                        ${generateNumberOptions(wordPositions, selectedValue)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     `;
-                    verticalList.appendChild(wordItem);
                 });
             }
+            
+            // 세로형 단어 목록 생성
+            let verticalHtml = '';
+            if (verticalWords.length === 0) {
+                verticalHtml = '<p class="text-muted text-center">세로형 단어가 없습니다</p>';
+            } else {
+                verticalWords.forEach((word, index) => {
+                    const length = word.length || (word.end_y - word.start_y + 1);
+                    const startPos = `(${word.start_x},${word.start_y})`;
+                    const endPos = `(${word.end_x},${word.end_y})`;
+                    
+                    // 템플릿에서 가져온 번호를 우선 사용, 없으면 기존 선택된 번호 사용
+                    const selectedValue = word.selectedNumber || word.number || existingSelections[word.id] || '';
+                    
+                    verticalHtml += `
+                        <div class="word-position-item mb-2 p-2 border rounded" data-word-id="${word.id}" data-direction="vertical">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <small class="text-muted">${startPos} 에서 ${endPos}</small><br>
+                                    <strong>세로 ${length}칸</strong>
+                                </div>
+                                <div class="ms-2">
+                                    <select class="form-select form-select-sm word-number-select" 
+                                            data-word-id="${word.id}" 
+                                            style="width: 80px;">
+                                        <option value="">번호</option>
+                                        ${generateNumberOptions(wordPositions, selectedValue)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // HTML 업데이트
+            horizontalList.innerHTML = horizontalHtml;
+            verticalList.innerHTML = verticalHtml;
+            
+            // DOM이 완전히 렌더링된 후 드롭다운 값 설정 및 정렬 실행
+            setTimeout(() => {
+                // 드롭다운에 selected 값 설정
+                wordPositions.forEach(word => {
+                    const select = document.querySelector(`select[data-word-id="${word.id}"]`);
+                    if (select) {
+                        // selectedNumber 또는 number가 있으면 해당 값, 없으면 빈 값
+                        select.value = word.selectedNumber || word.number || '';
+                    }
+                });
+                // 정렬 실행
+                sortWordListsByNumber();
+            }, 50);
+            
+            // 번호 선택 이벤트 추가
+            document.querySelectorAll('.word-number-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const wordId = this.dataset.wordId;
+                    const selectedNumber = this.value;
+                    
+                    // 다른 번호와 중복 체크
+                    if (selectedNumber && isDuplicateNumber(selectedNumber, wordId)) {
+                        alert('이미 사용된 번호입니다.');
+                        this.value = '';
+                        return;
+                    }
+                    
+                    // 그리드에서 해당 단어 하이라이트
+                    highlightWordInGrid(parseInt(wordId), selectedNumber);
+                    
+                    updateWordNumber(wordId, selectedNumber);
+                    
+                    // 번호 변경 후 실시간 정렬 업데이트
+                    setTimeout(() => {
+                        sortWordListsByNumber();
+                    }, 100);
+                });
+                
+                // 포커스 시 하이라이트
+                select.addEventListener('focus', function() {
+                    const wordId = this.dataset.wordId;
+                    highlightWordInGrid(parseInt(wordId), this.value || 'focus');
+                });
+                
+                // 포커스 아웃 시 하이라이트 제거
+                select.addEventListener('blur', function() {
+                    const wordId = this.dataset.wordId;
+                    if (!this.value) {
+                        removeWordHighlight(parseInt(wordId));
+                    }
+                });
+                
+                // 단어 위치 아이템 클릭 시에도 포커스
+                const wordItem = select.closest('.word-position-item');
+                if (wordItem) {
+                    wordItem.addEventListener('click', function() {
+                        select.focus();
+                    });
+                }
+            });
         }
 
         // 생성된 템플릿 조건 확인
@@ -1963,7 +2204,7 @@
             const wordPositions = JSON.parse(generatedTemplate.wordPositions);
             const intersectionCount = countIntersections(wordPositions);
             
-            // 번호 정보 수집 (Laravel과 동일)
+            // 번호 정보 수집
             const wordNumbering = [];
             document.querySelectorAll('.word-number-select').forEach(select => {
                 if (select.value) {
@@ -1976,7 +2217,7 @@
             
             console.log('수집된 번호 정보:', wordNumbering);
             
-            // 사용자가 선택한 번호로 word_positions의 id 값 업데이트 (Laravel과 동일)
+            // 사용자가 선택한 번호를 number 필드에 저장 (id는 고유 식별자로 유지)
             if (wordNumbering.length > 0) {
                 // 번호 매핑 생성
                 const numberMapping = {};
@@ -1986,16 +2227,29 @@
                 
                 console.log('번호 매핑:', numberMapping);
                 
-                // word_positions의 id 값을 선택된 번호로 변경
+                // word_positions의 number 필드 업데이트 (id는 변경하지 않음)
                 wordPositions.forEach(word => {
                     if (numberMapping[word.id]) {
-                        console.log(`단어 ID 변경: ${word.id} -> ${numberMapping[word.id]}`);
-                        word.id = numberMapping[word.id];
+                        const newNumber = numberMapping[word.id];
+                        console.log(`단어 ID ${word.id}의 번호 업데이트: ${word.number || '없음'} -> ${newNumber}`);
+                        word.number = newNumber;
+                        word.selectedNumber = newNumber; // UI에서 사용할 속성도 업데이트
                     }
                 });
                 
                 console.log('업데이트된 wordPositions:', wordPositions);
             }
+            
+            // length 정보가 없는 경우 계산하여 추가
+            wordPositions.forEach(word => {
+                if (!word.length) {
+                    if (word.direction === 'horizontal') {
+                        word.length = word.end_x - word.start_x + 1;
+                    } else {
+                        word.length = word.end_y - word.start_y + 1;
+                    }
+                }
+            });
             
             const templateData = {
                 levelId: levelConditions.level,  // Spring Boot 엔티티 필드명 (camelCase)
@@ -2008,7 +2262,7 @@
                 description: '템플릿 생성2로 자동 생성된 템플릿',
                 category: 'general',
                 gridPattern: generatedTemplate.gridPattern,
-                wordPositions: generatedTemplate.wordPositions
+                wordPositions: JSON.stringify(wordPositions)  // 업데이트된 wordPositions를 JSON으로 변환
             };
             
             console.log('전송할 템플릿 데이터:', templateData);
@@ -2200,10 +2454,11 @@
         
         // 단어 목록을 번호 순으로 정렬하는 함수
         function sortWordListsByNumber() {
-
-            
-            // 가로형 컨테이너 정렬
-            const horizontalContainer = document.getElementById('horizontalWordPositionsList');
+            // 생성된 템플릿용 컨테이너 사용
+            const horizontalContainer = document.getElementById('generatedHorizontalWordPositionsList') || 
+                                       document.getElementById('horizontalWordPositionsList');
+            const verticalContainer = document.getElementById('generatedVerticalWordPositionsList') || 
+                                     document.getElementById('verticalWordPositionsList');
             
             
             if (horizontalContainer && horizontalContainer.children.length > 0) {

@@ -1,10 +1,11 @@
 package com.example.board.controller;
 
 import com.example.board.entity.PzGridTemplate;
+import com.example.board.entity.PzLevel;
+import com.example.board.repository.PzLevelRepository;
 import com.example.board.service.GridTemplateService;
 import com.example.board.service.TemplateValidationService;
 import com.example.board.util.GridRenderer;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -42,6 +43,12 @@ public class GridTemplateController {
 
     @Autowired
     private com.example.board.service.TemplateGenerationService templateGenerationService;
+    
+    @Autowired
+    private PzLevelRepository pzLevelRepository;
+    
+    @Autowired
+    private com.example.board.service.WordExtractionService wordExtractionService;
 
     /**
      * 그리드 템플릿 관리 API 연결 테스트
@@ -56,27 +63,67 @@ public class GridTemplateController {
     }
 
     /**
+     * 레벨 목록 조회 (템플릿 필터용)
+     */
+    @GetMapping("/levels")
+    public ResponseEntity<List<Map<String, Object>>> getLevels() {
+        try {
+            List<PzLevel> levels = pzLevelRepository.findAllOrderByLevel();
+            List<Map<String, Object>> levelList = levels.stream()
+                .map(level -> {
+                    Map<String, Object> levelMap = new HashMap<>();
+                    levelMap.put("id", level.getId());
+                    levelMap.put("level", level.getLevel());
+                    levelMap.put("levelName", level.getLevelName());
+                    return levelMap;
+                })
+                .collect(java.util.stream.Collectors.toList());
+            
+            return ResponseEntity.ok(levelList);
+        } catch (Exception e) {
+            log.error("레벨 목록 조회 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+        }
+    }
+
+    /**
      * 템플릿 목록 조회 (DataTables용)
      */
     @GetMapping("/templates-ajax")
     public ResponseEntity<Map<String, Object>> getTemplatesAjax(
             @RequestParam(defaultValue = "0") int start,
             @RequestParam(defaultValue = "25") int length,
-            @RequestParam(defaultValue = "id") String sortField,
-            @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(required = false) Integer level,
             @RequestParam(required = false) String templateName,
             @RequestParam(required = false) Integer minWordCount,
             @RequestParam(required = false) Integer maxWordCount,
             @RequestParam(required = false) Integer minIntersectionCount,
             @RequestParam(required = false) Integer maxIntersectionCount,
-            @RequestParam(defaultValue = "1") int draw) {
+            @RequestParam(defaultValue = "1") int draw,
+            @RequestParam(value = "order[0][column]", required = false) Integer orderColumn,
+            @RequestParam(value = "order[0][dir]", required = false) String orderDir) {
 
         try {
             int page = start / length; // DataTables의 start는 offset이므로 페이지로 변환
+            
+            // DataTables의 order 파라미터 파싱
+            String sortField = "id";
+            String sortDirection = "desc";
+            
+            if (orderColumn != null) {
+                // 컬럼 인덱스를 필드명으로 매핑 (체크박스 제외)
+                String[] columnMapping = {"", "id", "levelId", "templateName", "gridWidth", "wordCount", "intersectionCount", "createdAt", ""};
+                if (orderColumn >= 0 && orderColumn < columnMapping.length && !columnMapping[orderColumn].isEmpty()) {
+                    sortField = columnMapping[orderColumn];
+                }
+            }
+            
+            if (orderDir != null && (orderDir.equals("asc") || orderDir.equals("desc"))) {
+                sortDirection = orderDir;
+            }
 
             Page<PzGridTemplate> templatePage = gridTemplateService.getAllTemplates(
-                    page, length, sortField, sortDir,
+                    page, length, sortField, sortDirection,
                     level, templateName, minWordCount, maxWordCount,
                     minIntersectionCount, maxIntersectionCount
             );
@@ -321,25 +368,10 @@ public class GridTemplateController {
             Long templateId = Long.valueOf(request.get("template_id").toString());
             log.info("단어 추출 요청: templateId={}", templateId);
             
-            // 간단한 단어 추출 결과 반환 (테스트용)
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "단어 추출이 완료되었습니다.");
+            // WordExtractionService를 사용하여 실제 단어 추출 수행
+            Map<String, Object> extractionResult = wordExtractionService.extractWords(templateId);
             
-            // 추출된 단어 목록 (테스트용)
-            Map<String, Object> extractedWords = new HashMap<>();
-            extractedWords.put("word_order", List.of(
-                Map.of("id", 1, "word", "사과", "type", "no_intersection", "position", Map.of("row", 0, "col", 0, "direction", "horizontal")),
-                Map.of("id", 2, "word", "바나나", "type", "intersection", "position", Map.of("row", 1, "col", 0, "direction", "vertical")),
-                Map.of("id", 3, "word", "오렌지", "type", "intersection", "position", Map.of("row", 2, "col", 0, "direction", "horizontal"))
-            ));
-            extractedWords.put("total_words", 3);
-            extractedWords.put("independent_words", 1);
-            extractedWords.put("connected_words", 2);
-            
-            response.put("extracted_words", extractedWords);
-            
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(extractionResult);
             
         } catch (Exception e) {
             log.error("단어 추출 중 오류 발생", e);

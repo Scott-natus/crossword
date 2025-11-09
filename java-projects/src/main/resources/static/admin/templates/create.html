@@ -861,6 +861,9 @@
                         <button type="button" class="btn btn-sm btn-outline-success ms-2" onclick="extractWords(${template.id})">
                             <i class="fas fa-magic"></i> 단어 추출
                         </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteTemplate(${template.id}, '${template.templateName}')">
+                            <i class="fas fa-trash"></i> 삭제
+                        </button>
                     </div>`
                 ).join('');
                 
@@ -1253,6 +1256,10 @@
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.indexOf('application/json') !== -1) {
                     const data = await response.json();
+                    console.log('단어 추출 응답 데이터:', data);
+                    console.log('extracted_words:', data.extracted_words);
+                    console.log('word_order 개수:', data.extracted_words?.word_order?.length);
+                    console.log('word_analysis:', data.word_analysis);
                     showWordExtractionResult(data);
                 } else {
                     const text = await response.text();
@@ -1264,10 +1271,41 @@
                 content.innerHTML = `
                     <div class="alert alert-danger">
                         <h5>단어 추출 실패</h5>
-                        <p>${error.message}</p>
+                        <p><strong>오류 메시지:</strong> ${error.message}</p>
+                        <p class="text-muted small">단어 추출은 최대 5회까지 자동으로 재시도됩니다. 모든 시도가 실패한 경우, 템플릿의 단어 위치나 교차점 조건을 확인해주세요.</p>
                         <button class="btn btn-secondary" onclick="closeWordExtractionModal()">닫기</button>
                     </div>
                 `;
+            });
+        }
+        
+        // 템플릿 삭제 함수
+        function deleteTemplate(templateId, templateName) {
+            if (!confirm(`템플릿 "${templateName}"을(를) 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                return;
+            }
+            
+            fetch(`/admin/api/grid-template-management/template/${templateId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('템플릿이 삭제되었습니다.');
+                    // 레벨 조건 다시 로드하여 목록 갱신
+                    if (levelConditions) {
+                        fetchLevelConditions(levelConditions.level);
+                    }
+                } else {
+                    alert('템플릿 삭제 실패: ' + (data.message || data.error || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('템플릿 삭제 오류:', error);
+                alert('템플릿 삭제 중 오류가 발생했습니다: ' + error.message);
             });
         }
 
@@ -1276,18 +1314,51 @@
             
             const content = document.getElementById('wordExtractionContent');
             
+            if (!data.success) {
+                // 실패한 경우 상세 오류 메시지 표시
+                const errorMessage = data.message || data.error || '알 수 없는 오류가 발생했습니다.';
+                const retryCount = data.retry_count || 0;
+                content.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>❌ 단어 추출 실패</h5>
+                        <p><strong>오류 메시지:</strong> ${errorMessage}</p>
+                        <p class="text-muted small">
+                            <strong>시도 횟수:</strong> ${retryCount}/5회<br>
+                            단어 추출은 최대 5회까지 자동으로 재시도됩니다. 모든 시도가 실패한 경우, 다음을 확인해주세요:
+                        </p>
+                        <ul class="text-muted small">
+                            <li>템플릿의 단어 위치 정보가 올바른지 확인</li>
+                            <li>교차점 조건이 올바른지 확인</li>
+                            <li>데이터베이스에 해당 조건에 맞는 단어가 충분한지 확인</li>
+                        </ul>
+                        <button class="btn btn-secondary mt-2" onclick="closeWordExtractionModal()">닫기</button>
+                    </div>
+                `;
+                return;
+            }
+            
             if (data.success && data.extracted_words) {
                 const extractedWords = data.extracted_words;
                 
+                // word_analysis 정보 사용 (백엔드에서 계산된 정확한 값)
+                const wordAnalysis = data.word_analysis || {};
+                const totalWords = wordAnalysis.total_words || extractedWords.word_order?.length || 0;
+                const extractedWordsCount = wordAnalysis.extracted_words || extractedWords.word_order?.length || 0;
+                const requiredWordCount = wordAnalysis.required_word_count || totalWords;
+                const requiredIntersectionCount = wordAnalysis.required_intersection_count || 0;
+                
                 // 통계 계산
-                const totalWords = extractedWords.word_order.length;
-                const independentWords = extractedWords.word_order.filter(word => word.type === 'no_intersection').length;
-                const connectedWords = totalWords - independentWords;
+                const independentWords = extractedWords.word_order?.filter(word => word.type === 'no_intersection').length || 0;
+                const connectedWords = extractedWordsCount - independentWords;
+                
+                // 경고 메시지 확인
+                const warningMessage = data.warning ? `<div class="alert alert-warning mb-2"><small>${data.warning}</small></div>` : '';
                 
                 content.innerHTML = `
                     <div class="alert alert-success mb-3">
                         <h6>✅ 단어 배치 순서 결정 완료!</h6>
-                        <p>총 ${totalWords}개의 단어가 성공적으로 배치되었습니다.</p>
+                        <p>총 ${extractedWordsCount}개의 단어가 성공적으로 배치되었습니다.${totalWords !== extractedWordsCount ? ` (전체 ${totalWords}개 중)` : ''}</p>
+                        ${warningMessage}
                     </div>
                     
                     <div class="row">
@@ -1296,11 +1367,15 @@
                             <table class="table table-sm">
                                 <tr>
                                     <td>총 단어 수:</td>
-                                    <td><span class="badge bg-primary">${totalWords}</span></td>
+                                    <td><span class="badge bg-primary">${totalWords}</span> (필요: ${requiredWordCount})</td>
                                 </tr>
                                 <tr>
-                                    <td>배치 순서:</td>
-                                    <td><span class="badge bg-success">${totalWords}개</span></td>
+                                    <td>추출된 단어:</td>
+                                    <td><span class="badge ${extractedWordsCount === totalWords ? 'bg-success' : 'bg-warning'}">${extractedWordsCount}개</span></td>
+                                </tr>
+                                <tr>
+                                    <td>교차점:</td>
+                                    <td><span class="badge bg-info">${requiredIntersectionCount}개</span></td>
                                 </tr>
                             </table>
                             
@@ -1325,18 +1400,37 @@
                         <div class="col-md-6">
                             <h6>📋 결정된 단어 배치 순서</h6>
                             <div class="word-order-list" style="max-height: 400px; overflow-y: auto;">
-                                ${extractedWords.word_order.map((item, index) => `
+                                ${(extractedWords.word_order || []).map((item, index) => {
+                                    // length 계산 (없을 경우)
+                                    let wordLength = item.position.length;
+                                    if (!wordLength) {
+                                        if (item.position.direction === 'horizontal') {
+                                            wordLength = (item.position.end_x || 0) - (item.position.start_x || 0) + 1;
+                                        } else {
+                                            wordLength = (item.position.end_y || 0) - (item.position.start_y || 0) + 1;
+                                        }
+                                    }
+                                    
+                                    // 좌표 값 안전하게 처리
+                                    const startX = item.position.start_x !== undefined ? item.position.start_x : '';
+                                    const startY = item.position.start_y !== undefined ? item.position.start_y : '';
+                                    const endX = item.position.end_x !== undefined ? item.position.end_x : '';
+                                    const endY = item.position.end_y !== undefined ? item.position.end_y : '';
+                                    const direction = item.position.direction || 'horizontal';
+                                    const wordId = item.word_id !== undefined ? item.word_id : index + 1;
+                                    
+                                    return `
                                     <div class="card mb-2">
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <div class="flex-grow-1">
                                                     <h6 class="card-title mb-1">
-                                                        ${index + 1} 단어 ${item.word_id} (${item.position.length}글자)
+                                                        ${index + 1} 단어 ${wordId} (${wordLength}글자)
                                                     </h6>
                                                     <div class="mt-1">
                                             <small class="text-muted">
-                                                            ${item.position.direction === 'horizontal' ? '가로' : '세로'} 
-                                                            (${item.position.start_x},${item.position.start_y}) → (${item.position.end_x},${item.position.end_y})
+                                                            ${direction === 'horizontal' ? '가로' : '세로'} 
+                                                            (${startX},${startY}) → (${endX},${endY})
                                             </small>
                                         </div>
                                                     ${item.extracted_word ? `
@@ -1354,7 +1448,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                `).join('')}
+                                `;
+                                }).join('')}
                             </div>
                         </div>
                     </div>
@@ -1363,21 +1458,34 @@
                     <div class="mt-3">
                         <h6>실행된 데이터베이스 쿼리</h6>
                         <div id="queryLog" class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px;">
-                            <p class="text-muted">쿼리 로그가 여기에 표시됩니다...</p>
+                            ${(data.query_log && data.query_log.length > 0) ? 
+                                data.query_log.map(log => 
+                                    `<div class="mb-2"><strong>${log.type || 'query'}:</strong> ${log.sql || ''} <small class="text-muted">(${log.description || ''})</small></div>`
+                                ).join('') : 
+                                '<p class="text-muted">쿼리 로그가 없습니다.</p>'
+                            }
                         </div>
                     </div>
                 `;
                 
                 // 그리드 렌더링 (공용 함수 사용)
                 setTimeout(() => {
+                    console.log('그리드 렌더링 시도:', extractedWords.grid_info);
                     
                     // 그리드 패턴과 단어 위치 데이터 확인
                     if (extractedWords.grid_info && extractedWords.grid_info.pattern) {
-                        // gridPattern이 이미 문자열이므로 그대로 사용
+                        // gridPattern이 배열인지 문자열인지 확인
+                        let gridPattern = extractedWords.grid_info.pattern;
+                        if (Array.isArray(gridPattern)) {
+                            // 배열이면 JSON 문자열로 변환
+                            gridPattern = JSON.stringify(gridPattern);
+                        }
+                        
                         const template = {
-                            gridPattern: extractedWords.grid_info.pattern,
-                            wordPositions: JSON.stringify(extractedWords.word_order)
+                            gridPattern: gridPattern,
+                            wordPositions: JSON.stringify(extractedWords.word_order || [])
                         };
+                        console.log('템플릿 데이터:', template);
                         renderGridFromAPI(template, '#extractionGridVisualization', 30, true);
                     } else {
                         console.error('그리드 데이터가 없습니다:', extractedWords);

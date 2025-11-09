@@ -287,11 +287,7 @@
                     <label class="form-label">레벨</label>
                     <select class="form-select" id="levelFilter">
                         <option value="">전체</option>
-                        <option value="1">레벨 1</option>
-                        <option value="2">레벨 2</option>
-                        <option value="3">레벨 3</option>
-                        <option value="4">레벨 4</option>
-                        <option value="5">레벨 5</option>
+                        <!-- 레벨 목록이 동적으로 로드됩니다 -->
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -407,10 +403,28 @@
         let selectedTemplates = [];
 
         $(document).ready(function() {
+            loadLevels();
             initializeDataTable();
             loadStats();
             setupEventListeners();
         });
+        
+        function loadLevels() {
+            fetch('/admin/api/grid-template-management/levels')
+                .then(response => response.json())
+                .then(data => {
+                    const levelFilter = $('#levelFilter');
+                    levelFilter.empty();
+                    levelFilter.append('<option value="">전체</option>');
+                    
+                    data.forEach(level => {
+                        levelFilter.append(`<option value="${level.level}">레벨 ${level.level}${level.levelName ? ' - ' + level.levelName : ''}</option>`);
+                    });
+                })
+                .catch(error => {
+                    console.error('레벨 목록 로드 실패:', error);
+                });
+        }
 
         function initializeDataTable() {
             templatesTable = $('#templatesTable').DataTable({
@@ -437,17 +451,18 @@
                             return '<input type="checkbox" class="template-checkbox" value="' + row.id + '">';
                         }
                     },
-                    { data: 'id' },
-                    { data: 'levelId' },
-                    { data: 'templateName' },
+                    { data: 'id', orderable: true },
+                    { data: 'levelId', orderable: true },
+                    { data: 'templateName', orderable: true },
                     { 
                         data: null,
+                        orderable: false,
                         render: function(data, type, row) {
                             return row.gridWidth + '×' + row.gridHeight;
                         }
                     },
-                    { data: 'wordCount' },
-                    { data: 'intersectionCount' },
+                    { data: 'wordCount', orderable: true },
+                    { data: 'intersectionCount', orderable: true },
                     { 
                         data: 'createdAt',
                         render: function(data, type, row) {
