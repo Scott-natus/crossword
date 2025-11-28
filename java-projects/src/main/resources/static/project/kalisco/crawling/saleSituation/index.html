@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메뉴별매출 데이터 크롤링 - 아워홈</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <!-- DataTables Buttons CSS -->
+    <link href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css" rel="stylesheet">
+    <!-- Flatpickr CSS (날짜 선택) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .info-icon-wrapper {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background-color: #6c757d;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+        .info-icon-wrapper:hover {
+            background-color: #5a6268;
+        }
+        .info-icon-wrapper i {
+            color: #000000;
+            font-size: 12px;
+        }
+        /* 모바일에서 클릭 가능하도록 */
+        @media (hover: none) {
+            .info-icon-wrapper {
+                cursor: pointer;
+            }
+        }
+        /* Tooltip 크기 조정 */
+        .tooltip-inner {
+            max-width: none !important;
+            min-width: calc(100% + 10px) !important;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .control-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .result-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        .result-panel.show {
+            display: block;
+        }
+        .btn-crawl {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s;
+            height: auto;
+            line-height: 1.5;
+        }
+        #actionButtons .btn {
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            height: auto;
+        }
+        .btn-crawl:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        .btn-crawl:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+            color: white;
+        }
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        .loading-spinner.show {
+            display: block;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            border-width: 0.3em;
+        }
+        .alert-custom {
+            border-radius: 8px;
+            border: none;
+            padding: 1rem 1.5rem;
+        }
+        .data-table {
+            margin-top: 1rem;
+        }
+        .stats-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #e9ecef;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .stats-badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .stats-badge.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .date-input-group {
+            display: flex;
+            gap: 1rem;
+            align-items: end;
+            margin-bottom: 1.5rem;
+        }
+        .date-input-wrapper {
+            flex: 0 0 auto;
+        }
+        .date-input-wrapper input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .date-input-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 제어 패널 -->
+        <div class="control-panel">
+            <div class="mb-4 d-flex align-items-center flex-wrap">
+                <h3 class="mb-0 d-flex align-items-center me-3">
+                    <span class="info-icon-wrapper me-2" 
+                          data-bs-toggle="tooltip" 
+                          data-bs-placement="top" 
+                          data-bs-html="true"
+                          title="아워홈의 ohrf 에서 kali2023 계정으로 접속, 데이터를 크롤링합니다">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </span>
+                    OHRF.매출 추출
+                </h3>
+                <select id="storeSelect" class="form-select" style="width: 300px; max-width: 100%; display: block !important; visibility: visible !important;">
+                    <option value="">매장 선택...</option>
+                </select>
+            </div>
+            
+            <!-- 라디오 버튼 선택 -->
+            <div class="mb-3">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="saleType" id="radioMenu" value="menu" checked onchange="toggleDateInputs()">
+                    <label class="form-check-label" for="radioMenu">메뉴별</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="saleType" id="radioDaily" value="daily" onchange="toggleDateInputs()">
+                    <label class="form-check-label" for="radioDaily">일별</label>
+                </div>
+            </div>
+            
+            <!-- 날짜 입력 및 데이터수집 버튼 (동일 라인) -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- 메뉴별: 시작일/종료일 -->
+                <div id="dateRangeInputs" class="d-flex align-items-center gap-2">
+                    <input type="text" id="startDate" class="form-control" placeholder="시작일" readonly style="width: 150px;">
+                    <span>~</span>
+                    <input type="text" id="endDate" class="form-control" placeholder="종료일" readonly style="width: 150px;">
+                </div>
+                <!-- 일별: 연도/월 -->
+                <div id="yearMonthInputs" class="d-flex align-items-center gap-2" style="display: none !important;">
+                    <select id="yearSelect" class="form-select" style="width: 100px;">
+                        <option value="">연도</option>
+                    </select>
+                    <select id="monthSelect" class="form-select" style="width: 100px;">
+                        <option value="">월</option>
+                    </select>
+                </div>
+                <!-- 날짜 버튼들 (메뉴별일 때만 표시) -->
+                <div id="dateRangeButtons" class="d-flex align-items-center gap-2" style="display: flex !important;">
+                    <button class="btn btn-outline-secondary" onclick="setDateRange(-1)" title="전일">-1D</button>
+                    <button class="btn btn-outline-secondary" onclick="setDateRange(-7)" title="최근 1주일">-1W</button>
+                    <button class="btn btn-outline-secondary" onclick="setDateRange(-30)" title="최근 1개월">-1M</button>
+                    <button class="btn btn-outline-warning" onclick="resetDateRange()" title="당일로 리셋">RESET</button>
+                </div>
+                <button id="btnCrawl" class="btn btn-crawl" onclick="startCrawling()">
+                    <i class="fas fa-play me-2"></i>데이터수집
+                </button>
+                <div id="actionButtons" style="display: none; margin-left: 2px;">
+                    <button id="btnDownloadExcel" class="btn btn-success" onclick="downloadExcel()" title="엑셀 다운로드">
+                        <i class="fas fa-file-excel"></i>
+                    </button>
+                    <button id="btnCopy" class="btn btn-info" onclick="copyToClipboard()" title="클립보드에 복사" style="margin-left: 2px;">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                <div id="statsContainer" style="flex: 1 1 auto; text-align: right;"></div>
+            </div>
+
+            <!-- 로딩 스피너 -->
+            <div id="loadingSpinner" class="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">로딩 중...</span>
+                </div>
+                <p class="mt-3">데이터를 수집하고 있습니다. 잠시만 기다려주세요...</p>
+            </div>
+        </div>
+
+        <!-- 결과 패널 -->
+        <div id="resultPanel" class="result-panel">
+            <div id="resultAlert"></div>
+            
+            <div id="dataTableContainer" class="mt-4">
+                <table id="dataTable" class="table table-striped table-hover data-table">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <!-- DataTables Buttons (엑셀 내보내기) -->
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <!-- Flatpickr JS (날짜 선택) -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+
+    <script>
+        let dataTable = null;
+        let currentStartDate = null;
+        let currentEndDate = null;
+        let currentYear = null;
+        let currentMonth = null;
+
+        // 날짜 선택기 초기화
+        let startDatePicker, endDatePicker;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 연도 선택 옵션 생성 (최근 3년)
+            const yearSelect = document.getElementById('yearSelect');
+            const today = new Date();
+            const todayYear = today.getFullYear();
+            for (let i = 0; i < 3; i++) {
+                const option = document.createElement('option');
+                option.value = todayYear - i;
+                option.textContent = (todayYear - i) + '년';
+                if (i === 0) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+            
+            // 월 선택 옵션 생성
+            const monthSelect = document.getElementById('monthSelect');
+            for (let i = 1; i <= 12; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i + '월';
+                if (i === today.getMonth() + 1) option.selected = true;
+                monthSelect.appendChild(option);
+            }
+            
+            // 당일 일자로 기본값 설정
+
+            // 종료일 먼저 초기화 (당일, 과거 날짜 선택 가능)
+            endDatePicker = flatpickr("#endDate", {
+                locale: "ko",
+                dateFormat: "Y-m-d",
+                defaultDate: today,
+                maxDate: today, // 당일까지만 선택 가능 (미래는 불가)
+                // minDate는 설정하지 않아서 과거 날짜 선택 가능
+                onChange: function(selectedDates, dateStr, instance) {
+                    // 종료일이 시작일보다 이전이면 시작일을 종료일로 설정
+                    if (startDatePicker.selectedDates[0] && selectedDates[0] < startDatePicker.selectedDates[0]) {
+                        startDatePicker.setDate(endDatePicker.selectedDates[0]);
+                    }
+                    startDatePicker.set('maxDate', endDatePicker.selectedDates[0]);
+                    // 현재 날짜 저장
+                    currentEndDate = dateStr;
+                }
+            });
+
+            // 시작일 초기화 (당일, 과거 날짜 선택 가능)
+            startDatePicker = flatpickr("#startDate", {
+                locale: "ko",
+                dateFormat: "Y-m-d",
+                defaultDate: today,
+                maxDate: today, // 종료일과 동일하게 당일까지만
+                // minDate는 설정하지 않아서 과거 날짜 선택 가능
+                onChange: function(selectedDates, dateStr, instance) {
+                    // 시작일이 종료일보다 늦으면 종료일을 시작일로 설정
+                    if (endDatePicker.selectedDates[0] && selectedDates[0] > endDatePicker.selectedDates[0]) {
+                        endDatePicker.setDate(selectedDates[0]);
+                    }
+                    endDatePicker.set('minDate', selectedDates[0]);
+                    // 현재 날짜 저장
+                    currentStartDate = dateStr;
+                }
+            });
+            
+            // 현재 날짜 저장
+            currentStartDate = startDatePicker.input.value;
+            currentEndDate = endDatePicker.input.value;
+            currentYear = yearSelect.value;
+            currentMonth = monthSelect.value;
+            
+            // 초기 상태 설정 (메뉴별이 기본 선택이므로)
+            toggleDateInputs();
+            
+            // 매장 목록 초기화 (하드코딩)
+            initStoreList();
+            
+            // Tooltip 초기화 (Bootstrap 5) - 약간의 지연을 두어 DOM이 완전히 로드된 후 실행
+            setTimeout(function() {
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    // 기존 tooltip 인스턴스가 있으면 제거
+                    var existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+                    if (existingTooltip) {
+                        existingTooltip.dispose();
+                    }
+                    // 새 tooltip 인스턴스 생성
+                    return new bootstrap.Tooltip(tooltipTriggerEl, {
+                        trigger: 'hover focus', // 데스크톱: hover, 모바일: focus (클릭)
+                        html: true,
+                        placement: 'top'
+                    });
+                });
+                
+                // 모바일에서 클릭 시 tooltip 표시를 위한 이벤트 추가
+                var infoIcon = document.querySelector('.info-icon-wrapper');
+                if (infoIcon) {
+                    infoIcon.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var tooltip = bootstrap.Tooltip.getInstance(this);
+                        if (tooltip) {
+                            // 모바일에서 클릭 시 tooltip 토글
+                            if (window.innerWidth <= 768 || 'ontouchstart' in window) {
+                                if (this.getAttribute('aria-describedby')) {
+                                    tooltip.hide();
+                                } else {
+                                    tooltip.show();
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 100);
+        });
+
+        /**
+         * 라디오 버튼에 따라 입력 필드 전환
+         */
+        function toggleDateInputs() {
+            const saleType = document.querySelector('input[name="saleType"]:checked').value;
+            const dateRangeInputs = document.getElementById('dateRangeInputs');
+            const yearMonthInputs = document.getElementById('yearMonthInputs');
+            const dateRangeButtons = document.getElementById('dateRangeButtons');
+            
+            if (saleType === 'menu') {
+                // 메뉴별: 시작일/종료일 입력 필드와 날짜 버튼 표시, 연도/월 숨김
+                if (dateRangeInputs) {
+                    dateRangeInputs.setAttribute('style', 'display: flex !important;');
+                }
+                if (yearMonthInputs) {
+                    yearMonthInputs.setAttribute('style', 'display: none !important;');
+                }
+                if (dateRangeButtons) {
+                    dateRangeButtons.setAttribute('style', 'display: flex !important;');
+                }
+            } else {
+                // 일별: 연도/월만 표시, 시작일/종료일 입력 필드와 날짜 버튼 숨김
+                if (dateRangeInputs) {
+                    dateRangeInputs.setAttribute('style', 'display: none !important;');
+                }
+                if (yearMonthInputs) {
+                    yearMonthInputs.setAttribute('style', 'display: flex !important;');
+                }
+                if (dateRangeButtons) {
+                    dateRangeButtons.setAttribute('style', 'display: none !important;');
+                }
+            }
+        }
+
+        /**
+         * 날짜 범위 설정 (-1D, -1W, -1M)
+         */
+        function setDateRange(days) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // 시간 초기화
+            
+            if (days === -1) {
+                // -1D: 시작일=전일, 종료일=전일
+                const yesterday = new Date(today);
+                yesterday.setDate(today.getDate() - 1);
+                startDatePicker.setDate(yesterday, false);
+                endDatePicker.setDate(yesterday, false);
+            } else if (days === -7) {
+                // -1W: 시작일=당일-7일, 종료일=당일
+                const weekAgo = new Date(today);
+                weekAgo.setDate(today.getDate() - 7);
+                startDatePicker.setDate(weekAgo, false);
+                endDatePicker.setDate(today, false);
+            } else if (days === -30) {
+                // -1M: 시작일=당일-30일, 종료일=당일
+                const monthAgo = new Date(today);
+                monthAgo.setDate(today.getDate() - 30);
+                startDatePicker.setDate(monthAgo, false);
+                endDatePicker.setDate(today, false);
+            }
+            
+            // 현재 날짜 저장
+            currentStartDate = startDatePicker.input.value;
+            currentEndDate = endDatePicker.input.value;
+        }
+
+        /**
+         * 날짜 범위 리셋 (시작일=당일, 종료일=당일)
+         */
+        function resetDateRange() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // 시간 초기화
+            startDatePicker.setDate(today, false);
+            endDatePicker.setDate(today, false);
+            
+            // 현재 날짜 저장
+            currentStartDate = startDatePicker.input.value;
+            currentEndDate = endDatePicker.input.value;
+        }
+
+        /**
+         * 매장 목록 초기화 (하드코딩)
+         * 크롤링 대상 페이지의 두 번째 콤보박스 옵션을 여기에 하드코딩
+         */
+        function initStoreList() {
+            const storeSelect = document.getElementById('storeSelect');
+            if (!storeSelect) return;
+            
+            // 하드코딩된 매장 목록 (크롤링 대상 페이지의 두 번째 콤보박스 옵션)
+            const storeList = [
+                { value: '', text: '전체 매장' },
+                { value: 'T1_B1_컬리너리_타코벨(FB0IU)', text: 'T1_B1_컬리너리_타코벨(FB0IU)' },
+                { value: 'T2_4F_컬리너리_타코벨(FB0J4)', text: 'T2_4F_컬리너리_타코벨(FB0J4)' },
+                { value: 'T2_B1_사보텐(JD007)', text: 'T2_B1_사보텐(JD007)' },
+                { value: '타코벨 인천공항(E) (SA01N)', text: '타코벨 인천공항(E) (SA01N)' },
+                { value: '타코벨 인천공항(W) (SA01O)', text: '타코벨 인천공항(W) (SA01O)' },
+                { value: '타코벨 인천공항(탑승동)(SA01P)', text: '타코벨 인천공항(탑승동)(SA01P)' },
+                { value: '히바린_IFC(FB0GQ)', text: '히바린_IFC(FB0GQ)' }
+            ];
+            
+            storeSelect.innerHTML = '';
+            storeList.forEach(store => {
+                const option = document.createElement('option');
+                option.value = store.value;
+                option.textContent = store.text;
+                storeSelect.appendChild(option);
+            });
+        }
+        
+        /**
+         * 데이터수집 시작
+         */
+        async function startCrawling() {
+            const btnCrawl = document.getElementById('btnCrawl');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const resultPanel = document.getElementById('resultPanel');
+            const resultAlert = document.getElementById('resultAlert');
+            const statsContainer = document.getElementById('statsContainer');
+            const saleType = document.querySelector('input[name="saleType"]:checked').value;
+            
+            let requestBody = { saleType: saleType };
+            
+            if (saleType === 'menu') {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                // 날짜 유효성 검사
+                if (!startDate || !endDate) {
+                    alert('시작일과 종료일을 모두 선택해주세요.');
+                    return;
+                }
+                
+                if (new Date(startDate) > new Date(endDate)) {
+                    alert('시작일은 종료일보다 이전이어야 합니다.');
+                    return;
+                }
+                
+                currentStartDate = startDate;
+                currentEndDate = endDate;
+                requestBody.startDate = startDate;
+                requestBody.endDate = endDate;
+            } else {
+                const year = document.getElementById('yearSelect').value;
+                const month = document.getElementById('monthSelect').value;
+                
+                if (!year || !month) {
+                    alert('연도와 월을 모두 선택해주세요.');
+                    return;
+                }
+                
+                currentYear = year;
+                currentMonth = month;
+                requestBody.year = year;
+                requestBody.month = month;
+            }
+            
+            // 매장 선택값 추가
+            const storeSelect = document.getElementById('storeSelect');
+            if (storeSelect && storeSelect.value) {
+                requestBody.storeValue = storeSelect.value;
+            }
+
+            // UI 상태 변경
+            btnCrawl.disabled = true;
+            btnCrawl.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>수집중...';
+            loadingSpinner.classList.add('show');
+            resultPanel.classList.remove('show');
+            resultAlert.innerHTML = '';
+            statsContainer.innerHTML = '';
+            // 액션 버튼 숨기기
+            document.getElementById('actionButtons').style.display = 'none';
+
+            try {
+                // API 호출
+                const response = await fetch('/api/ourhome/menu-sales', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const result = await response.json();
+
+                // 로딩 숨기기
+                loadingSpinner.classList.remove('show');
+                btnCrawl.disabled = false;
+                btnCrawl.innerHTML = '<i class="fas fa-play me-2"></i>데이터수집';
+
+                if (result.success) {
+                    // 통계 표시
+                    if (result.count) {
+                        statsContainer.innerHTML = `
+                            <span class="stats-badge success">
+                                <i class="fas fa-database me-1"></i>총 ${result.count}건
+                            </span>
+                            <span class="stats-badge info">
+                                <i class="fas fa-clock me-1"></i>${new Date().toLocaleString('ko-KR')}
+                            </span>
+                        `;
+                    }
+
+                    // 데이터 테이블 표시 (헤더 순서 보장)
+                    displayData(result.data || [], result.headers || []);
+
+                    // 액션 버튼 표시 (데이터 수집 완료 시)
+                    if (result.count > 0) {
+                        document.getElementById('actionButtons').style.display = 'inline-block';
+                    }
+
+                    // 결과 패널 표시
+                    resultPanel.classList.add('show');
+                } else {
+                    // 실패 알림
+                    resultAlert.innerHTML = `
+                        <div class="alert alert-danger alert-custom">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>데이터 수집 실패:</strong> ${result.message || '알 수 없는 오류가 발생했습니다.'}
+                        </div>
+                    `;
+                    resultPanel.classList.add('show');
+                }
+
+            } catch (error) {
+                console.error('데이터 수집 오류:', error);
+                
+                loadingSpinner.classList.remove('show');
+                btnCrawl.disabled = false;
+                btnCrawl.innerHTML = '<i class="fas fa-play me-2"></i>데이터수집';
+
+                resultAlert.innerHTML = `
+                    <div class="alert alert-danger alert-custom">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>오류 발생:</strong> ${error.message}
+                    </div>
+                `;
+                resultPanel.classList.add('show');
+            }
+        }
+
+        /**
+         * 데이터 테이블 표시
+         * @param {Array} data - 데이터 배열
+         * @param {Array} headerOrder - 헤더 순서 배열 (API에서 받은 순서대로)
+         */
+        function displayData(data, headerOrder) {
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+
+            if (!data || data.length === 0) {
+                tableHead.innerHTML = '<tr><th>데이터 없음</th></tr>';
+                tableBody.innerHTML = '<tr><td colspan="100%">수집된 데이터가 없습니다.</td></tr>';
+                return;
+            }
+
+            // 기존 DataTable 제거
+            if (dataTable) {
+                dataTable.destroy();
+            }
+
+            // 헤더 순서 결정: API에서 받은 headerOrder가 있으면 사용, 없으면 Object.keys 사용
+            let headers;
+            if (headerOrder && headerOrder.length > 0) {
+                // API에서 받은 헤더 순서 사용
+                headers = headerOrder;
+            } else {
+                // fallback: 데이터의 첫 번째 행의 키 사용
+                headers = Object.keys(data[0]);
+            }
+            
+            // 헤더 생성 (순서 보장)
+            let headerHtml = '<tr>';
+            headers.forEach(header => {
+                headerHtml += `<th>${escapeHtml(header)}</th>`;
+            });
+            headerHtml += '</tr>';
+            tableHead.innerHTML = headerHtml;
+
+            // 바디 생성 (헤더 순서대로)
+            let bodyHtml = '';
+            data.forEach(row => {
+                bodyHtml += '<tr>';
+                headers.forEach(header => {
+                    const value = row[header] || '';
+                    bodyHtml += `<td>${escapeHtml(value)}</td>`;
+                });
+                bodyHtml += '</tr>';
+            });
+            tableBody.innerHTML = bodyHtml;
+
+            // DataTable 초기화 (엑셀 다운로드 버튼 포함)
+            const saleType = document.querySelector('input[name="saleType"]:checked').value;
+            const now = new Date();
+            const dateStr = now.getFullYear() + 
+                          String(now.getMonth() + 1).padStart(2, '0') + 
+                          String(now.getDate()).padStart(2, '0');
+            const timeStr = String(now.getHours()).padStart(2, '0') + 
+                          String(now.getMinutes()).padStart(2, '0');
+            
+            // 매장명 가져오기
+            const storeSelect = document.getElementById('storeSelect');
+            let storeName = '';
+            if (storeSelect && storeSelect.selectedIndex > 0) {
+                storeName = storeSelect.options[storeSelect.selectedIndex].text;
+                // 파일명에 사용할 수 있도록 특수문자 제거 및 공백 처리
+                storeName = storeName.replace(/[\/\\:*?"<>|]/g, '_').replace(/\s+/g, '_');
+            }
+            
+            // 파일명 생성 (기능별_일시분_매장명)
+            let filename = '';
+            if (saleType === 'daily') {
+                filename = `일별매출_${dateStr}_${timeStr}${storeName ? '_' + storeName : ''}`;
+            } else {
+                filename = `메뉴별매출_${dateStr}_${timeStr}${storeName ? '_' + storeName : ''}`;
+            }
+            
+            dataTable = $('#dataTable').DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/ko.json'
+                },
+                paging: false, // 페이지네이션 비활성화
+                searching: false, // 검색 기능 비활성화
+                info: false, // 정보 표시 비활성화
+                order: [],
+                responsive: true,
+                scrollX: true,
+                dom: 'frtip', // 'B' 제거하여 버튼 영역을 DOM에 생성하지 않음
+                buttons: [
+                    {
+                        extend: 'excel',
+                        text: '<i class="fas fa-file-excel"></i>',
+                        title: filename,
+                        filename: filename,
+                        className: '',
+                        exportOptions: {
+                            format: {
+                                body: function(data, row, column, node) {
+                                    return data;
+                                }
+                            }
+                        }
+                    }
+                ]
+            });
+            
+            // 버튼 컨테이너가 생성되지 않도록 확인 (dom에서 'B' 제거했으므로 생성되지 않아야 함)
+            // 혹시 생성되었다면 제거
+            setTimeout(function() {
+                $('.dt-buttons').remove();
+            }, 100);
+        }
+
+        /**
+         * HTML 이스케이프
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        /**
+         * 엑셀 다운로드 (DataTable 기본 기능 사용)
+         */
+        function downloadExcel() {
+            if (!dataTable) {
+                alert('다운로드할 데이터가 없습니다. 먼저 데이터수집을 실행해주세요.');
+                return;
+            }
+            
+            // DataTable의 엑셀 버튼 클릭 트리거
+            dataTable.button('.buttons-excel').trigger();
+        }
+
+        /**
+         * 클립보드에 복사
+         */
+        function copyToClipboard() {
+            if (!dataTable) {
+                alert('복사할 데이터가 없습니다. 먼저 데이터수집을 실행해주세요.');
+                return;
+            }
+            copyTableDataToClipboard(dataTable);
+        }
+
+        /**
+         * 테이블 데이터를 클립보드에 복사 (헤더 제외, 엑셀 붙여넣기 형식)
+         */
+        function copyTableDataToClipboard(dt) {
+            try {
+                // DataTable에서 모든 데이터 가져오기 (헤더 제외)
+                const data = dt.rows().data().toArray();
+                
+                if (data.length === 0) {
+                    alert('복사할 데이터가 없습니다.');
+                    return;
+                }
+                
+                // 헤더 가져오기 (첫 번째 행의 키 사용)
+                const headers = Object.keys(data[0]);
+                
+                // TSV 형식으로 변환 (탭으로 구분, 엑셀 붙여넣기용)
+                let tsvContent = '';
+                
+                // 데이터 행만 복사 (헤더 제외)
+                data.forEach((row, index) => {
+                    const rowValues = headers.map(header => {
+                        const value = row[header] || '';
+                        // 줄바꿈 문자를 공백으로 변환
+                        return String(value).replace(/\n/g, ' ').replace(/\r/g, '');
+                    });
+                    tsvContent += rowValues.join('\t') + '\n';
+                });
+                
+                // 클립보드에 복사
+                navigator.clipboard.writeText(tsvContent).then(function() {
+                    alert('데이터가 클립보드에 복사되었습니다. 엑셀에 붙여넣기(Ctrl+V)를 사용하세요.');
+                }, function(err) {
+                    // 클립보드 API 실패 시 대체 방법 사용
+                    const textArea = document.createElement('textarea');
+                    textArea.value = tsvContent;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    
+                    try {
+                        const successful = document.execCommand('copy');
+                        if (successful) {
+                            alert('데이터가 클립보드에 복사되었습니다. 엑셀에 붙여넣기(Ctrl+V)를 사용하세요.');
+                        } else {
+                            alert('클립보드 복사에 실패했습니다.');
+                        }
+                    } catch (err) {
+                        alert('클립보드 복사에 실패했습니다: ' + err);
+                    }
+                    
+                    document.body.removeChild(textArea);
+                });
+            } catch (error) {
+                console.error('복사 중 오류:', error);
+                alert('데이터 복사 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+    </script>
+</body>
+</html>
+
