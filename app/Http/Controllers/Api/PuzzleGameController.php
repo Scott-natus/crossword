@@ -86,6 +86,10 @@ class PuzzleGameController extends Controller
                         $baseHint = DB::table('pz_hints')
                             ->where('word_id', $pzWord->id)
                             ->where('is_primary', true)
+                            ->where(function($q) {
+                                $q->where('language_code', 'KR')
+                                  ->orWhere('language_code', 'ko');
+                            })
                             ->first();
                         $secureWordInfo['hint_id'] = $baseHint ? $baseHint->id : null;
                         $secureWordInfo['hint'] = $baseHint ? $baseHint->hint_text : null;
@@ -782,9 +786,14 @@ class PuzzleGameController extends Controller
         ]);
 
         // 요구사항: 기본 힌트(is_primary=true) 제외하고 난이도 순서로 힌트 선택 (쉬운 것부터)
+        // 한국어 힌트만 조회 (language_code='KR' 또는 'ko')
         $query = DB::table('pz_hints')
             ->where('word_id', $request->word_id)
             ->where('is_primary', false) // 기본 힌트 제외
+            ->where(function($q) {
+                $q->where('language_code', 'KR')
+                  ->orWhere('language_code', 'ko');
+            })
             ->select('hint_text as hint', 'id', 'difficulty')
             ->orderBy('difficulty', 'asc') // 난이도 낮은 것부터 (쉬운 것 우선)
             ->limit(1);

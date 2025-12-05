@@ -532,8 +532,14 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6><strong>힌트 관리</strong></h6>
                                 <div class="d-flex gap-2">
-                                    <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm">
+                                    <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm" onclick="handleGenerateHintsClick()">
+                                        <i class="fas fa-magic me-1"></i>힌트 생성
+                                    </button>
+                                    <button type="button" id="addNewHintBtn" class="btn btn-primary btn-sm">
                                         <i class="fas fa-plus me-1"></i>힌트 추가
+                                    </button>
+                                    <button type="button" id="addStdictHintBtn" class="btn btn-info btn-sm">
+                                        <i class="fas fa-book me-1"></i>대사전 힌트 추가
                                     </button>
                                     <button type="button" id="deactivateWordBtn" class="btn btn-danger btn-sm">
                                         <i class="fas fa-ban me-1"></i>비활성
@@ -806,24 +812,36 @@
                             return `<input type="checkbox" class="word-checkbox" value="${row.id}" onchange="updateSelectedWords()">`;
                         }
                     },
-                    { data: 'category' },
+                    { 
+                        data: 'category',
+                        orderable: true
+                    },
                     { 
                         data: 'word',
+                        orderable: true,
                         render: function(data, type, row) {
                             return `<strong>${data}</strong>`;
                         }
                     },
-                    { data: 'length' },
+                    { 
+                        data: 'length',
+                        orderable: true
+                    },
                     { 
                         data: 'difficulty_text',
+                        orderable: true,
                         render: function(data, type, row) {
                             const difficultyClass = getDifficultyClass(row.difficulty);
                             return `<span class="badge ${difficultyClass}">${data}</span>`;
                         }
                     },
-                    { data: 'hints_count' },
+                    { 
+                        data: 'hints_count',
+                        orderable: false  // 힌트 개수는 정렬 불가
+                    },
                     { 
                         data: 'is_active',
+                        orderable: true,
                         render: function(data, type, row) {
                             return data ? 
                                 '<span class="badge bg-success">활성</span>' : 
@@ -832,15 +850,16 @@
                     },
                     { 
                         data: 'conf_yn',
+                        orderable: true,
                         render: function(data, type, row) {
                             return data === 'Y' ? 
                                 '<span class="badge bg-success">정제완료</span>' : 
                                 '<span class="badge bg-warning">정제대기</span>';
                         }
                     },
-                    
                     { 
                         data: 'created_at',
+                        orderable: true,
                         render: function(data, type, row) {
                             if (!data) return '-';
                             // 배열 형태의 날짜 데이터 처리
@@ -1469,10 +1488,21 @@
                         // 힌트 정보 표시
                         console.log('API 응답 데이터:', data);
                         console.log('힌트 데이터:', data.hints);
-                        displayHintsForRefinement(data.hints);
+                        // 힌트가 배열인지 확인하고 표시 (백엔드에서 최상위 레벨의 hints 키로 반환)
+                        const hints = Array.isArray(data.hints) ? data.hints : (data.data && Array.isArray(data.data.hints) ? data.data.hints : []);
+                        console.log('표시할 힌트:', hints);
+                        displayHintsForRefinement(hints);
                         
                         // 모달 표시
-                        const modal = new bootstrap.Modal(document.getElementById('refinementModal'));
+                        const modalElement = document.getElementById('refinementModal');
+                        const modal = new bootstrap.Modal(modalElement);
+                        
+                        // 모달이 닫힐 때 배경 레이어 제거
+                        modalElement.addEventListener('hidden.bs.modal', function cleanup() {
+                            removeModalBackdrop();
+                            modalElement.removeEventListener('hidden.bs.modal', cleanup);
+                        }, { once: true });
+                        
                         modal.show();
                     } else {
                         showAlert('단어 정보를 불러오는데 실패했습니다.', 'danger');
@@ -1495,35 +1525,83 @@
                 console.log('힌트 개수:', hints.length);
                 hints.forEach((hint, index) => {
                     const hintField = document.createElement('div');
-                    hintField.className = 'hint-field mb-3 p-3 border rounded';
+                    hintField.className = 'hint-field position-relative mb-3 p-3 border rounded';
                     hintField.setAttribute('data-hint-id', hint.id || '');
+                    
+                    const difficultyOptions = [
+                        { value: 1, text: '쉬움' },
+                        { value: 2, text: '보통' },
+                        { value: 3, text: '어려움' },
+                        { value: 4, text: '매우어려움' },
+                        { value: 5, text: '극도어려움' }
+                    ];
+                    
+                    const difficultySelect = difficultyOptions.map(option => 
+                        `<option value="${option.value}" ${hint.difficulty == option.value ? 'selected' : ''}>${option.text}</option>`
+                    ).join('');
+                    
+                    // 기존 힌트인 경우 삭제 버튼 표시
+                    const deleteButton = hint.id ? 
+                        `<button type="button" class="btn btn-sm btn-danger remove-hint-btn" onclick="deleteHint(${hint.id}, this)" title="힌트 삭제">
+                            <i class="fas fa-trash"></i>
+                        </button>` : '';
+                    
+                    // 언어 코드 옵션
+                    const languageOptions = [
+                        { value: 'KR', text: '한국어 (KR)' },
+                        { value: 'ko', text: '한국어 (ko)' },
+                        { value: 'CN', text: '중국어' },
+                        { value: 'EN', text: '영어' },
+                        { value: 'JP', text: '일본어' },
+                        { value: 'FR', text: '프랑스어' },
+                        { value: 'ES', text: '스페인어' }
+                    ];
+                    const languageSelect = languageOptions.map(option => 
+                        `<option value="${option.value}" ${(hint.language_code || 'KR') == option.value ? 'selected' : ''}>${option.text}</option>`
+                    ).join('');
                     
                     hintField.innerHTML = `
                         <div class="row">
-                            <div class="col-md-8">
+                            <div class="col-md-5">
                                 <label class="form-label">힌트 ${index + 1}</label>
-                                <input type="text" class="form-control" value="${hint.hint_text || ''}" placeholder="힌트를 입력하세요">
+                                <input type="text" class="form-control hint-text-input" value="${hint.hint_text || ''}" placeholder="힌트를 입력하세요" data-hint-id="${hint.id || ''}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">언어 코드</label>
+                                <select class="form-select hint-language-select" data-hint-id="${hint.id || ''}">
+                                    ${languageSelect}
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">순서</label>
+                                <input type="number" class="form-control hint-order-input" value="${hint.display_order || index + 1}" min="1" data-hint-id="${hint.id || ''}">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">난이도</label>
-                                <select class="form-select">
-                                    <option value="1" ${hint.difficulty == 1 ? 'selected' : ''}>쉬움</option>
-                                    <option value="2" ${hint.difficulty == 2 ? 'selected' : ''}>보통</option>
-                                    <option value="3" ${hint.difficulty == 3 ? 'selected' : ''}>어려움</option>
-                                    <option value="4" ${hint.difficulty == 4 ? 'selected' : ''}>매우어려움</option>
-                                    <option value="5" ${hint.difficulty == 5 ? 'selected' : ''}>극도어려움</option>
+                                <select class="form-select hint-difficulty-select" data-hint-id="${hint.id || ''}">
+                                    ${difficultySelect}
                                 </select>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">기본힌트</label>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" ${hint.is_primary ? 'checked' : ''}>
+                                    <input class="form-check-input hint-primary-checkbox" type="checkbox" ${hint.is_primary ? 'checked' : ''} data-hint-id="${hint.id || ''}">
                                     <label class="form-check-label">기본</label>
                                 </div>
                             </div>
                         </div>
+                        ${deleteButton}
                     `;
+                    
                     container.appendChild(hintField);
+                    
+                    // primary 체크박스 이벤트 리스너 추가
+                    const checkbox = hintField.querySelector('.form-check-input');
+                    if (checkbox) {
+                        checkbox.addEventListener('change', function() {
+                            updatePrimaryHint(this);
+                        });
+                    }
                 });
             } else {
                 container.innerHTML = '<p class="text-muted">등록된 힌트가 없습니다.</p>';
@@ -1551,30 +1629,55 @@
                 `<option value="${option.value}" ${hintData && hintData.difficulty == option.value ? 'selected' : ''}>${option.text}</option>`
             ).join('');
             
+            // 언어 코드 옵션
+            const languageOptions = [
+                { value: 'KR', text: '한국어 (KR)' },
+                { value: 'ko', text: '한국어 (ko)' },
+                { value: 'CN', text: '중국어' },
+                { value: 'EN', text: '영어' },
+                { value: 'JP', text: '일본어' },
+                { value: 'FR', text: '프랑스어' },
+                { value: 'ES', text: '스페인어' }
+            ];
+            const languageSelect = languageOptions.map(option => 
+                `<option value="${option.value}" ${hintData && (hintData.language_code || 'KR') == option.value ? 'selected' : (option.value == 'KR' ? 'selected' : '')}>${option.text}</option>`
+            ).join('');
+            
             hintField.innerHTML = `
                 <div class="row">
-                    <div class="col-md-8">
-                        <input type="text" class="form-control" placeholder="힌트를 입력하세요" 
+                    <div class="col-md-5">
+                        <label class="form-label">힌트</label>
+                        <input type="text" class="form-control hint-text-input" placeholder="힌트를 입력하세요" 
                                value="${hintData ? hintData.hint_text : ''}" 
                                data-hint-id="${hintId}">
                     </div>
                     <div class="col-md-2">
-                        <select class="form-select" data-hint-id="${hintId}">
+                        <label class="form-label">언어 코드</label>
+                        <select class="form-select hint-language-select" data-hint-id="${hintId}">
+                            ${languageSelect}
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label">순서</label>
+                        <input type="number" class="form-control hint-order-input" value="${hintData ? (hintData.display_order || 1) : 1}" min="1" data-hint-id="${hintId}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">난이도</label>
+                        <select class="form-select hint-difficulty-select" data-hint-id="${hintId}">
                             ${difficultySelect}
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <div class="primary-checkbox">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" 
-                                       ${hintData && hintData.is_primary ? 'checked' : ''} 
-                                       data-hint-id="${hintId}">
-                                <label class="form-check-label">primary</label>
-                            </div>
+                        <label class="form-label">기본힌트</label>
+                        <div class="form-check">
+                            <input class="form-check-input hint-primary-checkbox" type="checkbox" 
+                                   ${hintData && hintData.is_primary ? 'checked' : ''} 
+                                   data-hint-id="${hintId}">
+                            <label class="form-check-label">기본</label>
                         </div>
                     </div>
                 </div>
-                <button type="button" class="remove-hint-btn" onclick="removeHintField(this)">
+                <button type="button" class="btn btn-sm btn-danger remove-hint-btn" onclick="removeHintField(this)" title="힌트 제거">
                     <i class="fas fa-times"></i>
                 </button>
             `;
@@ -1588,9 +1691,54 @@
             });
         }
 
-        // 힌트 필드 제거
+        // 힌트 필드 제거 (새로 추가한 힌트용)
         function removeHintField(button) {
             button.closest('.hint-field').remove();
+        }
+        
+        // 힌트 삭제 (서버에서 삭제)
+        function deleteHint(hintId, button) {
+            if (!hintId) {
+                showAlert('힌트 ID가 없습니다.', 'danger');
+                return;
+            }
+            
+            if (!confirm('정말 이 힌트를 삭제하시겠습니까?')) {
+                return;
+            }
+            
+            const originalHtml = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            fetch(`/admin/api/hint-generator/hint/${hintId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('힌트가 삭제되었습니다.', 'success');
+                    // 힌트 필드 제거
+                    button.closest('.hint-field').remove();
+                    // 힌트 목록 새로고침
+                    if (currentRefinementWordId) {
+                        openRefinementModal(currentRefinementWordId);
+                    }
+                } else {
+                    showAlert(data.message || '힌트 삭제에 실패했습니다.', 'danger');
+                    button.disabled = false;
+                    button.innerHTML = originalHtml;
+                }
+            })
+            .catch(error => {
+                console.error('힌트 삭제 실패:', error);
+                showAlert('힌트 삭제 중 오류가 발생했습니다.', 'danger');
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            });
         }
 
         // Primary 힌트 업데이트
@@ -1614,6 +1762,155 @@
             }
         }
 
+        // 힌트 생성 버튼 클릭 핸들러
+        function handleGenerateHintsClick() {
+            if (!currentRefinementWordId) {
+                showAlert('단어 ID가 없습니다.', 'danger');
+                return;
+            }
+            
+            const button = document.getElementById('generateNewHintsBtn');
+            if (!button) {
+                console.error('힌트 생성 버튼을 찾을 수 없습니다.');
+                return;
+            }
+            
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>생성 중...';
+            
+            // 재미나이 API로 힌트 생성 (기존 힌트가 있어도 덮어쓰기)
+            fetch(`/admin/api/hint-generator/word/${currentRefinementWordId}?overwrite=true`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('힌트 생성 API 응답:', data);
+                if (data.success) {
+                    showAlert('힌트가 생성되었습니다.', 'success');
+                    
+                    // API 응답에서 힌트 데이터를 받아서 바로 표시
+                    if (data.hints && Array.isArray(data.hints) && data.hints.length > 0) {
+                        // PzHint 엔티티를 프론트엔드 형식으로 변환
+                        const hintsForDisplay = data.hints.map(hint => ({
+                            id: hint.id,
+                            hint_text: hint.hint_text || hint.hintText,
+                            difficulty: hint.difficulty || 2,
+                            is_primary: hint.is_primary || hint.isPrimary || false
+                        }));
+                        console.log('변환된 힌트 데이터:', hintsForDisplay);
+                        displayHintsForRefinement(hintsForDisplay);
+                    } else {
+                        // 힌트가 없으면 모달 새로고침하여 최신 데이터 로드
+                        const existingModal = document.getElementById('refinementModal');
+                        if (existingModal) {
+                            const existingModalInstance = bootstrap.Modal.getInstance(existingModal);
+                            if (existingModalInstance) {
+                                existingModalInstance.hide();
+                                existingModal.addEventListener('hidden.bs.modal', function() {
+                                    removeModalBackdrop();
+                                    openRefinementModal(currentRefinementWordId);
+                                }, { once: true });
+                            } else {
+                                removeModalBackdrop();
+                                openRefinementModal(currentRefinementWordId);
+                            }
+                        } else {
+                            openRefinementModal(currentRefinementWordId);
+                        }
+                    }
+                } else {
+                    let errorMsg = data.message || data.error || '힌트 생성에 실패했습니다.';
+                    console.error('힌트 생성 실패 상세:', data);
+                    
+                    // 429 에러(API 호출 제한)에 대한 사용자 친화적 메시지
+                    if (errorMsg.includes('429') || errorMsg.includes('Too Many Requests')) {
+                        errorMsg = 'Gemini API 호출 제한에 걸렸습니다. 잠시 후(약 1분) 다시 시도해주세요.';
+                    } else if (errorMsg.includes('Gemini API')) {
+                        // Gemini API 관련 오류는 메시지를 간단하게
+                        const match = errorMsg.match(/Gemini API[^:]*:\s*([^<]+)/);
+                        if (match) {
+                            errorMsg = 'Gemini API 오류: ' + match[1].trim();
+                        }
+                    }
+                    
+                    showAlert(errorMsg, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('힌트 생성 실패:', error);
+                showAlert('힌트 생성 중 오류가 발생했습니다.', 'danger');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            });
+        }
+        
+        // 힌트 추가 버튼 클릭 (빈 힌트 필드 추가)
+        document.getElementById('addNewHintBtn').addEventListener('click', function() {
+            addHintField();
+        });
+        
+        // 대사전 힌트 추가 버튼 클릭
+        document.getElementById('addStdictHintBtn').addEventListener('click', function() {
+            if (!currentRefinementWordId) {
+                showAlert('단어 ID가 없습니다.', 'danger');
+                return;
+            }
+            
+            const button = this;
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>추가 중...';
+            
+            fetch(`/admin/api/hint-generator/word/${currentRefinementWordId}/add-stdict-hint`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('표준국어대사전 힌트가 추가되었습니다.', 'success');
+                    // 기존 모달 닫기 전에 배경 레이어 제거
+                    const existingModal = document.getElementById('refinementModal');
+                    if (existingModal) {
+                        const existingModalInstance = bootstrap.Modal.getInstance(existingModal);
+                        if (existingModalInstance) {
+                            existingModalInstance.hide();
+                            // 모달이 완전히 닫힌 후 새로고침
+                            existingModal.addEventListener('hidden.bs.modal', function() {
+                                removeModalBackdrop();
+                                openRefinementModal(currentRefinementWordId);
+                            }, { once: true });
+                        } else {
+                            removeModalBackdrop();
+                            openRefinementModal(currentRefinementWordId);
+                        }
+                    } else {
+                        openRefinementModal(currentRefinementWordId);
+                    }
+                } else {
+                    showAlert(data.message || '힌트 추가에 실패했습니다.', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('대사전 힌트 추가 실패:', error);
+                showAlert('힌트 추가 중 오류가 발생했습니다.', 'danger');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            });
+        });
+        
         // 비활성 버튼 클릭
         document.getElementById('deactivateWordBtn').addEventListener('click', function() {
             if (!currentRefinementWordId) {
@@ -1656,6 +1953,22 @@
             });
         });
 
+        // 모달 배경 레이어 제거 헬퍼 함수
+        function removeModalBackdrop() {
+            // 남아있는 modal-backdrop 제거
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            
+            // body에서 modal-open 클래스 제거
+            document.body.classList.remove('modal-open');
+            
+            // body의 padding-right 스타일 제거 (Bootstrap이 추가하는 스크롤바 보정)
+            document.body.style.paddingRight = '';
+            
+            // body의 overflow 스타일 복원
+            document.body.style.overflow = '';
+        }
+        
         // 정제 확정
         function confirmRefinement() {
             if (!currentRefinementWordId) {
@@ -1669,14 +1982,32 @@
             
             hintFields.forEach(field => {
                 const hintId = field.dataset.hintId;
-                const hintText = field.querySelector('input[type="text"]').value.trim();
-                const difficulty = field.querySelector('select').value;
-                const isPrimary = field.querySelector('.form-check-input').checked;
+                const hintTextInput = field.querySelector('.hint-text-input');
+                const languageSelect = field.querySelector('.hint-language-select');
+                const orderInput = field.querySelector('.hint-order-input');
+                const difficultySelect = field.querySelector('.hint-difficulty-select');
+                const isPrimaryCheckbox = field.querySelector('.hint-primary-checkbox');
+                
+                if (!hintTextInput || !languageSelect || !orderInput || !difficultySelect || !isPrimaryCheckbox) {
+                    console.warn('힌트 필드 구조가 올바르지 않습니다:', field);
+                    return;
+                }
+                
+                const hintText = hintTextInput.value.trim();
+                const languageCode = languageSelect.value;
+                const displayOrder = parseInt(orderInput.value) || 1;
+                const difficulty = difficultySelect.value;
+                const isPrimary = isPrimaryCheckbox.checked;
                 
                 if (hintText) {
+                    // hintId가 'new_'로 시작하거나 빈 문자열이면 null로 설정 (새 힌트)
+                    const finalHintId = (hintId && !hintId.startsWith('new_') && hintId !== '') ? hintId : null;
+                    
                     hints.push({
-                        id: hintId,
+                        id: finalHintId,
                         hint_text: hintText,
+                        language_code: languageCode,
+                        display_order: displayOrder,
                         difficulty: parseInt(difficulty),
                         is_primary: isPrimary
                     });
@@ -1714,7 +2045,15 @@
                     document.body.focus();
                     
                     const modal = bootstrap.Modal.getInstance(modalElement);
-                    modal.hide();
+                    if (modal) {
+                        modal.hide();
+                    }
+                    
+                    // 모달이 완전히 닫힌 후 배경 레이어 제거
+                    modalElement.addEventListener('hidden.bs.modal', function cleanup() {
+                        removeModalBackdrop();
+                        modalElement.removeEventListener('hidden.bs.modal', cleanup);
+                    }, { once: true });
                     
                     // 테이블 새로고침
                     if (wordsTable) {

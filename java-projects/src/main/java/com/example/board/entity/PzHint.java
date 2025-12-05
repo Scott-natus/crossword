@@ -47,6 +47,9 @@ public class PzHint {
     @Column(name = "language_code", length = 10)
     private String languageCode = "ko";
     
+    @Column(name = "display_order")
+    private Integer displayOrder;
+    
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
     

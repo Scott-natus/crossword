@@ -71,7 +71,7 @@ public class WordManagementService {
     /**
      * 단어 목록 조회 (DataTables용)
      */
-    public Map<String, Object> getWordsData(int draw, int start, int length, String search, String difficultyFilter, String refinement, String activeFilter) {
+    public Map<String, Object> getWordsData(int draw, int start, int length, String search, String difficultyFilter, String refinement, String activeFilter, Integer orderColumn, String orderDir) {
         Map<String, Object> response = new HashMap<>();
         response.put("draw", draw);
         
@@ -81,10 +81,38 @@ public class WordManagementService {
         logger.info("difficultyFilter: '{}'", difficultyFilter);
         logger.info("refinement: '{}'", refinement);
         logger.info("activeFilter: '{}'", activeFilter);
+        logger.info("orderColumn: '{}', orderDir: '{}'", orderColumn, orderDir);
         
         try {
-            // 정렬 설정 (생성일자 내림차순)
-            Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+            // 정렬 설정
+            String sortField = "createdAt"; // 기본값: 생성일자
+            Sort.Direction sortDirection = Sort.Direction.DESC; // 기본값: 내림차순
+            
+            // DataTables의 order 파라미터 처리
+            if (orderColumn != null && orderDir != null) {
+                // 컬럼 인덱스를 필드명으로 매핑 (체크박스 제외)
+                // 0: 체크박스, 1: 카테고리, 2: 단어, 3: 글자수, 4: 난이도, 5: 힌트 개수, 6: 사용여부, 7: 정제여부, 8: 입력일자, 9: 관리
+                String[] columnMapping = {"", "category", "word", "length", "difficulty", "hints_count", "isActive", "confYn", "createdAt", ""};
+                
+                if (orderColumn >= 0 && orderColumn < columnMapping.length && !columnMapping[orderColumn].isEmpty()) {
+                    sortField = columnMapping[orderColumn];
+                    
+                    // hints_count는 실제 필드가 아니므로 처리 필요
+                    if (sortField.equals("hints_count")) {
+                        sortField = "createdAt"; // 힌트 개수는 정렬 불가, 기본값 사용
+                    }
+                }
+                
+                if (orderDir.equalsIgnoreCase("asc")) {
+                    sortDirection = Sort.Direction.ASC;
+                } else if (orderDir.equalsIgnoreCase("desc")) {
+                    sortDirection = Sort.Direction.DESC;
+                }
+            }
+            
+            logger.info("정렬 설정 - sortField: '{}', sortDirection: '{}'", sortField, sortDirection);
+            
+            Sort sort = Sort.by(sortDirection, sortField);
             Pageable pageable = PageRequest.of(start / length, length, sort);
             
             Page<PzWord> page;
@@ -252,6 +280,8 @@ public class WordManagementService {
                         hintMap.put("hint_text", hint.getHintText());
                         hintMap.put("difficulty", hint.getDifficulty());
                         hintMap.put("is_primary", hint.getIsPrimary());
+                        hintMap.put("language_code", hint.getLanguageCode() != null ? hint.getLanguageCode() : "KR");
+                        hintMap.put("display_order", hint.getDisplayOrder() != null ? hint.getDisplayOrder() : 1);
                         hintMap.put("created_at", hint.getCreatedAt());
                         return hintMap;
                     })
@@ -762,9 +792,27 @@ public class WordManagementService {
                     if (primaryObj instanceof Boolean) isPrimary = (Boolean) primaryObj;
                     else if (primaryObj instanceof String) isPrimary = Boolean.parseBoolean((String) primaryObj);
                     hint.setIsPrimary(isPrimary != null ? isPrimary : false);
-                    // 기본값 보정: hint_type, language_code
+                    
+                    // 언어 코드 처리
+                    Object langCodeObj = hintData.get("language_code");
+                    String languageCode = "KR"; // 기본값
+                    if (langCodeObj != null) {
+                        languageCode = langCodeObj.toString();
+                    }
+                    hint.setLanguageCode(languageCode);
+                    
+                    // 순서 처리
+                    Object orderObj = hintData.get("display_order");
+                    Integer displayOrder = null;
+                    if (orderObj instanceof Integer) displayOrder = (Integer) orderObj;
+                    else if (orderObj instanceof Number) displayOrder = ((Number) orderObj).intValue();
+                    else if (orderObj != null) {
+                        try { displayOrder = Integer.parseInt(orderObj.toString()); } catch (Exception ignore) {}
+                    }
+                    hint.setDisplayOrder(displayOrder);
+                    
+                    // 기본값 보정: hint_type
                     hint.setHintType("TEXT");
-                    hint.setLanguageCode("ko");
                     hint.setCreatedAt(LocalDateTime.now());
                     hint.setUpdatedAt(LocalDateTime.now());
                     pzHintRepository.save(hint);
