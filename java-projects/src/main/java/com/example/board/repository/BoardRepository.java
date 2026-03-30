@@ -44,5 +44,11 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     
     @Query("SELECT b FROM Board b WHERE b.parentId IS NULL AND b.boardType = :boardType ORDER BY b.createdAt DESC")
     List<Board> findRootBoardsByBoardType(@Param("boardType") BoardType boardType);
+    
+    // 이전 글 찾기 (현재보다 ID가 작은 가장 최근 글)
+    Board findFirstByBoardTypeAndIdLessThanOrderByIdDesc(BoardType boardType, Long id);
+    
+    // 다음 글 찾기 (현재보다 ID가 큰 가장 먼저 작성된 글)
+    Board findFirstByBoardTypeAndIdGreaterThanOrderByIdAsc(BoardType boardType, Long id);
 }
 

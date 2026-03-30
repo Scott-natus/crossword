@@ -21,7 +21,7 @@ public interface UserPuzzleGameRepository extends JpaRepository<UserPuzzleGame, 
      * @param userId 사용자 ID
      * @return 활성 게임
      */
-    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.isActive = true")
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.theme = 'common' AND u.isActive = true")
     Optional<UserPuzzleGame> findByUserIdAndIsActiveTrue(@Param("userId") Long userId);
     
     /**
@@ -29,7 +29,7 @@ public interface UserPuzzleGameRepository extends JpaRepository<UserPuzzleGame, 
      * @param guestId 게스트 ID
      * @return 활성 게임
      */
-    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.isActive = true")
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.theme = 'common' AND u.isActive = true")
     Optional<UserPuzzleGame> findByGuestIdAndIsActiveTrue(@Param("guestId") UUID guestId);
     
     /**
@@ -37,7 +37,7 @@ public interface UserPuzzleGameRepository extends JpaRepository<UserPuzzleGame, 
      * @param userId 사용자 ID
      * @return 활성 게임
      */
-    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.isActive = true AND u.hasActivePuzzle = true")
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.theme = 'common' AND u.isActive = true AND u.hasActivePuzzle = true")
     Optional<UserPuzzleGame> findByUserIdAndIsActiveTrueOnly(@Param("userId") Long userId);
     
     /**
@@ -45,7 +45,7 @@ public interface UserPuzzleGameRepository extends JpaRepository<UserPuzzleGame, 
      * @param guestId 게스트 ID
      * @return 활성 게임
      */
-    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.isActive = true AND u.hasActivePuzzle = true")
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.theme = 'common' AND u.isActive = true AND u.hasActivePuzzle = true")
     Optional<UserPuzzleGame> findByGuestIdAndIsActiveTrueOnly(@Param("guestId") UUID guestId);
     
     /**
@@ -53,7 +53,7 @@ public interface UserPuzzleGameRepository extends JpaRepository<UserPuzzleGame, 
      * @param userId 사용자 ID
      * @return 활성 게임
      */
-    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.isActive = true")
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.theme = 'common' AND u.isActive = true")
     Optional<UserPuzzleGame> findByUserIdAndIsActiveOnly(@Param("userId") Long userId);
     
     /**
@@ -61,8 +61,32 @@ public interface UserPuzzleGameRepository extends JpaRepository<UserPuzzleGame, 
      * @param guestId 게스트 ID
      * @return 활성 게임
      */
-    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.isActive = true")
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.theme = 'common' AND u.isActive = true")
     Optional<UserPuzzleGame> findByGuestIdAndIsActiveOnly(@Param("guestId") UUID guestId);
+    
+    /**
+     * 사용자 ID와 테마로 활성 게임 조회
+     */
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.theme = :theme AND u.isActive = true")
+    Optional<UserPuzzleGame> findByUserIdAndThemeAndIsActiveTrue(@Param("userId") Long userId, @Param("theme") String theme);
+
+    /**
+     * 사용자 ID와 테마 없이(메인 게임) 활성 게임 조회
+     */
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.userId = :userId AND u.theme = 'common' AND u.isActive = true")
+    Optional<UserPuzzleGame> findByUserIdAndThemeIsNullAndIsActiveTrue(@Param("userId") Long userId);
+
+    /**
+     * 게스트 ID와 테마로 활성 게임 조회
+     */
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.theme = :theme AND u.isActive = true")
+    Optional<UserPuzzleGame> findByGuestIdAndThemeAndIsActiveTrue(@Param("guestId") UUID guestId, @Param("theme") String theme);
+
+    /**
+     * 게스트 ID와 테마 없이(메인 게임) 활성 게임 조회
+     */
+    @Query("SELECT u FROM UserPuzzleGame u WHERE u.guestId = :guestId AND u.theme = 'common' AND u.isActive = true")
+    Optional<UserPuzzleGame> findByGuestIdAndThemeIsNullAndIsActiveTrue(@Param("guestId") UUID guestId);
     
     /**
      * 랭킹 순으로 상위 게임들 조회

@@ -18,10 +18,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.web.multipart.MultipartFile;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +48,9 @@ public class BoardController {
     
     @Autowired
     private BoardCommentRepository boardCommentRepository;
+    
+    @Autowired
+    private BoardAttachmentRepository boardAttachmentRepository;
     
     @Autowired
     private BoardVoteRepository boardVoteRepository;
@@ -138,6 +143,7 @@ public class BoardController {
                        @RequestParam String content,
                        @RequestParam String password,
                        @RequestParam(required = false) Long parentId,
+                       @RequestParam(value = "files", required = false) MultipartFile[] files,
                        HttpServletRequest request) {
         
         Optional<BoardType> boardTypeOpt = boardTypeRepository.findBySlug(boardType);
@@ -173,6 +179,43 @@ public class BoardController {
         }
         
         boardRepository.save(board);
+        
+        // 파일 업로드 처리
+        if (files != null && files.length > 0) {
+            String uploadDir = "/var/www/html/storage/app/public/attachments/";
+            try {
+                File dir = new File(uploadDir);
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                
+                for (MultipartFile file : files) {
+                    if (!file.isEmpty()) {
+                        String originalFilename = file.getOriginalFilename();
+                        String extension = "";
+                        if (originalFilename != null && originalFilename.contains(".")) {
+                            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                        }
+                        
+                        // 파일명 중복 방지를 위해 UUID + 타임스탬프 조합 사용
+                        String savedFilename = UUID.randomUUID().toString() + "_" + System.currentTimeMillis() + extension;
+                        Path path = Paths.get(uploadDir + savedFilename);
+                        Files.copy(file.getInputStream(), path);
+                        
+                        // DB에 저장 (Laravel 호환을 위해 'attachments/' 접두사 포함)
+                        BoardAttachment attachment = new BoardAttachment();
+                        attachment.setBoard(board);
+                        attachment.setOriginalName(originalFilename);
+                        attachment.setFilePath("attachments/" + savedFilename);
+                        attachment.setFileType(file.getContentType());
+                        attachment.setFileSize(file.getSize());
+                        boardAttachmentRepository.save(attachment);
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("파일 업로드 중 오류 발생: {}", e.getMessage(), e);
+            }
+        }
         
         return "redirect:/board/" + boardType;
     }
@@ -243,9 +286,15 @@ public class BoardController {
             List<Board> thread = getThread(board);
             logger.info("트리 구조 조회 완료: {}개", thread.size());
             
+            // 이전 글 / 다음 글 조회
+            Board prevBoard = boardRepository.findFirstByBoardTypeAndIdLessThanOrderByIdDesc(board.getBoardType(), board.getId());
+            Board nextBoard = boardRepository.findFirstByBoardTypeAndIdGreaterThanOrderByIdAsc(board.getBoardType(), board.getId());
+            
             model.addAttribute("board", board);
             model.addAttribute("comments", comments);
             model.addAttribute("thread", thread);
+            model.addAttribute("prevBoard", prevBoard);
+            model.addAttribute("nextBoard", nextBoard);
             model.addAttribute("currentUrl", buildCurrentUrl(request));
             
             logger.info("모델 속성 설정 완료");

@@ -44,63 +44,48 @@ public class UserPuzzleGameService {
     }
     
     /**
-     * 사용자 ID 또는 게스트 ID로 활성 게임 조회
-     * @param userId 사용자 ID
-     * @param guestId 게스트 ID
-     * @return 활성 게임
+     * 사용자 ID 또는 게스트 ID와 테마로 활성 게임 조회
      */
     @Transactional(readOnly = true)
-    public Optional<UserPuzzleGame> findActiveGameByUserIdOrGuestId(Long userId, UUID guestId) {
-        // 먼저 사용자 ID로 조회
-        if (userId != null) {
-            Optional<UserPuzzleGame> userGame = userPuzzleGameRepository.findByUserIdAndIsActiveOnly(userId);
-            if (userGame.isPresent()) {
-                return userGame;
-            }
-        }
+    public Optional<UserPuzzleGame> findActiveGameByUserIdOrGuestId(Long userId, UUID guestId, String theme) {
+        String actualTheme = (theme == null || theme.trim().isEmpty()) ? "common" : theme;
         
-        // 사용자 ID로 찾지 못했으면 게스트 ID로 조회
-        if (guestId != null) {
-            return userPuzzleGameRepository.findByGuestIdAndIsActiveOnly(guestId);
-        }
+        if (userId != null) return userPuzzleGameRepository.findByUserIdAndThemeAndIsActiveTrue(userId, actualTheme);
+        if (guestId != null) return userPuzzleGameRepository.findByGuestIdAndThemeAndIsActiveTrue(guestId, actualTheme);
         
         return Optional.empty();
     }
     
     /**
      * 새로운 게임 생성
-     * @param userId 사용자 ID
-     * @param guestId 게스트 ID
-     * @return 생성된 게임
      */
-    public UserPuzzleGame createNewGame(Long userId, UUID guestId) {
+    public UserPuzzleGame createNewGame(Long userId, UUID guestId, String theme) {
+        String actualTheme = (theme == null || theme.trim().isEmpty()) ? "common" : theme;
         UserPuzzleGame game = UserPuzzleGame.builder()
                 .userId(userId)
                 .guestId(guestId)
+                .theme(actualTheme)
                 .currentLevel(1)
                 .isActive(true)
                 .build();
         
         UserPuzzleGame savedGame = userPuzzleGameRepository.save(game);
-        log.info("새로운 게임 생성: userId={}, guestId={}, gameId={}", userId, guestId, savedGame.getId());
+        log.info("새로운 게임 생성: userId={}, guestId={}, theme={}, gameId={}", userId, guestId, theme, savedGame.getId());
         
         return savedGame;
     }
     
     /**
      * 게임 조회 또는 생성
-     * @param userId 사용자 ID
-     * @param guestId 게스트 ID
-     * @return 게임
      */
-    public UserPuzzleGame getOrCreateGame(Long userId, UUID guestId) {
-        Optional<UserPuzzleGame> existingGame = findActiveGameByUserIdOrGuestId(userId, guestId);
+    public UserPuzzleGame getOrCreateGame(Long userId, UUID guestId, String theme) {
+        Optional<UserPuzzleGame> existingGame = findActiveGameByUserIdOrGuestId(userId, guestId, theme);
         
         if (existingGame.isPresent()) {
             return existingGame.get();
         }
         
-        return createNewGame(userId, guestId);
+        return createNewGame(userId, guestId, theme);
     }
     
     /**
@@ -203,10 +188,11 @@ public class UserPuzzleGameService {
     }
     
     /**
-     * 사용자 ID로 게임 조회 또는 생성 (라라벨과 동일한 로직)
+     * 사용자 ID로 게임 조회 또는 생성 (테마 고려)
      */
-    public UserPuzzleGame getOrCreateGameByUserId(Long userId) {
-        Optional<UserPuzzleGame> existingGame = userPuzzleGameRepository.findByUserIdAndIsActiveTrue(userId);
+    public UserPuzzleGame getOrCreateGameByUserId(Long userId, String theme) {
+        String actualTheme = (theme == null || theme.trim().isEmpty()) ? "common" : theme;
+        Optional<UserPuzzleGame> existingGame = findActiveGameByUserIdOrGuestId(userId, null, actualTheme);
         
         if (existingGame.isPresent()) {
             return existingGame.get();
@@ -215,6 +201,7 @@ public class UserPuzzleGameService {
         // 새 게임 생성
         UserPuzzleGame newGame = UserPuzzleGame.builder()
                 .userId(userId)
+                .theme(actualTheme)
                 .currentLevel(1)
                 .currentLevelCorrectAnswers(0)
                 .currentLevelWrongAnswers(0)

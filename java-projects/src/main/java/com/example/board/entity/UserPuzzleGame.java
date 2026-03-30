@@ -101,6 +101,9 @@ public class UserPuzzleGame {
     @Builder.Default
     private Boolean hasActivePuzzle = false;
     
+    @Column(name = "theme")
+    private String theme;
+    
     @CreationTimestamp
     @Column(name = "created_at")
     @Builder.Default

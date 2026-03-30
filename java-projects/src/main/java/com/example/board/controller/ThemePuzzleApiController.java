@@ -7,6 +7,7 @@ import com.example.board.repository.UserRepository;
 import com.example.board.repository.UserPuzzleCompletionRepository;
 import com.example.board.service.DailyPuzzleService;
 import com.example.board.service.UserPuzzleGameService;
+import com.example.board.service.PzWordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,7 @@ public class ThemePuzzleApiController {
     private final UserPuzzleGameService userPuzzleGameService;
     private final UserRepository userRepository;
     private final UserPuzzleCompletionRepository userPuzzleCompletionRepository;
+    private final PzWordService pzWordService;
     
     /**
      * 테마별 오늘의 퍼즐 조회
@@ -47,7 +49,8 @@ public class ThemePuzzleApiController {
     public ResponseEntity<Map<String, Object>> getTodayPuzzle(
             @PathVariable String theme,
             @RequestParam(required = false) String date,
-            @RequestParam(required = false) String guestId) {
+            @RequestParam(required = false) String guestId,
+            jakarta.servlet.http.HttpServletRequest request) {
         
         try {
             log.info("테마별 퍼즐 조회 API 호출: {} - 날짜: {}, 게스트 ID: {}", theme, date, guestId);
@@ -75,81 +78,63 @@ public class ThemePuzzleApiController {
             response.put("theme", theme);
             response.put("puzzleDate", puzzleDate.toString());
             
-            // 게스트 ID가 있으면 게임 상태 조회 및 퍼즐 데이터 저장
-            if (guestId != null && !guestId.isEmpty()) {
+            // 1. 게스트 ID 확인
+            String finalGuestId = guestId;
+            Long userId = null;
+            
+            if (finalGuestId != null && !finalGuestId.isEmpty()) {
+                userId = getOrCreateGuestUser(finalGuestId);
+            } else {
+                // 2. 로그인 사용자 확인 (메인 게임과 동일한 방식)
+                userId = getUserIdFromSession(request);
+                if (userId != null) {
+                    log.info("인증된 사용자 ID 확인: {}", userId);
+                }
+            }
+            
+            // 게스트 ID 또는 로그인 사용자 ID가 있는 경우 게임 상태 복원
+            if (userId != null) {
                 try {
-                    // 게스트 ID 형식: "guest_" + UUID (하이픈 포함 또는 제거된 형식)
-                    String uuidString = guestId.replace("guest_", "");
-                    UUID guestUuid;
+                    // 테마를 포함하여 게임 조회 또는 생성
+                    UserPuzzleGame game = userPuzzleGameService.getOrCreateGame(userId, 
+                        (guestId != null && !guestId.isEmpty()) ? calculateGuestUuid(guestId) : null,
+                        theme);
                     
-                    // UUID 형식 확인 및 변환
-                    if (uuidString.length() == 36 && uuidString.contains("-")) {
-                        // 이미 하이픈이 포함된 형식 (예: b632d47e-2eb1-4063-8e63-be0211c5fd48)
-                        guestUuid = UUID.fromString(uuidString);
-                    } else if (uuidString.length() == 32) {
-                        // 하이픈이 제거된 형식 (예: b632d47e2eb140638e63be0211c5fd48)
-                        uuidString = uuidString.substring(0, 8) + "-" + 
-                                    uuidString.substring(8, 12) + "-" + 
-                                    uuidString.substring(12, 16) + "-" + 
-                                    uuidString.substring(16, 20) + "-" + 
-                                    uuidString.substring(20, 32);
-                        guestUuid = UUID.fromString(uuidString);
-                    } else {
-                        // UUID 형식이 아니면 해시로 변환
-                        log.warn("게스트 ID 형식이 올바르지 않음: {}", guestId);
-                        guestUuid = UUID.nameUUIDFromBytes(guestId.getBytes());
-                    }
+                    log.info("게임 조회 완료 - gameId: {}, userId: {}, theme: {}", 
+                        game.getId(), userId, theme);
                     
-                    log.info("게스트 UUID 변환 완료: {} -> {}", guestId, guestUuid);
-                    Optional<UserPuzzleGame> gameOpt = userPuzzleGameService.findActiveGameByGuestId(guestUuid);
-                    log.info("게임 조회 결과: gameOpt.isPresent() = {}", gameOpt.isPresent());
-                    
-                    UserPuzzleGame game;
-                    if (gameOpt.isPresent()) {
-                        game = gameOpt.get();
-                        Map<String, Object> gameState = game.getCurrentGameState();
-                        Map<String, Object> savedPuzzleData = game.getCurrentPuzzleData();
+                    Map<String, Object> gameState = game.getCurrentGameState();
+                    Map<String, Object> savedPuzzleData = game.getCurrentPuzzleData();
                         
                         log.info("게임 조회 완료 - gameId: {}, hasPuzzleData: {}, hasGameState: {}", 
                             game.getId(), savedPuzzleData != null, gameState != null);
                         
                         // 저장된 퍼즐 데이터가 현재 퍼즐과 같은지 확인 (테마와 퍼즐 ID로)
                         if (savedPuzzleData != null && gameState != null) {
-                            Object savedTheme = savedPuzzleData.get("theme");
                             Object savedPuzzleId = savedPuzzleData.get("puzzleId");
                             Object currentPuzzleId = puzzleData.get("puzzleId");
                             
-                            log.info("퍼즐 비교 - savedTheme: {}, currentTheme: {}, savedPuzzleId: {}, currentPuzzleId: {}", 
-                                savedTheme, theme, savedPuzzleId, currentPuzzleId);
+                            String currentIdStr = currentPuzzleId != null ? String.valueOf(currentPuzzleId) : null;
+                            String savedIdStr = savedPuzzleId != null ? String.valueOf(savedPuzzleId) : null;
                             
-                            if (theme.equals(savedTheme) && currentPuzzleId != null && currentPuzzleId.equals(savedPuzzleId)) {
+                            if (currentIdStr != null && currentIdStr.equals(savedIdStr)) {
                                 // 같은 퍼즐이면 게임 상태 반환
                                 response.put("game_state", gameState);
-                                log.info("게스트 ID {}의 게임 상태 복원: 테마 {}, 퍼즐 ID {}, answeredWords: {}", 
-                                    guestId, theme, currentPuzzleId, 
-                                    gameState.get("answered_words") != null ? ((java.util.List<?>) gameState.get("answered_words")).size() : 0);
+                                
+                                if (gameState.containsKey("answered_words_with_answers")) {
+                                    response.put("answered_words_with_answers", gameState.get("answered_words_with_answers"));
+                                }
+                                
+                                log.info("기존 게임 상태 복원 완료: 테마 {}, 퍼즐 ID {}", theme, currentPuzzleId);
                             } else {
-                                // 다른 퍼즐이면 새로운 퍼즐 데이터로 저장
-                                log.info("다른 퍼즐이므로 새로 저장 - savedTheme: {}, currentTheme: {}, savedPuzzleId: {}, currentPuzzleId: {}", 
-                                    savedTheme, theme, savedPuzzleId, currentPuzzleId);
+                                // 퍼즐 ID가 다르면 초기화
+                                log.info("퍼즐 ID가 다르므로 상태 초기화: savedId={}, currentId={}", savedIdStr, currentIdStr);
                                 saveThemePuzzleData(game, puzzleData, theme);
                             }
                         } else {
-                            // 퍼즐 데이터나 게임 상태가 없으면 새로 저장
-                            log.info("퍼즐 데이터나 게임 상태가 없어 새로 저장 - hasPuzzleData: {}, hasGameState: {}", 
-                                savedPuzzleData != null, gameState != null);
+                            // 퍼즐 데이터가 없으면 새로 저장
                             saveThemePuzzleData(game, puzzleData, theme);
                         }
-                    } else {
-                        // 게임이 없으면 새로 생성하고 퍼즐 데이터 저장
-                        log.info("게임이 없어 새로 생성 - guestId: {}, guestUuid: {}", guestId, guestUuid);
-                        Long guestUserId = getOrCreateGuestUser(guestId);
-                        log.info("게스트 사용자 ID: {}", guestUserId);
-                        game = userPuzzleGameService.getOrCreateGame(guestUserId, guestUuid);
-                        log.info("게임 생성/조회 완료 - gameId: {}, userId: {}, guestId: {}", 
-                            game.getId(), game.getUserId(), game.getGuestId());
-                        saveThemePuzzleData(game, puzzleData, theme);
-                    }
                 } catch (IllegalArgumentException e) {
                     log.error("게스트 ID 형식 오류: {} - {}", guestId, e.getMessage(), e);
                 } catch (Exception e) {
@@ -212,6 +197,54 @@ public class ThemePuzzleApiController {
         }
     }
     
+    /**
+     * 게스트 ID를 UUID로 변환
+     */
+    private UUID calculateGuestUuid(String guestId) {
+        String uuidString = guestId.replace("guest_", "");
+        if (uuidString.length() == 36 && uuidString.contains("-")) {
+            return UUID.fromString(uuidString);
+        } else if (uuidString.length() == 32) {
+            uuidString = uuidString.substring(0, 8) + "-" + 
+                        uuidString.substring(8, 12) + "-" + 
+                        uuidString.substring(12, 16) + "-" + 
+                        uuidString.substring(16, 20) + "-" + 
+                        uuidString.substring(20, 32);
+            return UUID.fromString(uuidString);
+        } else {
+            return UUID.nameUUIDFromBytes(guestId.getBytes());
+        }
+    }
+
+    /**
+     * 세션에서 사용자 ID 추출
+     */
+    private Long getUserIdFromSession(jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            org.springframework.security.core.Authentication authentication = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication != null && authentication.isAuthenticated() && 
+                !authentication.getPrincipal().equals("anonymousUser")) {
+                
+                String email = authentication.getName();
+                Optional<User> userOpt = userRepository.findByEmail(email);
+                if (userOpt.isPresent()) {
+                    return userOpt.get().getId();
+                }
+            }
+            
+            // 세션에서 직접 확인 (게스트 계정 등)
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            if (session != null) {
+                return (Long) session.getAttribute("user_id");
+            }
+        } catch (Exception e) {
+            log.error("세션에서 사용자 ID 추출 중 오류: {}", e.getMessage());
+        }
+        return null;
+    }
+
     /**
      * 게스트 사용자 생성 또는 조회
      */
@@ -281,10 +314,23 @@ public class ThemePuzzleApiController {
             Map<String, Object> puzzleDataWithTheme = new HashMap<>(puzzleData);
             puzzleDataWithTheme.put("theme", theme);
             
-            // 기존 게임 상태 유지 (있는 경우) 또는 초기화
+            // 퍼즐 ID가 변경되었는지 확인하여 상태 초기화 여부 결정 (타입 불일치 방지를 위해 문자열로 비교)
+            Object currentPuzzleId = puzzleData.get("puzzleId");
+            Object savedPuzzleId = null;
+            Map<String, Object> savedPuzzleData = game.getCurrentPuzzleData();
+            if (savedPuzzleData != null) {
+                savedPuzzleId = savedPuzzleData.get("puzzleId");
+            }
+            
+            String currentIdStr = currentPuzzleId != null ? String.valueOf(currentPuzzleId) : null;
+            String savedIdStr = savedPuzzleId != null ? String.valueOf(savedPuzzleId) : null;
+            
+            // 기존 게임 상태 가져오기
             Map<String, Object> gameState = game.getCurrentGameState();
-            if (gameState == null) {
-                // 게임 상태가 없으면 초기화
+            
+            // 퍼즐 ID가 다르거나 상태가 없으면 초기화
+            if (gameState == null || (currentIdStr != null && !currentIdStr.equals(savedIdStr))) {
+                // 게임 상태 초기화
                 gameState = new HashMap<>();
                 gameState.put("answered_words", new java.util.ArrayList<Long>());
                 gameState.put("answered_words_with_answers", new HashMap<String, String>());
@@ -292,7 +338,7 @@ public class ThemePuzzleApiController {
                 gameState.put("hints_used", new java.util.ArrayList<Long>());
                 gameState.put("additional_hints", new java.util.ArrayList<Long>());
                 gameState.put("started_at", LocalDateTime.now().toString());
-                log.info("게임 상태 초기화 - gameId: {}", game.getId());
+                log.info("게임 상태 초기화 (새 퍼즐 시작) - gameId: {}, puzzleId: {}", game.getId(), currentPuzzleId);
             } else {
                 log.info("기존 게임 상태 유지 - gameId: {}, answeredWords: {}", 
                     game.getId(), 
@@ -315,6 +361,132 @@ public class ThemePuzzleApiController {
         }
     }
     
+    /**
+     * 테마별 퍼즐 정답 확인 및 상태 저장
+     */
+    @PostMapping("/{theme}/check-answer")
+    public ResponseEntity<Map<String, Object>> checkAnswer(
+            @PathVariable String theme,
+            @RequestBody Map<String, Object> requestData,
+            jakarta.servlet.http.HttpServletRequest request) {
+        
+        try {
+            log.info("테마별 퍼즐 정답 확인 요청: {} - {}", theme, requestData);
+            
+            Object wordIdObj = requestData.get("wordId");
+            if (wordIdObj == null) wordIdObj = requestData.get("word_id"); // 호환성 유지
+            
+            if (wordIdObj == null || requestData.get("answer") == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "필수 파라미터가 누락되었습니다."));
+            }
+            
+            Integer wordId = Integer.valueOf(wordIdObj.toString());
+            String answer = (String) requestData.get("answer");
+            String guestId = (String) requestData.get("guestId");
+            
+            // 1. 사용자 식별
+            Long userId = null;
+            if (guestId != null && !guestId.isEmpty()) {
+                userId = getOrCreateGuestUser(guestId);
+            } else {
+                userId = getUserIdFromSession(request);
+            }
+            
+            if (userId == null) {
+                log.warn("checkAnswer 실패: 사용자 인증 필요 (guestId={}, session User=null)", guestId);
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "사용자 인증이 필요합니다."));
+            }
+            log.info("checkAnswer 진행: userId={}", userId);
+            
+            // 2. 현재 게임 및 퍼즐 데이터 조회
+            Optional<UserPuzzleGame> gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(userId, null, theme);
+            if (!gameOpt.isPresent()) {
+                log.warn("checkAnswer 실패: 진행 중인 게임 없음 (userId={}, theme={})", userId, theme);
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "진행 중인 게임이 없습니다."));
+            }
+            
+            UserPuzzleGame game = gameOpt.get();
+            Map<String, Object> puzzleData = game.getCurrentPuzzleData();
+            
+            if (puzzleData == null || !theme.equals(puzzleData.get("theme"))) {
+                log.warn("checkAnswer 실패: 퍼즐 데이터 없음이거나 테마 불일치 (puzzleTheme={})", puzzleData != null ? puzzleData.get("theme") : "null");
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "현재 테마와 일치하는 기록이 없습니다."));
+            }
+            log.info("checkAnswer 진행: 퍼즐 데이터 조회 완료 (puzzleId={})", puzzleData.get("puzzleId"));
+            
+            // 3. 퍼즐 데이터에서 정답 찾기 로직 제거 (프론트엔드가 고유 pz_word_id를 전달함)
+            Integer pzWordId = Integer.valueOf(wordIdObj.toString());
+            Optional<com.example.board.entity.PzWord> pzWordOpt = pzWordService.getPzWordById(pzWordId);
+            
+            if (!pzWordOpt.isPresent()) {
+                log.warn("checkAnswer 실패: 찾으려는 단어(pzWordId={})가 DB에 존재하지 않음", pzWordId);
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "퍼즐에서 단어 정보를 찾을 수 없습니다."));
+            }
+            
+            com.example.board.entity.PzWord pzWord = pzWordOpt.get();
+            boolean isCorrect = pzWord.getWord().equals(answer.trim());
+            log.info("정답 판별 결과: wordId/pzWordId={}, input={}, correct={}, result={}", 
+                pzWordId, answer, pzWord.getWord(), isCorrect);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("is_correct", isCorrect);
+            response.put("correct_answer", pzWord.getWord());
+            
+            // 5. 정답 시 상태 업데이트 (템플릿 단어 ID 기준)
+            if (isCorrect) {
+                updateThemeGameState(game, wordId, answer);
+                
+                Map<String, Object> gameState = game.getCurrentGameState();
+                if (gameState != null && gameState.get("answered_words") != null) {
+                    response.put("correct_count", ((java.util.List<?>) gameState.get("answered_words")).size());
+                }
+            }
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("정답 확인 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "정답 확인 중 오류가 발생했습니다."));
+        }
+    }
+
+    /**
+     * 테마별 게임 상태 업데이트 (템플릿 번호 기준)
+     */
+    private void updateThemeGameState(UserPuzzleGame game, Integer wordId, String answer) {
+        Map<String, Object> gameState = game.getCurrentGameState();
+        if (gameState == null) {
+            gameState = new HashMap<>();
+            gameState.put("answered_words", new java.util.ArrayList<Long>());
+            gameState.put("answered_words_with_answers", new HashMap<String, String>());
+            gameState.put("wrong_answers", new java.util.ArrayList<Long>());
+            gameState.put("started_at", LocalDateTime.now().toString());
+        }
+        
+        @SuppressWarnings("unchecked")
+        java.util.List<Long> answeredWords = (java.util.List<Long>) gameState.get("answered_words");
+        if (!answeredWords.contains(wordId.longValue())) {
+            answeredWords.add(wordId.longValue());
+        }
+        
+        @SuppressWarnings("unchecked")
+        Map<String, String> answeredWordsWithAnswers = (Map<String, String>) gameState.get("answered_words_with_answers");
+        if (answeredWordsWithAnswers == null) {
+            answeredWordsWithAnswers = new HashMap<>();
+        }
+        answeredWordsWithAnswers.put(String.valueOf(wordId), answer);
+        
+        gameState.put("answered_words", answeredWords);
+        gameState.put("answered_words_with_answers", answeredWordsWithAnswers);
+        
+        game.setCurrentGameState(gameState);
+        userPuzzleGameService.save(game);
+        
+        log.info("테마 게임 상태 업데이트 완료: gameId={}, wordId={}, totalAnswered={}", 
+            game.getId(), wordId, answeredWords.size());
+    }
+
     /**
      * 테마별 퍼즐 완료 기록 저장
      * 

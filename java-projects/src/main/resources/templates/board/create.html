@@ -42,7 +42,7 @@
                         <h4 th:text="'글쓰기 - ' + ${boardType.name}">글쓰기</h4>
                     </div>
                     <div class="card-body">
-                        <form th:action="@{/board/{boardType}(boardType=${boardType.slug})}" method="post">
+                        <form th:action="@{/board/{boardType}(boardType=${boardType.slug})}" method="post" enctype="multipart/form-data">
                             <div class="mb-3">
                                 <label for="title" class="form-label">제목</label>
                                 <input type="text" class="form-control" id="title" name="title" required>
@@ -51,6 +51,13 @@
                             <div class="mb-3">
                                 <label for="content" class="form-label">내용</label>
                                 <textarea class="form-control" id="content" name="content" rows="10" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="files" class="form-label">첨부파일 (최대 50MB)</label>
+                                <input type="file" class="form-control" id="files" name="files" multiple 
+                                       accept=".jpg,.jpeg,.png,.gif,.pdf,.txt,.xls,.xlsx,.ppt,.pptx,.doc,.docx,.hwp">
+                                <div class="form-text">이미지, PDF, 엑셀, TXT, PPT, Word, HWP 파일만 업로드 가능합니다.</div>
                             </div>
                             
                             <div class="mb-3">

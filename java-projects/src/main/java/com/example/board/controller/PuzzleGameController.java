@@ -142,7 +142,7 @@ public class PuzzleGameController {
             }
             
             // 게임 데이터 조회/생성
-            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
+            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId, null);
             
             if (game == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "게임 데이터를 생성할 수 없습니다."));
@@ -217,7 +217,7 @@ public class PuzzleGameController {
                 userId, guestId, wordId, answer, word.getWord(), isCorrect ? "정답" : "오답");
             
             // 게임 데이터 업데이트
-            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
+            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId, null);
             
             // 퍼즐 데이터가 없으면 게임 상태만 저장 (테마별 퍼즐의 경우)
             if (game.getCurrentPuzzleData() == null) {
@@ -514,7 +514,7 @@ public class PuzzleGameController {
             
             logger.info("=== 레벨 완료 처리 시작 - userId={}, guestId={} ===", userId, guestId);
             
-            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
+            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId, null);
             Integer currentLevel = game.getCurrentLevel();
             
             logger.info("레벨 완료 요청 - userId={}, 현재레벨={}, 정답수={}, 오답수={}", 
@@ -632,7 +632,7 @@ public class PuzzleGameController {
                 return ResponseEntity.badRequest().body(Map.of("error", "사용자 인증이 필요합니다."));
             }
             
-            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
+            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId, null);
             game.setIsActive(false);
             game.setGameState(null);
             
@@ -672,7 +672,7 @@ public class PuzzleGameController {
                 return ResponseEntity.badRequest().body(Map.of("error", "사용자 인증이 필요합니다."));
             }
             
-            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId);
+            UserPuzzleGame game = userPuzzleGameService.getOrCreateGameByUserId(userId, null);
             PuzzleLevel level = puzzleLevelService.getByLevel(game.getCurrentLevel());
             
             Map<String, Object> response = new HashMap<>();
@@ -1341,13 +1341,13 @@ public class PuzzleGameController {
                 // 게스트 사용자: getOrCreateGuestUser 호출하여 users 테이블에서 조회/생성
                 Long guestUserId = getOrCreateGuestUser(userId, request);
                 userId = guestUserId.toString(); // userId를 실제 users 테이블의 ID로 업데이트
-                gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(guestUserId, null);
+                gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(guestUserId, null, null);
                 System.out.println("게스트 사용자로 조회: " + userId + " -> " + guestUserId);
             } else {
                 // 일반 사용자 ID (숫자)
                 try {
                     Long userIdLong = Long.parseLong(userId);
-                    gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(userIdLong, null);
+                    gameOpt = userPuzzleGameService.findActiveGameByUserIdOrGuestId(userIdLong, null, null);
                     System.out.println("일반 사용자로 조회: " + userIdLong);
                 } catch (NumberFormatException ex) {
                     return ResponseEntity.badRequest().body(Map.of("success", false, "message", "잘못된 사용자 ID 형식입니다."));

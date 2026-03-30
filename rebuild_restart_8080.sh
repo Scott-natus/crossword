@@ -12,7 +12,7 @@ echo "==========================================="
 
 # 1. Kill existing process
 echo "Step 1: Killing existing process on port $PORT..."
-sudo fuser -k $PORT/tcp 2>/dev/null || echo "No process found on port $PORT."
+echo "dlrhkeo8453" | sudo -S fuser -k $PORT/tcp 2>/dev/null || echo "No process found on port $PORT."
 
 # 2. Build with Gradle (including tests)
 echo "Step 2: Building project with Gradle (clean build)..."
@@ -30,7 +30,7 @@ if [ $? -eq 0 ]; then
     sleep 5
     
     # Check if process is alive
-    PID=$(sudo lsof -t -i:$PORT)
+    PID=$(echo "dlrhkeo8453" | sudo -S lsof -t -i:$PORT)
     if [ ! -z "$PID" ]; then
         echo "Successfully started (PID: $PID)"
         echo "Tail log for last 10 lines:"

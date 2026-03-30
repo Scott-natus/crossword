@@ -135,7 +135,7 @@ public class DailyPuzzleService {
         try {
             log.info("모든 테마의 오늘 퍼즐 생성 시작");
             
-            String[] themes = {"K-POP", "K-DRAMA", "K-MOVIE", "K-CULTURE", "Korean"};
+            String[] themes = {"korean", "K-POP", "K-DRAMA", "K-MOVIE", "K-CULTURE"};
             LocalDate today = LocalDate.now();
             
             for (String theme : themes) {
