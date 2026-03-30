@@ -27,3 +27,19 @@ out/
 # OS
 .DS_Store
 Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Laravel
+vendor/
+artisan
+storage/framework/
+storage/logs/
+storage/app/
+!storage/app/public/.gitignore
+database/sqlite.database
+.phpunit.cache/
+bootstrap/cache/
