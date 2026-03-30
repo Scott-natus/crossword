@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${boardType.name} + ' - 게시판 시스템'">게시판</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .board-row:hover {
+            background-color: #f8f9fa !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .board-row td {
+            border-bottom: 1px solid #dee2e6;
+            padding: 12px 8px;
+            vertical-align: middle;
+        }
+        
+        .table-hover tbody tr:hover td {
+            background-color: transparent;
+        }
+        
+        .pagination .page-link {
+            border-radius: 0.375rem;
+            margin: 0 2px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .pagination .page-item.active .page-link {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        
+        .pagination .page-link:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/board">
+                <i class="fas fa-comments me-2"></i>게시판 시스템
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/admin/" sec:authorize="hasRole('ADMIN')">
+                    <i class="fas fa-cog me-1"></i>관리자
+                </a>
+                <a class="nav-link" th:href="@{'/login'(redirect=${currentUrl})}" sec:authorize="!isAuthenticated()">
+                    <i class="fas fa-sign-in-alt me-1"></i>로그인
+                </a>
+                <div class="nav-item dropdown" sec:authorize="isAuthenticated()">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user me-1"></i><span sec:authentication="name">사용자</span>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <li><a class="dropdown-item" href="/logout">
+                            <i class="fas fa-sign-out-alt me-1"></i>로그아웃
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 th:text="${boardType.name}">게시판</h2>
+                    <div>
+                        <a th:href="@{/board/{boardType}/create(boardType=${boardType.slug})}" 
+                           class="btn btn-primary" sec:authorize="isAuthenticated()">글쓰기</a>
+                    </div>
+                </div>
+                
+                <p class="text-muted" th:text="${boardType.description}">게시판 설명</p>
+                
+                <!-- 검색 폼 -->
+                <form th:action="@{/board/{boardType}(boardType=${boardType.slug})}" method="get" class="mb-3">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <input type="text" name="search" class="form-control" 
+                                   th:value="${search}" placeholder="제목, 내용, 작성자로 검색">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-outline-secondary">검색</button>
+                            <a th:href="@{/board/{boardType}(boardType=${boardType.slug})}" 
+                               class="btn btn-outline-secondary">전체</a>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- 게시글 목록 -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>제목</th>
+                                <th>작성자</th>
+                                <th>작성일</th>
+                                <th>조회수</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="board : ${boards.content}" class="board-row" style="cursor: pointer;" 
+                                th:onclick="'location.href=\'' + @{/board/{boardType}/{id}(boardType=${boardType.slug}, id=${board.id})} + '\''">
+                                <td>
+                                    <a th:href="@{/board/{boardType}/{id}(boardType=${boardType.slug}, id=${board.id})}" 
+                                       th:text="${board.title}" 
+                                       class="text-decoration-none fw-bold text-primary"
+                                       style="font-size: 1.05em;">제목</a>
+                                    <span th:if="${board.attachments.size() > 0}" class="badge bg-secondary ms-1">
+                                        <i class="fas fa-paperclip"></i> 첨부
+                                    </span>
+                                    <span th:if="${board.comments.size() > 0}" class="badge bg-info ms-1">
+                                        <i class="fas fa-comments"></i> <span th:text="${board.comments.size()}">0</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-muted" th:text="${board.user.name}">작성자</span>
+                                </td>
+                                <td>
+                                    <span class="text-muted" th:text="${#temporals.format(board.createdAt, 'yyyy-MM-dd HH:mm')}">작성일</span>
+                                </td>
+                                <td>
+                                    <span class="text-muted">
+                                        <i class="fas fa-eye"></i> <span th:text="${board.views}">조회수</span>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr th:if="${boards.content.isEmpty()}">
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                    등록된 게시글이 없습니다.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 페이지네이션 (Laravel 스타일) -->
+                <nav th:if="${boards.totalPages > 1}" aria-label="게시글 페이지네이션">
+                    <ul class="pagination justify-content-center">
+                        <!-- 첫 페이지 -->
+                        <li class="page-item" th:classappend="${boards.first} ? 'disabled'">
+                            <a class="page-link" th:href="@{/board/{boardType}(boardType=${boardType.slug}, page=0, search=${search})}" 
+                               th:if="${!boards.first}">처음</a>
+                            <span class="page-link" th:if="${boards.first}">처음</span>
+                        </li>
+                        
+                        <!-- 이전 페이지 -->
+                        <li class="page-item" th:classappend="${boards.first} ? 'disabled'">
+                            <a class="page-link" th:href="@{/board/{boardType}(boardType=${boardType.slug}, page=${boards.number - 1}, search=${search})}" 
+                               th:if="${!boards.first}">이전</a>
+                            <span class="page-link" th:if="${boards.first}">이전</span>
+                        </li>
+                        
+                        <!-- 페이지 번호들 (스마트 페이징) -->
+                        <li th:each="i : ${#numbers.sequence(T(java.lang.Math).max(0, boards.number - 2), T(java.lang.Math).min(boards.totalPages - 1, boards.number + 2))}" 
+                            class="page-item" th:classappend="${i == boards.number} ? 'active'">
+                            <a class="page-link" th:href="@{/board/{boardType}(boardType=${boardType.slug}, page=${i}, search=${search})}" 
+                               th:text="${i + 1}">1</a>
+                        </li>
+                        
+                        <!-- 다음 페이지 -->
+                        <li class="page-item" th:classappend="${boards.last} ? 'disabled'">
+                            <a class="page-link" th:href="@{/board/{boardType}(boardType=${boardType.slug}, page=${boards.number + 1}, search=${search})}" 
+                               th:if="${!boards.last}">다음</a>
+                            <span class="page-link" th:if="${boards.last}">다음</span>
+                        </li>
+                        
+                        <!-- 마지막 페이지 -->
+                        <li class="page-item" th:classappend="${boards.last} ? 'disabled'">
+                            <a class="page-link" th:href="@{/board/{boardType}(boardType=${boardType.slug}, page=${boards.totalPages - 1}, search=${search})}" 
+                               th:if="${!boards.last}">마지막</a>
+                            <span class="page-link" th:if="${boards.last}">마지막</span>
+                        </li>
+                    </ul>
+                    
+                    <!-- 페이지 정보 -->
+                    <div class="text-center text-muted mt-2">
+                        <small>
+                            <span th:text="${boards.number + 1}">1</span> / <span th:text="${boards.totalPages}">1</span> 페이지 
+                            (총 <span th:text="${boards.totalElements}">0</span>개 게시글)
+                        </small>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

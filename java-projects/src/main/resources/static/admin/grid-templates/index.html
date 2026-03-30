@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그리드 템플릿 관리 - 크로스워드 퍼즐</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.8rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.3rem;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+
+        /* 그리드 미리보기 스타일 */
+        .grid-preview-container {
+            display: inline-block;
+            border: 2px solid #2c3e50;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .grid-preview-cell {
+            width: 25px;
+            height: 25px;
+            border: 1px solid #bdc3c7;
+            display: inline-block;
+            position: relative;
+            background-color: #ffffff;
+        }
+
+        .grid-preview-cell.black {
+            background-color: #2c3e50;
+        }
+
+        .grid-preview-cell.empty {
+            background-color: #ecf0f1;
+        }
+
+        .grid-preview-cell.number {
+            font-size: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 1px;
+        }
+
+        .grid-preview-cell.number::before {
+            content: attr(data-number);
+            position: absolute;
+            top: 0px;
+            left: 1px;
+            font-size: 7px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1px;
+            padding: 0px 1px;
+            min-width: 10px;
+            text-align: center;
+        }
+
+        /* 샘플 그리드 셀 스타일 */
+        .sample-grid-cell {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #bdc3c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+            position: relative;
+        }
+
+        .sample-grid-cell.black {
+            background-color: #2c3e50;
+        }
+
+        .sample-grid-cell.empty {
+            background-color: #ecf0f1;
+        }
+
+        .sample-grid-cell.number::before {
+            content: attr(data-number);
+            position: absolute;
+            top: 0px;
+            left: 1px;
+            font-size: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1px;
+            padding: 0px 1px;
+            min-width: 10px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .word-list-preview {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .word-preview-item {
+            padding: 5px 10px;
+            margin: 3px 0;
+            background: #e3f2fd;
+            border-radius: 5px;
+            border-left: 3px solid #2196f3;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .word-preview-item.horizontal {
+            border-left-color: #4caf50;
+        }
+
+        .word-preview-item.vertical {
+            border-left-color: #ff9800;
+        }
+
+        /* 샘플 템플릿 그리드 스타일 */
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .template-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .template-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .template-header {
+            margin-bottom: 15px;
+        }
+
+        .template-header h6 {
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .template-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .template-grid-preview {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .sample-grid-container {
+            display: inline-block;
+        }
+
+        .sample-grid-cell {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #bdc3c7;
+            display: inline-block;
+            position: relative;
+            background-color: #ffffff;
+        }
+
+        .sample-grid-cell.black {
+            background-color: #2c3e50;
+        }
+
+        .sample-grid-cell.number {
+            font-size: 6px;
+            font-weight: bold;
+            color: #2c3e50;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 1px;
+        }
+
+        .sample-grid-cell.number::before {
+            content: attr(data-number);
+            position: absolute;
+            top: 0px;
+            left: 1px;
+            font-size: 6px;
+            font-weight: bold;
+            color: #2c3e50;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1px;
+            padding: 0px 1px;
+            min-width: 8px;
+            text-align: center;
+        }
+
+        .template-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+
+        .stat-item i {
+            font-size: 1.2em;
+            color: #667eea;
+        }
+        
+        .search-container {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .btn-action {
+            margin: 0 2px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .editable-field {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            width: 100%;
+        }
+        
+        .editable-field.narrow {
+            width: 80px;
+            text-align: center;
+        }
+        
+        .editable-field:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            outline: 0;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+        
+        .level-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .grid-size-badge {
+            background: #e9ecef;
+            color: #495057;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-family: monospace;
+        }
+        
+        .category-badge {
+            background: #d4edda;
+            color: #155724;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .sample-preview {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .template-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        
+        .template-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .template-card h6 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        
+        .template-meta {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <!-- 헤더 -->
+    <div class="admin-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-0">
+                        <i class="fas fa-th-large me-3"></i>그리드 템플릿 관리
+                    </h1>
+                    <p class="mb-0 mt-2 opacity-75">저장된 그리드 템플릿들을 관리할 수 있습니다.</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light me-2" onclick="showSampleModal()">
+                        <i class="fas fa-eye me-1"></i>레벨별 샘플보기
+                    </button>
+                    <button class="btn btn-light" onclick="goToCreatePage()">
+                        <i class="fas fa-plus me-1"></i>새 템플릿 생성
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- 퍼즐 관리 네비게이션 -->
+        <div class="card mb-4">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-primary">
+                        <i class="fas fa-puzzle-piece me-2"></i>퍼즐 관리 바로가기
+                    </h6>
+                    <div class="d-flex gap-2">
+                        <a href="/admin/" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-home me-1"></i>퍼즐관리
+                        </a>
+                        <a href="/admin/words" class="btn btn-primary btn-sm">
+                            <i class="fas fa-list me-1"></i>단어관리
+                        </a>
+                        <a href="/admin/hint-generator" class="btn btn-info btn-sm">
+                            <i class="fas fa-magic me-1"></i>AI 힌트관리
+                        </a>
+                        <a href="/admin/levels" class="btn btn-success btn-sm">
+                            <i class="fas fa-layer-group me-1"></i>레벨관리
+                        </a>
+                        <a href="/admin/templates" class="btn btn-warning btn-sm">
+                            <i class="fas fa-th me-1"></i>그리드 템플릿관리
+                        </a>
+                        <a href="/admin/templates/create" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-plus me-1"></i>템플릿 생성
+                        </a>
+                        <a href="/admin/users" class="btn btn-danger btn-sm">
+                            <i class="fas fa-users me-1"></i>사용자관리
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-number" id="totalTemplates">-</div>
+                <div class="stat-label">총 템플릿 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avgWordCount">-</div>
+                <div class="stat-label">평균 단어 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="maxWordCount">-</div>
+                <div class="stat-label">최대 단어 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="minWordCount">-</div>
+                <div class="stat-label">최소 단어 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="maxIntersectionCount">-</div>
+                <div class="stat-label">최대 교차점 수</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="minIntersectionCount">-</div>
+                <div class="stat-label">최소 교차점 수</div>
+            </div>
+        </div>
+
+        <!-- 검색 및 필터 -->
+        <div class="search-container">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">레벨</label>
+                    <select class="form-select" id="levelFilter">
+                        <option value="">전체</option>
+                        <option value="1">레벨 1</option>
+                        <option value="2">레벨 2</option>
+                        <option value="3">레벨 3</option>
+                        <option value="4">레벨 4</option>
+                        <option value="5">레벨 5</option>
+                        <option value="6">레벨 6</option>
+                        <option value="7">레벨 7</option>
+                        <option value="8">레벨 8</option>
+                        <option value="9">레벨 9</option>
+                        <option value="10">레벨 10</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">템플릿 이름</label>
+                    <input type="text" class="form-control" id="templateNameFilter" placeholder="템플릿 이름 검색">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">최소 단어 수</label>
+                    <input type="number" class="form-control" id="minWordCountFilter" min="1">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">최대 단어 수</label>
+                    <input type="number" class="form-control" id="maxWordCountFilter" min="1">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">카테고리</label>
+                    <select class="form-select" id="categoryFilter">
+                        <option value="">전체</option>
+                        <option value="사용자 정의">사용자 정의</option>
+                        <option value="기본">기본</option>
+                        <option value="고급">고급</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button class="btn btn-primary" onclick="searchTemplates()">
+                        <i class="fas fa-search me-1"></i>검색
+                    </button>
+                    <button class="btn btn-secondary ms-2" onclick="resetFilters()">
+                        <i class="fas fa-undo me-1"></i>초기화
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 템플릿 목록 -->
+        <div class="table-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="fas fa-list me-2"></i>템플릿 목록</h5>
+                <div>
+                    <button class="btn btn-warning btn-sm me-2" onclick="bulkUpdate()" id="bulkUpdateBtn" disabled>
+                        <i class="fas fa-edit me-1"></i>일괄 수정
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="bulkDelete()" id="bulkDeleteBtn" disabled>
+                        <i class="fas fa-trash me-1"></i>일괄 삭제
+                    </button>
+                </div>
+            </div>
+            
+            <table id="templatesTable" class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAllTemplates"></th>
+                        <th>ID</th>
+                        <th>레벨</th>
+                        <th>템플릿 이름</th>
+                        <th>그리드 크기</th>
+                        <th>단어 수</th>
+                        <th>교차점 수</th>
+                        <th>생성일</th>
+                        <th width="120">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- DataTables로 동적 로드 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 레벨별 샘플보기 모달 -->
+    <div class="modal fade" id="sampleModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-eye me-2"></i>레벨별 샘플 템플릿</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">레벨 선택</label>
+                        <select class="form-select" id="sampleLevelSelect" onchange="loadSampleTemplates()">
+                            <option value="">전체 레벨</option>
+                            <option value="1">레벨 1</option>
+                            <option value="2">레벨 2</option>
+                            <option value="3">레벨 3</option>
+                            <option value="4">레벨 4</option>
+                            <option value="5">레벨 5</option>
+                            <option value="6">레벨 6</option>
+                            <option value="7">레벨 7</option>
+                            <option value="8">레벨 8</option>
+                            <option value="9">레벨 9</option>
+                            <option value="10">레벨 10</option>
+                        </select>
+                    </div>
+                    <div id="sampleTemplatesContainer" class="sample-preview">
+                        <!-- 샘플 템플릿들이 여기에 로드됩니다 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 템플릿 생성 모달 -->
+    <div class="modal fade" id="createModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus me-2"></i>새 템플릿 생성</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createTemplateForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">레벨</label>
+                                    <select class="form-select" name="level" required>
+                                        <option value="">레벨 선택</option>
+                                        <option value="1">레벨 1</option>
+                                        <option value="2">레벨 2</option>
+                                        <option value="3">레벨 3</option>
+                                        <option value="4">레벨 4</option>
+                                        <option value="5">레벨 5</option>
+                                        <option value="6">레벨 6</option>
+                                        <option value="7">레벨 7</option>
+                                        <option value="8">레벨 8</option>
+                                        <option value="9">레벨 9</option>
+                                        <option value="10">레벨 10</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">템플릿 이름</label>
+                                    <input type="text" class="form-control" name="templateName" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">그리드 가로</label>
+                                    <input type="number" class="form-control" name="gridWidth" min="3" max="15" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">그리드 세로</label>
+                                    <input type="number" class="form-control" name="gridHeight" min="3" max="15" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">단어 수</label>
+                                    <input type="number" class="form-control" name="wordCount" min="1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">교차점 수</label>
+                                    <input type="number" class="form-control" name="intersectionCount" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">단어 위치 정보 (JSON)</label>
+                            <textarea class="form-control" name="wordPositions" rows="4" placeholder='[{"word":"단어1","x":0,"y":0,"direction":"horizontal"}]'></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="createTemplate()">생성</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 템플릿 복사 모달 -->
+    <div class="modal fade" id="copyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-copy me-2"></i>템플릿 복사</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">새 템플릿 이름</label>
+                        <input type="text" class="form-control" id="copyTemplateName" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="copyTemplate()">복사</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+                        </div>
+                        
+    <!-- 템플릿 수정 모달 -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>템플릿 수정</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTemplateForm">
+                        <input type="hidden" id="editTemplateId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">레벨</label>
+                                    <select class="form-select" name="level" required>
+                                        <option value="1">레벨 1</option>
+                                        <option value="2">레벨 2</option>
+                                        <option value="3">레벨 3</option>
+                                        <option value="4">레벨 4</option>
+                                        <option value="5">레벨 5</option>
+                                        <option value="6">레벨 6</option>
+                                        <option value="7">레벨 7</option>
+                                        <option value="8">레벨 8</option>
+                                        <option value="9">레벨 9</option>
+                                        <option value="10">레벨 10</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">템플릿 이름</label>
+                                    <input type="text" class="form-control" name="templateName" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">그리드 가로</label>
+                                    <input type="number" class="form-control" name="gridWidth" min="3" max="15" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">그리드 세로</label>
+                                    <input type="number" class="form-control" name="gridHeight" min="3" max="15" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">난이도</label>
+                                    <input type="number" class="form-control" name="difficultyRating" min="1" max="5" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">단어 수</label>
+                                    <input type="number" class="form-control" name="wordCount" min="1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">교차점 수</label>
+                                    <input type="number" class="form-control" name="intersectionCount" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">설명</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">그리드 미리보기</label>
+                            <div class="text-center">
+                                <div id="editGridPreview" class="grid-preview-container"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">단어 목록</label>
+                            <div id="editWordList" class="word-list-preview"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">그리드 패턴 (JSON)</label>
+                            <textarea class="form-control" name="gridPattern" rows="3" placeholder='{"pattern": "..."}'></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">단어 위치 정보 (JSON)</label>
+                            <textarea class="form-control" name="wordPositions" rows="3" placeholder='[{"word":"단어1","x":0,"y":0,"direction":"horizontal"}]'></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="updateTemplate()">수정</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 삭제 확인 모달 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>템플릿 삭제</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="deleteTemplateId">
+                    <p>정말로 템플릿 "<span id="deleteTemplateName"></span>"을(를) 삭제하시겠습니까?</p>
+                    <p class="text-danger"><strong>이 작업은 되돌릴 수 없습니다.</strong></p>
+                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteTemplate()">삭제</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 일괄 수정 모달 -->
+    <div class="modal fade" id="bulkUpdateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>일괄 수정</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bulkUpdateForm">
+                        <div class="mb-3">
+                            <label class="form-label">레벨 (선택사항)</label>
+                            <select class="form-select" id="bulkLevel">
+                                <option value="">변경하지 않음</option>
+                                <option value="1">레벨 1</option>
+                                <option value="2">레벨 2</option>
+                                <option value="3">레벨 3</option>
+                                <option value="4">레벨 4</option>
+                                <option value="5">레벨 5</option>
+                                <option value="6">레벨 6</option>
+                                <option value="7">레벨 7</option>
+                                <option value="8">레벨 8</option>
+                                <option value="9">레벨 9</option>
+                                <option value="10">레벨 10</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">난이도 (선택사항)</label>
+                            <select class="form-select" id="bulkDifficultyRating">
+                                <option value="">변경하지 않음</option>
+                                <option value="1">1 (쉬움)</option>
+                                <option value="2">2 (보통)</option>
+                                <option value="3">3 (어려움)</option>
+                                <option value="4">4 (매우 어려움)</option>
+                                <option value="5">5 (극도로 어려움)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">설명 (선택사항)</label>
+                            <textarea class="form-control" id="bulkDescription" rows="3" placeholder="설명을 입력하세요"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmBulkUpdate()">수정</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    
+    <script>
+        let templatesTable;
+        let selectedTemplateIds = [];
+        let currentDeleteId = null;
+
+        $(document).ready(function() {
+            initializeDataTable();
+            loadStats();
+            
+            // 모달 접근성 수정
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(function(modal) {
+                modal.addEventListener('shown.bs.modal', function () {
+                    // 모달이 표시될 때 aria-hidden 제거
+                    this.removeAttribute('aria-hidden');
+                });
+                
+                modal.addEventListener('hidden.bs.modal', function () {
+                    // 모달이 숨겨질 때 모든 포커스 제거 후 aria-hidden 추가
+                    const focusedElements = this.querySelectorAll(':focus');
+                    focusedElements.forEach(element => element.blur());
+                    
+                    // document.body에 포커스 이동
+                    document.body.focus();
+                    
+                    // 약간의 지연 후 aria-hidden 설정
+                    setTimeout(() => {
+                        this.setAttribute('aria-hidden', 'true');
+                    }, 10);
+                });
+                
+                // 모달이 숨겨지기 시작할 때도 포커스 제거
+                modal.addEventListener('hide.bs.modal', function () {
+                    const focusedElements = this.querySelectorAll(':focus');
+                    focusedElements.forEach(element => element.blur());
+                    document.body.focus();
+                });
+            });
+        });
+
+        function initializeDataTable() {
+            templatesTable = $('#templatesTable').DataTable({
+                processing: true,
+                serverSide: true,
+                scrollX: true,
+                autoWidth: false,
+                columnDefs: [
+                    { width: "5%", targets: 0 },
+                    { width: "8%", targets: 1 },
+                    { width: "12%", targets: 2 },
+                    { width: "20%", targets: 3 },
+                    { width: "10%", targets: 4 },
+                    { width: "8%", targets: 5 },
+                    { width: "8%", targets: 6 },
+                    { width: "12%", targets: 7 },
+                    { width: "17%", targets: 8 }
+                ],
+                ajax: {
+                    url: './api/grid-template-management/templates-ajax',
+                    type: 'GET',
+                    error: function(xhr, error, thrown) {
+                        console.error('DataTables AJAX error:', error);
+                        alert('템플릿 데이터를 불러오는 중 오류가 발생했습니다.');
+                    }
+                },
+                columns: [
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function(data, type, row) {
+                            return '<input type="checkbox" class="template-checkbox" value="' + row.id + '">';
+                        }
+                    },
+                    { data: 'id' },
+                    {
+                        data: 'levelId',
+                        render: function(data, type, row) {
+                            return '<span class="level-badge">레벨 ' + data + '</span>';
+                        }
+                    },
+                    {
+                        data: 'templateName',
+                        render: function(data, type, row) {
+                            return '<strong>' + (data || '') + '</strong>';
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function(data, type, row) {
+                            return '<span class="grid-size-badge">' + row.gridWidth + '×' + row.gridHeight + '</span>';
+                        }
+                    },
+                    { data: 'wordCount' },
+                    { data: 'intersectionCount' },
+                    {
+                        data: 'createdAt',
+                        render: function(data) {
+                            return data ? new Date(data).toLocaleDateString() : '-';
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function(data, type, row) {
+                            return `
+                                <div class="btn-group" role="group">
+                                    <a href="/K-CrossWord/admin/grid-templates/detail?id=${row.id}" class="btn btn-info btn-sm" title="상세보기">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button class="btn btn-warning btn-sm" onclick="editTemplate(${row.id})" title="수정">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="showCopyModal(${row.id})" title="복사">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" onclick="showDeleteModal(${row.id}, '${row.templateName}')" title="삭제">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    }
+                ],
+                order: [[1, 'desc']],
+                pageLength: 25,
+                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                processing: true,
+                serverSide: true,
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/ko.json',
+                    processing: "처리 중..."
+                }
+            });
+
+            // 체크박스 이벤트
+            $('#selectAllTemplates').on('change', function() {
+                const isChecked = $(this).is(':checked');
+                $('.template-checkbox').prop('checked', isChecked);
+                updateSelectedTemplates();
+            });
+
+            $(document).on('change', '.template-checkbox', function() {
+                updateSelectedTemplates();
+            });
+        }
+
+        function updateSelectedTemplates() {
+            selectedTemplateIds = [];
+            $('.template-checkbox:checked').each(function() {
+                selectedTemplateIds.push(parseInt($(this).val()));
+            });
+
+            const hasSelection = selectedTemplateIds.length > 0;
+            $('#bulkUpdateBtn').prop('disabled', !hasSelection);
+            $('#bulkDeleteBtn').prop('disabled', !hasSelection);
+        }
+
+        function loadStats() {
+            $.ajax({
+                url: './api/grid-template-management/stats',
+                type: 'GET',
+                success: function(response) {
+                    $('#totalTemplates').text(response.totalTemplates || 0);
+                    $('#avgWordCount').text(response.averageWordCount ? Math.round(response.averageWordCount) : 0);
+                    $('#maxWordCount').text(response.maxWordCount || 0);
+                    $('#minWordCount').text(response.minWordCount || 0);
+                    $('#maxIntersectionCount').text(response.maxIntersectionCount || 0);
+                    $('#minIntersectionCount').text(response.minIntersectionCount || 0);
+                },
+                error: function() {
+                    console.error('통계 로드 실패');
+                }
+            });
+        }
+
+        function searchTemplates() {
+            // 검색 조건 수집
+            const level = $('#levelFilter').val();
+            const templateName = $('#templateNameFilter').val().trim();
+            const minWordCount = $('#minWordCountFilter').val();
+            const maxWordCount = $('#maxWordCountFilter').val();
+            const category = $('#categoryFilter').val();
+            
+            // 검색 조건을 URL 파라미터로 구성
+            const params = new URLSearchParams();
+            
+            if (level) params.append('level', level);
+            if (templateName) params.append('templateName', templateName);
+            if (minWordCount) params.append('minWordCount', minWordCount);
+            if (maxWordCount) params.append('maxWordCount', maxWordCount);
+            if (category) params.append('category', category);
+            
+            // DataTable에 검색 조건 전달
+            const url = './api/grid-template-management/templates-ajax' + 
+                       (params.toString() ? '?' + params.toString() : '');
+            
+            templatesTable.ajax.url(url).load();
+        }
+
+        function resetFilters() {
+            $('#levelFilter').val('');
+            $('#templateNameFilter').val('');
+            $('#minWordCountFilter').val('');
+            $('#maxWordCountFilter').val('');
+            $('#categoryFilter').val('');
+            
+            // 검색 조건 초기화 후 테이블 새로고침
+            templatesTable.ajax.url('./api/grid-template-management/templates-ajax').load();
+        }
+
+        function showSampleModal() {
+            $('#sampleModal').modal('show');
+            // 모달이 열릴 때 샘플 템플릿 로딩
+            loadSampleTemplates();
+        }
+
+        function loadSampleTemplates() {
+            const level = $('#sampleLevelSelect').val();
+            let url = './api/grid-template-management/sample-templates';
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function(response) {
+                    // 레벨별 필터링
+                    let filteredTemplates = response;
+                    if (level) {
+                        filteredTemplates = response.filter(template => template.levelId == level);
+                    }
+                    displaySampleTemplates(filteredTemplates);
+                },
+                error: function() {
+                    console.error('샘플 템플릿 로드 실패');
+                }
+            });
+        }
+
+        function displaySampleTemplates(templates) {
+            const container = $('#sampleTemplatesContainer');
+            container.empty();
+
+            if (templates.length === 0) {
+                container.html('<p class="text-muted">샘플 템플릿이 없습니다.</p>');
+                return;
+            }
+
+            const templateGrid = $('<div class="template-grid"></div>');
+            
+            templates.forEach(template => {
+                const templateCard = $(`
+                    <div class="template-card">
+                        <div class="template-header">
+                            <h6>${template.templateName}</h6>
+                            <div class="template-meta">
+                                <span class="badge bg-primary">레벨 ${template.levelId}</span>
+                                <span class="badge bg-secondary">${template.gridWidth}×${template.gridHeight}</span>
+                            </div>
+                        </div>
+                        <div class="template-grid-preview">
+                            <div class="sample-grid-container" data-template-id="${template.id}"></div>
+                        </div>
+                        <div class="template-stats">
+                            <div class="stat-item">
+                                <i class="fas fa-font"></i>
+                                <span>${template.wordCount}개</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-crosshairs"></i>
+                                <span>${template.intersectionCount}개</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-star"></i>
+                                <span>${template.difficultyRating || 1}/5</span>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                templateGrid.append(templateCard);
+                
+                // DOM에 추가된 후 그리드 렌더링
+                setTimeout(() => {
+                    renderSampleGrid(template);
+                }, 0);
+            });
+
+            container.append(templateGrid);
+        }
+
+        // 공통 그리드 렌더링 함수
+        function renderGridFromAPI(template, container, cellSize = 20, showNumbers = true) {
+            const gridContainer = $(container);
+            gridContainer.empty();
+            
+            // 로딩 표시
+            gridContainer.html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> 그리드 로딩 중...</div>');
+            
+            $.ajax({
+                url: '/K-CrossWord/admin/api/grid-template-management/render-grid',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    gridPattern: template.gridPattern,
+                    wordPositions: template.wordPositions,
+                    cellSize: cellSize,
+                    showNumbers: showNumbers
+                }),
+                success: function(response) {
+                    if (response.success) {
+                        gridContainer.html(response.html);
+                    } else {
+                        gridContainer.html('<p class="text-danger">그리드 렌더링 실패: ' + response.error + '</p>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('그리드 렌더링 API 오류:', error);
+                    gridContainer.html('<p class="text-danger">그리드 렌더링 중 오류가 발생했습니다.</p>');
+                }
+            });
+        }
+
+        function renderSampleGrid(template) {
+            console.log('renderSampleGrid 호출됨:', template.id);
+            const gridContainer = $(`.sample-grid-container[data-template-id="${template.id}"]`);
+            console.log('그리드 컨테이너 찾음:', gridContainer.length);
+            
+            // 공통 그리드 렌더링 함수 사용
+            renderGridFromAPI(template, gridContainer, 20, true);
+        }
+
+        function showCreateModal() {
+            $('#createModal').modal('show');
+        }
+
+        function goToCreatePage() {
+            window.location.href = '/K-CrossWord/admin/grid-templates/create';
+        }
+
+        function createTemplate() {
+            const formData = {
+                levelId: parseInt($('#createTemplateForm select[name="level"]').val()),
+                templateName: $('#createTemplateForm input[name="templateName"]').val(),
+                gridWidth: parseInt($('#createTemplateForm input[name="gridWidth"]').val()),
+                gridHeight: parseInt($('#createTemplateForm input[name="gridHeight"]').val()),
+                wordCount: parseInt($('#createTemplateForm input[name="wordCount"]').val()),
+                intersectionCount: parseInt($('#createTemplateForm input[name="intersectionCount"]').val()),
+                category: $('#createTemplateForm select[name="category"]').val(),
+                wordPositions: $('#createTemplateForm textarea[name="wordPositions"]').val(),
+                gridPattern: '{}', // 기본값
+                difficultyRating: 1, // 기본값
+                description: '' // 기본값
+            };
+
+            $.ajax({
+                url: './api/grid-template-management/template',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.success) {
+                        alert('템플릿이 성공적으로 생성되었습니다.');
+                        $('#createModal').modal('hide');
+                        templatesTable.ajax.reload();
+                        loadStats();
+                        $('#createTemplateForm')[0].reset();
+                    } else {
+                        alert('생성 실패: ' + response.error);
+                    }
+                },
+                error: function() {
+                    alert('템플릿 생성 중 오류가 발생했습니다.');
+                }
+            });
+        }
+
+
+        function editTemplate(id) {
+            // 템플릿 수정
+            $.ajax({
+                url: './api/grid-template-management/template/' + id,
+                type: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        const template = response.data;
+                        showEditTemplateModal(template);
+                    } else {
+                        alert('템플릿 정보를 가져올 수 없습니다: ' + (response.error || '알 수 없는 오류'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('템플릿 조회 오류:', xhr.responseText);
+                    alert('템플릿 정보를 가져오는 중 오류가 발생했습니다.');
+                }
+            });
+        }
+
+        function showCopyModal(id) {
+            $('#copyTemplateId').val(id);
+            $('#copyModal').modal('show');
+        }
+
+        function copyTemplate() {
+            const originalId = $('#copyTemplateId').val();
+            const newName = $('#copyTemplateName').val().trim();
+            
+            if (!newName) {
+                alert('새 템플릿 이름을 입력해주세요.');
+                return;
+            }
+
+            $.ajax({
+                url: './api/grid-template-management/template/' + originalId + '/copy',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ newTemplateName: newName }),
+                success: function(response) {
+                    if (response.success) {
+                        alert('템플릿이 성공적으로 복사되었습니다.');
+                        templatesTable.ajax.reload();
+                        loadStats();
+                        $('#copyModal').modal('hide');
+                        $('#copyTemplateName').val('');
+                    } else {
+                        alert('템플릿 복사 실패: ' + (response.error || '알 수 없는 오류'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('템플릿 복사 오류:', xhr.responseText);
+                    let errorMessage = '템플릿 복사 중 오류가 발생했습니다.';
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.error || errorMessage;
+                    } catch (e) {
+                        errorMessage = xhr.responseText || errorMessage;
+                    }
+                    alert(errorMessage);
+                }
+            });
+        }
+
+        function showDeleteModal(id, templateName) {
+            // 삭제 확인 모달 표시
+            $('#deleteTemplateId').val(id);
+            $('#deleteTemplateName').text(templateName);
+            $('#deleteModal').modal('show');
+        }
+
+        function deleteTemplate() {
+            const id = $('#deleteTemplateId').val();
+            
+            $.ajax({
+                url: './api/grid-template-management/template/' + id,
+                type: 'DELETE',
+                success: function(response) {
+                    if (response.success) {
+                        alert('템플릿이 성공적으로 삭제되었습니다.');
+                        templatesTable.ajax.reload();
+                        loadStats();
+                        loadSampleTemplates();
+                        $('#deleteModal').modal('hide');
+                    } else {
+                        alert('템플릿 삭제 실패: ' + (response.error || '알 수 없는 오류'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('템플릿 삭제 오류:', xhr.responseText);
+                    let errorMessage = '템플릿 삭제 중 오류가 발생했습니다.';
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.error || errorMessage;
+                    } catch (e) {
+                        errorMessage = xhr.responseText || errorMessage;
+                    }
+                    alert(errorMessage);
+                }
+            });
+        }
+
+        // confirmDelete 함수 정의 (브라우저 호환성을 위해)
+        function confirmDelete() {
+            return deleteTemplate();
+        }
+
+        function copyTemplate() {
+            const newName = $('#copyTemplateName').val();
+            if (!newName.trim()) {
+                alert('새 템플릿 이름을 입력해주세요.');
+                return;
+            }
+
+            $.ajax({
+                url: './api/grid-template-management/template/' + currentDeleteId + '/copy',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ templateName: newName }),
+                success: function(response) {
+                    if (response.success) {
+                        alert('템플릿이 성공적으로 복사되었습니다.');
+                        $('#copyModal').modal('hide');
+                        templatesTable.ajax.reload();
+                        loadStats();
+                        $('#copyTemplateName').val('');
+                    } else {
+                        alert('복사 실패: ' + response.error);
+                    }
+                },
+                error: function() {
+                    alert('템플릿 복사 중 오류가 발생했습니다.');
+                }
+            });
+        }
+
+
+        function bulkUpdate() {
+            if (selectedTemplateIds.length === 0) {
+                alert('수정할 템플릿을 선택해주세요.');
+                return;
+            }
+
+            // 일괄 수정 모달 표시
+            $('#bulkUpdateModal').modal('show');
+        }
+
+        function confirmBulkUpdate() {
+            const updateData = {};
+            
+            // 수정할 필드들 수집
+            if ($('#bulkLevel').val()) {
+                updateData.levelId = parseInt($('#bulkLevel').val());
+            }
+            if ($('#bulkDifficultyRating').val()) {
+                updateData.difficultyRating = parseInt($('#bulkDifficultyRating').val());
+            }
+            if ($('#bulkDescription').val().trim()) {
+                updateData.description = $('#bulkDescription').val().trim();
+            }
+
+            if (Object.keys(updateData).length === 0) {
+                alert('수정할 항목을 선택해주세요.');
+                return;
+            }
+
+            $.ajax({
+                url: './api/grid-template-management/templates/bulk-update',
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    templateIds: selectedTemplateIds,
+                    updateData: updateData
+                }),
+                success: function(response) {
+                    if (response.success) {
+                        alert('선택된 ' + selectedTemplateIds.length + '개의 템플릿이 성공적으로 수정되었습니다.');
+                        templatesTable.ajax.reload();
+                        loadStats();
+                        selectedTemplateIds = [];
+                        updateSelectedTemplates();
+                        $('#bulkUpdateModal').modal('hide');
+                        $('#bulkUpdateForm')[0].reset();
+                    } else {
+                        alert('일괄 수정 실패: ' + (response.error || '알 수 없는 오류'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('일괄 수정 오류:', xhr.responseText);
+                    let errorMessage = '일괄 수정 중 오류가 발생했습니다.';
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.error || errorMessage;
+                    } catch (e) {
+                        errorMessage = xhr.responseText || errorMessage;
+                    }
+                    alert(errorMessage);
+                }
+            });
+        }
+
+        function bulkDelete() {
+            if (selectedTemplateIds.length === 0) {
+                alert('삭제할 템플릿을 선택해주세요.');
+                return;
+            }
+
+            if (confirm('선택된 ' + selectedTemplateIds.length + '개의 템플릿을 정말로 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) {
+                $.ajax({
+                    url: './api/grid-template-management/templates',
+                    type: 'DELETE',
+                    contentType: 'application/json',
+                    data: JSON.stringify(selectedTemplateIds),
+                    success: function(response) {
+                        if (response.success) {
+                            alert(response.message);
+                            templatesTable.ajax.reload();
+                            loadStats();
+                            selectedTemplateIds = [];
+                            updateSelectedTemplates();
+                        } else {
+                            alert('일괄 삭제 실패: ' + response.error);
+                        }
+                    },
+                    error: function() {
+                        alert('일괄 삭제 중 오류가 발생했습니다.');
+                    }
+                });
+            }
+        }
+
+
+
+        function showEditTemplateModal(template) {
+            // 수정 모달 폼에 데이터 설정
+            $('#editTemplateId').val(template.id);
+            $('#editTemplateForm select[name="level"]').val(template.levelId);
+            $('#editTemplateForm input[name="templateName"]').val(template.templateName);
+            $('#editTemplateForm input[name="gridWidth"]').val(template.gridWidth);
+            $('#editTemplateForm input[name="gridHeight"]').val(template.gridHeight);
+            $('#editTemplateForm input[name="wordCount"]').val(template.wordCount);
+            $('#editTemplateForm input[name="intersectionCount"]').val(template.intersectionCount);
+            $('#editTemplateForm input[name="difficultyRating"]').val(template.difficultyRating);
+            $('#editTemplateForm textarea[name="description"]').val(template.description || '');
+            $('#editTemplateForm textarea[name="wordPositions"]').val(template.wordPositions || '[]');
+            $('#editTemplateForm textarea[name="gridPattern"]').val(template.gridPattern || '{}');
+            
+            // 그리드 미리보기 렌더링
+            renderEditGridPreview(template);
+            
+            // 단어 목록 렌더링
+            renderEditWordList(template);
+            
+            $('#editModal').modal('show');
+        }
+
+        function renderEditGridPreview(template) {
+            const gridPreview = $('#editGridPreview');
+            
+            // 공통 그리드 렌더링 함수 사용 (25px 셀 크기)
+            renderGridFromAPI(template, gridPreview, 25, true);
+        }
+
+        function renderEditWordList(template) {
+            const wordListPreview = $('#editWordList');
+            wordListPreview.empty();
+            
+            try {
+                const wordPositions = JSON.parse(template.wordPositions || '[]');
+                
+                if (!Array.isArray(wordPositions) || wordPositions.length === 0) {
+                    wordListPreview.html('<p class="text-muted">단어 정보가 없습니다.</p>');
+                    return;
+                }
+                
+                // 가로형과 세로형 단어 분류
+                const horizontalWords = wordPositions.filter(word => word.direction === 'horizontal');
+                const verticalWords = wordPositions.filter(word => word.direction === 'vertical');
+                
+                // 가로형 단어 표시
+                if (horizontalWords.length > 0) {
+                    wordListPreview.append('<h6 class="text-success mb-2"><i class="fas fa-arrows-alt-h me-1"></i>가로형 단어</h6>');
+                    horizontalWords.forEach((word, index) => {
+                        const wordItem = $(`
+                            <div class="word-preview-item horizontal">
+                                ${word.id}. ${word.start_y + 1}행 ${word.start_x + 1}열부터 ${word.length}글자
+                            </div>
+                        `);
+                        wordListPreview.append(wordItem);
+                    });
+                }
+                
+                // 세로형 단어 표시
+                if (verticalWords.length > 0) {
+                    wordListPreview.append('<h6 class="text-warning mb-2 mt-3"><i class="fas fa-arrows-alt-v me-1"></i>세로형 단어</h6>');
+                    verticalWords.forEach((word, index) => {
+                        const wordItem = $(`
+                            <div class="word-preview-item vertical">
+                                ${word.id}. ${word.start_y + 1}행 ${word.start_x + 1}열부터 ${word.length}글자
+                            </div>
+                        `);
+                        wordListPreview.append(wordItem);
+                    });
+                }
+                
+                if (horizontalWords.length === 0 && verticalWords.length === 0) {
+                    wordListPreview.html('<p class="text-muted">단어 정보가 없습니다.</p>');
+                }
+            } catch (e) {
+                console.error('단어 목록 렌더링 오류:', e);
+                wordListPreview.html('<p class="text-danger">단어 데이터를 파싱할 수 없습니다.</p>');
+            }
+        }
+
+        function updateTemplate() {
+            const id = $('#editTemplateId').val();
+            const formData = {
+                levelId: parseInt($('#editTemplateForm select[name="level"]').val()),
+                templateName: $('#editTemplateForm input[name="templateName"]').val(),
+                gridWidth: parseInt($('#editTemplateForm input[name="gridWidth"]').val()),
+                gridHeight: parseInt($('#editTemplateForm input[name="gridHeight"]').val()),
+                wordCount: parseInt($('#editTemplateForm input[name="wordCount"]').val()),
+                intersectionCount: parseInt($('#editTemplateForm input[name="intersectionCount"]').val()),
+                difficultyRating: parseInt($('#editTemplateForm input[name="difficultyRating"]').val()),
+                description: $('#editTemplateForm textarea[name="description"]').val(),
+                wordPositions: $('#editTemplateForm textarea[name="wordPositions"]').val(),
+                gridPattern: $('#editTemplateForm textarea[name="gridPattern"]').val()
+            };
+
+            $.ajax({
+                url: './api/grid-template-management/template/' + id,
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.success) {
+                        alert('템플릿이 성공적으로 수정되었습니다.');
+                        templatesTable.ajax.reload();
+                        loadStats();
+                        loadSampleTemplates();
+                        $('#editModal').modal('hide');
+                    } else {
+                        alert('템플릿 수정 실패: ' + (response.error || '알 수 없는 오류'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('템플릿 수정 오류:', xhr.responseText);
+                    let errorMessage = '템플릿 수정 중 오류가 발생했습니다.';
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.error || errorMessage;
+                    } catch (e) {
+                        errorMessage = xhr.responseText || errorMessage;
+                    }
+                    alert(errorMessage);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

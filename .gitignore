@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Environment Variables
+.env
+**/.env
+
+# Logs
+*.log
+**/logs/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.settings/
+.project
+.classpath
+.factorypath
+bin/
+out/
+
+# OS
+.DS_Store
+Thumbs.db

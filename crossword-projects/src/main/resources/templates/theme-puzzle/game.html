@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${theme} + ' 크로스워드 퍼즐'">테마 크로스워드 퍼즐</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .theme-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .puzzle-grid {
+            display: grid;
+            gap: 1px;
+            background: #333;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        
+        .grid-cell {
+            width: 30px;
+            height: 30px;
+            background: white;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .grid-cell.filled {
+            background: #f8f9fa;
+        }
+        
+        .grid-cell.selected {
+            background: #007bff;
+            color: white;
+        }
+        
+        .hints-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        
+        .hint-item {
+            background: white;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .completion-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        
+        .completion-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+        }
+        
+        .celebration {
+            text-align: center;
+            color: #28a745;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .ranking-section {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .sns-share {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        
+        .btn-share {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .btn-kakao { background: #fee500; color: #000; }
+        .btn-twitter { background: #1da1f2; }
+        .btn-facebook { background: #1877f2; }
+        .btn-copy { background: #6c757d; }
+    </style>
+</head>
+<body>
+    <!-- 테마 헤더 -->
+    <div class="theme-header">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8">
+                    <h1 th:text="${theme} + ' 크로스워드 퍼즐'">테마 크로스워드 퍼즐</h1>
+                    <p class="mb-0" th:text="'오늘의 퍼즐 - ' + ${puzzleDate}">오늘의 퍼즐</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-light" onclick="showRanking()">랭킹</button>
+                        <button class="btn btn-outline-light" onclick="showThemes()">다른 테마</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 퍼즐 게임 영역 -->
+    <div class="container">
+        <div class="row">
+            <!-- 퍼즐 그리드 -->
+            <div class="col-md-8">
+                <div class="puzzle-grid" id="puzzleGrid">
+                    <!-- 퍼즐 그리드가 여기에 동적으로 생성됩니다 -->
+                </div>
+                
+                <!-- 게임 정보 -->
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">시간</h5>
+                                <h3 class="text-primary" id="gameTimer">00:00</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">힌트</h5>
+                                <h3 class="text-warning" id="hintsUsed">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">오답</h5>
+                                <h3 class="text-danger" id="wrongAttempts">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 힌트 섹션 -->
+            <div class="col-md-4">
+                <div class="hints-section">
+                    <h4>힌트</h4>
+                    <div id="hintsList">
+                        <!-- 힌트들이 여기에 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 완료 화면 -->
+    <div class="completion-screen" id="completionScreen">
+        <div class="completion-content">
+            <div class="celebration">🎉</div>
+            <h2 class="text-center mb-4">퍼즐 완료!</h2>
+            
+            <!-- 완료 정보 -->
+            <div class="row mb-4">
+                <div class="col-md-4 text-center">
+                    <h5>완료 시간</h5>
+                    <h3 class="text-primary" id="completionTime">00:00</h3>
+                </div>
+                <div class="col-md-4 text-center">
+                    <h5>사용한 힌트</h5>
+                    <h3 class="text-warning" id="completionHints">0</h3>
+                </div>
+                <div class="col-md-4 text-center">
+                    <h5>오답 횟수</h3>
+                    <h3 class="text-danger" id="completionWrong">0</h3>
+                </div>
+            </div>
+            
+            <!-- 랭킹 정보 -->
+            <div class="ranking-section">
+                <h5>오늘의 랭킹</h5>
+                <div id="dailyRanking">
+                    <!-- 랭킹 정보가 여기에 표시됩니다 -->
+                </div>
+            </div>
+            
+            <!-- SNS 공유 -->
+            <div class="sns-share">
+                <a href="#" class="btn-share btn-kakao" onclick="shareToKakao()">카카오톡</a>
+                <a href="#" class="btn-share btn-twitter" onclick="shareToTwitter()">트위터</a>
+                <a href="#" class="btn-share btn-facebook" onclick="shareToFacebook()">페이스북</a>
+                <button class="btn-share btn-copy" onclick="copyToClipboard()">복사</button>
+            </div>
+            
+            <!-- 다른 테마 링크 -->
+            <div class="text-center mt-4">
+                <h6>다른 테마도 도전해보세요!</h6>
+                <div class="d-flex gap-2 justify-content-center">
+                    <a href="/K-CrossWord/K-POP" class="btn btn-outline-primary btn-sm">K-POP</a>
+                    <a href="/K-CrossWord/K-DRAMA" class="btn btn-outline-primary btn-sm">K-DRAMA</a>
+                    <a href="/K-CrossWord/K-MOVIE" class="btn btn-outline-primary btn-sm">K-MOVIE</a>
+                    <a href="/K-CrossWord/K-CULTURE" class="btn btn-outline-primary btn-sm">K-CULTURE</a>
+                    <a href="/K-CrossWord/Korean" class="btn btn-outline-primary btn-sm">Korean</a>
+                </div>
+            </div>
+            
+            <!-- 뉴스레터 구독 -->
+            <div class="mt-4">
+                <div class="input-group">
+                    <input type="email" class="form-control" placeholder="이메일 주소" id="newsletterEmail">
+                    <button class="btn btn-primary" onclick="subscribeNewsletter()">구독</button>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <button class="btn btn-secondary" onclick="closeCompletion()">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 게임 상태
+        let gameState = {
+            startTime: null,
+            hintsUsed: 0,
+            wrongAttempts: 0,
+            theme: '[[${theme}]]',
+            puzzleData: null
+        };
+        
+        // 게임 시작
+        function startGame() {
+            gameState.startTime = new Date();
+            startTimer();
+            loadPuzzleData();
+        }
+        
+        // 타이머 시작
+        function startTimer() {
+            setInterval(() => {
+                if (gameState.startTime) {
+                    const elapsed = new Date() - gameState.startTime;
+                    const minutes = Math.floor(elapsed / 60000);
+                    const seconds = Math.floor((elapsed % 60000) / 1000);
+                    document.getElementById('gameTimer').textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+        
+        // 퍼즐 데이터 로드
+        function loadPuzzleData() {
+            // 서버에서 퍼즐 데이터를 가져와서 그리드 생성
+            // 실제 구현에서는 AJAX로 퍼즐 데이터를 가져옴
+            generatePuzzleGrid();
+        }
+        
+        // 퍼즐 그리드 생성
+        function generatePuzzleGrid() {
+            const grid = document.getElementById('puzzleGrid');
+            const gridSize = 15;
+            
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', () => selectCell(i, j));
+                    grid.appendChild(cell);
+                }
+            }
+        }
+        
+        // 셀 선택
+        function selectCell(row, col) {
+            // 셀 선택 로직
+            console.log(`Cell selected: ${row}, ${col}`);
+        }
+        
+        // 퍼즐 완료
+        function completePuzzle() {
+            const completionTime = Math.floor((new Date() - gameState.startTime) / 1000);
+            
+            // 완료 기록 저장
+            fetch(`/K-CrossWord/${gameState.theme}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `completionTime=${completionTime}&hintsUsed=${gameState.hintsUsed}&wrongAttempts=${gameState.wrongAttempts}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showCompletionScreen(completionTime);
+                }
+            });
+        }
+        
+        // 완료 화면 표시
+        function showCompletionScreen(completionTime) {
+            document.getElementById('completionTime').textContent = 
+                `${Math.floor(completionTime / 60)}:${(completionTime % 60).toString().padStart(2, '0')}`;
+            document.getElementById('completionHints').textContent = gameState.hintsUsed;
+            document.getElementById('completionWrong').textContent = gameState.wrongAttempts;
+            
+            document.getElementById('completionScreen').style.display = 'block';
+        }
+        
+        // 완료 화면 닫기
+        function closeCompletion() {
+            document.getElementById('completionScreen').style.display = 'none';
+        }
+        
+        // 랭킹 표시
+        function showRanking() {
+            fetch(`/K-CrossWord/${gameState.theme}/ranking`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 랭킹 모달 표시
+                    console.log('Ranking:', data.ranking);
+                }
+            });
+        }
+        
+        // 테마 목록 표시
+        function showThemes() {
+            fetch('/K-CrossWord/themes')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 테마 목록 모달 표시
+                    console.log('Themes:', data.themes);
+                }
+            });
+        }
+        
+        // SNS 공유
+        function shareToKakao() {
+            // 카카오톡 공유 로직
+            console.log('Share to Kakao');
+        }
+        
+        function shareToTwitter() {
+            // 트위터 공유 로직
+            console.log('Share to Twitter');
+        }
+        
+        function shareToFacebook() {
+            // 페이스북 공유 로직
+            console.log('Share to Facebook');
+        }
+        
+        function copyToClipboard() {
+            // 클립보드 복사 로직
+            console.log('Copy to clipboard');
+        }
+        
+        // 뉴스레터 구독
+        function subscribeNewsletter() {
+            const email = document.getElementById('newsletterEmail').value;
+            if (email) {
+                // 뉴스레터 구독 로직
+                console.log('Subscribe newsletter:', email);
+            }
+        }
+        
+        // 게임 시작
+        document.addEventListener('DOMContentLoaded', startGame);
+    </script>
+</body>
+</html>

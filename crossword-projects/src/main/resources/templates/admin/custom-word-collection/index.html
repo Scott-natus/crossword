@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">커스텀 단어 수집</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .prompt-template {
+            font-family: 'Courier New', monospace;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            white-space: pre-wrap;
+        }
+        .result-area {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            min-height: 200px;
+        }
+        .word-item {
+            display: inline-block;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            margin: 0.125rem;
+            font-size: 0.875rem;
+        }
+        .loading {
+            display: none;
+        }
+        .loading.show {
+            display: block;
+        }
+        .btn-custom {
+            min-width: 120px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="fas fa-magic"></i> 커스텀 단어 수집</h1>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary" onclick="loadRecentWords()">
+                            <i class="fas fa-history"></i> 최근 수집 단어
+                        </button>
+                        <a href="/K-CrossWord/admin/consonant-vowel-batch/" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i> 배치 관리
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 입력 폼 -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-edit"></i> 단어 수집 설정</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="wordCollectionForm">
+                            <div class="mb-3">
+                                <label for="category" class="form-label">카테고리</label>
+                                <input type="text" class="form-control" id="category" name="category" 
+                                       placeholder="예: 음식, 과학, 스포츠" value="일반">
+                                <div class="form-text">수집된 단어가 저장될 카테고리명을 입력하세요</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="promptTemplate" class="form-label">프롬프트</label>
+                                <textarea class="form-control prompt-template" id="promptTemplate" name="promptTemplate" 
+                                          rows="8" placeholder="프롬프트를 입력하세요...">당신은 한글 십자낱말 퍼즐을 위한 단어를 만드는 전문가입니다.
+
+'K-DRAMA,이상한 변호사 우영우'과 관련한 단어 100개를 생성해주세요.
+
+--
+- 중복되지 않는 다양한 단어
+- 등장인물,출연배우이름, OST, OST 가사,시나리오, 시상내역,장르,미장센, 배경시대 등의 정보 안에서 추출
+- 모르는 정보일 경우 웹검색을 통해서 단어 확보
+- 설명없이 한줄에 한단어씩</textarea>
+                                <div class="form-text">
+                                    <small class="text-muted">원하는 분야의 단어를 수집할 수 있도록 프롬프트를 작성하세요</small>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="button" class="btn btn-outline-info btn-custom" onclick="testPrompt()">
+                                    <i class="fas fa-flask"></i> 테스트
+                                </button>
+                                <button type="button" class="btn btn-success btn-custom" onclick="executeCollection()">
+                                    <i class="fas fa-play"></i> 실행
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 결과 영역 -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line"></i> 결과</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="loadingIndicator" class="loading text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">처리 중...</span>
+                            </div>
+                            <p class="mt-2">Gemini API 호출 중...</p>
+                        </div>
+
+                        <div id="resultArea" class="result-area">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                <p>테스트 또는 실행 버튼을 클릭하여 결과를 확인하세요.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 최근 수집 단어 -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6><i class="fas fa-history"></i> 최근 수집 단어</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="recentWordsArea">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-clock fa-2x mb-3"></i>
+                                <p>최근 수집 단어를 불러오려면 버튼을 클릭하세요.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 테스트 실행
+        function testPrompt() {
+            const formData = getFormData();
+            if (!validateForm(formData)) return;
+
+            showLoading(true);
+            clearResult();
+
+            fetch('/K-CrossWord/admin/custom-word-collection/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                showLoading(false);
+                if (data && typeof data === 'object') {
+                    displayTestResult(data);
+                } else {
+                    displayError('서버에서 잘못된 응답을 받았습니다.');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                console.error('테스트 오류:', error);
+                displayError('테스트 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
+            });
+        }
+
+        // 단어 수집 실행
+        function executeCollection() {
+            const formData = getFormData();
+            if (!validateForm(formData)) return;
+
+            if (!confirm('단어 수집을 실행하시겠습니까? 수집된 단어는 데이터베이스에 저장됩니다.')) {
+                return;
+            }
+
+            showLoading(true);
+            clearResult();
+
+            fetch('/K-CrossWord/admin/custom-word-collection/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                showLoading(false);
+                if (data && typeof data === 'object') {
+                    displayExecuteResult(data);
+                } else {
+                    displayError('서버에서 잘못된 응답을 받았습니다.');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                console.error('실행 오류:', error);
+                displayError('실행 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
+            });
+        }
+
+        // 폼 데이터 수집
+        function getFormData() {
+            return {
+                category: document.getElementById('category').value.trim(),
+                promptTemplate: document.getElementById('promptTemplate').value.trim()
+            };
+        }
+
+        // 폼 유효성 검사
+        function validateForm(data) {
+            if (!data.category) {
+                alert('카테고리를 입력해주세요.');
+                document.getElementById('category').focus();
+                return false;
+            }
+            if (!data.promptTemplate) {
+                alert('프롬프트를 입력해주세요.');
+                document.getElementById('promptTemplate').focus();
+                return false;
+            }
+            return true;
+        }
+
+        // 로딩 표시
+        function showLoading(show) {
+            const loading = document.getElementById('loadingIndicator');
+            if (show) {
+                loading.classList.add('show');
+            } else {
+                loading.classList.remove('show');
+            }
+        }
+
+        // 결과 영역 초기화
+        function clearResult() {
+            document.getElementById('resultArea').innerHTML = '';
+        }
+
+        // 테스트 결과 표시
+        function displayTestResult(data) {
+            const resultArea = document.getElementById('resultArea');
+            
+            if (data.success) {
+                let html = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle"></i> 테스트 성공</h6>
+                        <p class="mb-0">${data.message}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-info-circle"></i> 사용된 프롬프트</h6>
+                        <div class="prompt-template" style="font-size: 0.9rem;">${data.generatedPrompt}</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="fas fa-list"></i> 생성된 단어 (${data.wordCount}개)</h6>
+                        <div class="word-list">
+                `;
+                
+                data.generatedWords.forEach(word => {
+                    html += `<span class="word-item">${word}</span>`;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+                
+                resultArea.innerHTML = html;
+            } else {
+                displayError(data.message);
+            }
+        }
+
+        // 실행 결과 표시
+        function displayExecuteResult(data) {
+            const resultArea = document.getElementById('resultArea');
+            
+            if (data.success) {
+                let html = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle"></i> 수집 완료</h6>
+                        <p class="mb-0">${data.message}</p>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary">${data.totalGenerated}</h5>
+                                    <p class="card-text">생성된 단어</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-success">${data.savedCount}</h5>
+                                    <p class="card-text">저장된 단어</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h5 class="card-title text-warning">${data.duplicateCount}</h5>
+                                    <p class="card-text">중복 제외</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6><i class="fas fa-list"></i> 저장된 단어</h6>
+                        <div class="word-list">
+                `;
+                
+                data.generatedWords.forEach(word => {
+                    html += `<span class="word-item">${word}</span>`;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+                
+                resultArea.innerHTML = html;
+                
+                // 최근 단어 목록 새로고침
+                loadRecentWords();
+            } else {
+                displayError(data.message);
+            }
+        }
+
+        // 오류 표시
+        function displayError(message) {
+            const resultArea = document.getElementById('resultArea');
+            const errorMessage = message || '알 수 없는 오류가 발생했습니다.';
+            resultArea.innerHTML = `
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-triangle"></i> 오류 발생</h6>
+                    <p class="mb-0">${errorMessage}</p>
+                </div>
+            `;
+        }
+
+        // 최근 수집 단어 로드
+        function loadRecentWords() {
+            const recentWordsArea = document.getElementById('recentWordsArea');
+            recentWordsArea.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">로딩 중...</span>
+                    </div>
+                    <span class="ms-2">최근 단어를 불러오는 중...</span>
+                </div>
+            `;
+
+            fetch('/K-CrossWord/admin/custom-word-collection/recent-words?limit=100')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayRecentWords(data.words);
+                } else {
+                    recentWordsArea.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> ${data.message}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                recentWordsArea.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> 최근 단어 로드 중 오류: ${error.message}
+                    </div>
+                `;
+            });
+        }
+
+        // 최근 단어 표시
+        function displayRecentWords(words) {
+            const recentWordsArea = document.getElementById('recentWordsArea');
+            
+            if (words.length === 0) {
+                recentWordsArea.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-inbox fa-2x mb-3"></i>
+                        <p>최근 수집된 단어가 없습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">최근 ${words.length}개 단어</h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadRecentWords()">
+                        <i class="fas fa-sync-alt"></i> 새로고침
+                    </button>
+                </div>
+                <div class="word-list">
+            `;
+            
+            words.forEach(word => {
+                const regDate = new Date(word.regdt).toLocaleString('ko-KR');
+                html += `
+                    <div class="word-item" title="카테고리: ${word.category}, 등록일: ${regDate}">
+                        ${word.words}
+                        <small class="text-muted d-block">${word.category}</small>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            recentWordsArea.innerHTML = html;
+        }
+
+        // 프롬프트 예시 클릭 시 템플릿에 적용
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.prompt-template')) {
+                const template = e.target.closest('.prompt-template').textContent.trim();
+                if (template.includes('%s')) {
+                    document.getElementById('promptTemplate').value = template;
+                }
+            }
+        });
+
+        // 페이지 로드 시 최근 단어 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRecentWords();
+        });
+    </script>
+</body>
+</html>
