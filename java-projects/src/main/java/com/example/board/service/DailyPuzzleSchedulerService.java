@@ -4,7 +4,6 @@ import com.example.board.entity.ThemeDailyPuzzle;
 import com.example.board.repository.ThemeDailyPuzzleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,11 +34,9 @@ public class DailyPuzzleSchedulerService {
     );
     
     /**
-     * 매일 자정에 실행되는 퍼즐 갱신 스케줄러
-     * 한국 시간 기준 자정 (UTC+9)
-     * 항상 최소 3일치 퍼즐이 생성되어 있도록 보장
+     * 자정 일일 테마 퍼즐 갱신 로직 본문.
+     * 실제 스케줄 실행은 crossword-projects(8081)의 {@code DailyPuzzleSchedulerService}에서만 수행한다.
      */
-    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
     @Transactional
     public void generateDailyPuzzles() {
         try {

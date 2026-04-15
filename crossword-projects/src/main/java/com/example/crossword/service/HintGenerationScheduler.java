@@ -25,10 +25,9 @@ public class HintGenerationScheduler {
     private final GeminiService geminiService;
 
     /**
-     * 10분마다 힌트가 없는 단어들을 자동으로 생성 (라라벨 스케줄러 이식)
-     * 초기에 한 번 실행하고 이후 10분마다 실행
+     * 10분마다(서울 시각 기준 시계 정렬) 힌트가 없는 단어들을 자동으로 생성 (라라벨 스케줄러 이식)
      */
-    @Scheduled(initialDelay = 60000, fixedRate = 600000)
+    @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Seoul")
     public void generateHints() {
         log.info("🚀 힌트 생성 스케줄러 시작 - " + LocalDateTime.now());
 

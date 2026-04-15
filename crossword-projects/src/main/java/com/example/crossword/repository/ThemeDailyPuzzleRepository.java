@@ -24,6 +24,11 @@ public interface ThemeDailyPuzzleRepository extends JpaRepository<ThemeDailyPuzz
     Optional<ThemeDailyPuzzle> findByThemeAndPuzzleDateAndIsActive(String theme, LocalDate puzzleDate, Boolean isActive);
     
     /**
+     * 테마와 날짜로 퍼즐 조회 (isActive 여부 무관)
+     */
+    Optional<ThemeDailyPuzzle> findByThemeAndPuzzleDate(String theme, LocalDate puzzleDate);
+    
+    /**
      * 테마별 퍼즐 목록 조회
      */
     List<ThemeDailyPuzzle> findByThemeOrderByPuzzleDateDesc(String theme);

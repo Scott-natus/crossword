@@ -18,7 +18,7 @@ public class CleanupScheduler {
     /**
      * 매일 새벽 1시에 퍼즐 단어 정리 및 비활성화 (라라벨 CleanupPuzzleWords 이식)
      */
-    @Scheduled(cron = "0 0 1 * * *")
+    @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
     @Transactional
     public void cleanupPuzzleWords() {
         log.info("Starting puzzle words cleanup...");
