@@ -1,6 +1,7 @@
 package com.example.crossword.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -21,6 +22,9 @@ public class SecurityConfig {
     @Autowired
     private UserDetailsService userDetailsService;
 
+    @Value("${app.public.base-url}")
+    private String publicBaseUrl;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -36,13 +40,13 @@ public class SecurityConfig {
                 .anyRequest().permitAll() // 나머지 모든 요청 허용
             )
             .formLogin(form -> form
-                .loginPage("https://natus250601.viewdns.net/login") // 8080 로그인 페이지로 리다이렉트
+                .loginPage(publicBaseUrl + "/login") // 게시판(동일 도메인) 로그인 페이지
                 .defaultSuccessUrl("/admin/hint-generator", true)
                 .permitAll()
             )
             .userDetailsService(userDetailsService)
             .logout(logout -> logout
-                .logoutSuccessUrl("https://natus250601.viewdns.net/")
+                .logoutSuccessUrl(publicBaseUrl + "/")
                 .permitAll()
             )
             .sessionManagement(session -> session

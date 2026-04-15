@@ -318,7 +318,7 @@
         // 로그인 폼 표시 - 8080 서비스로 리다이렉트 (현재 페이지 기억)
         function showLoginForm() {
             const currentUrl = window.location.href;
-            window.location.href = `https://natus250601.viewdns.net/login?redirect=${encodeURIComponent(currentUrl)}`;
+            window.location.href = `/login?redirect=${encodeURIComponent(currentUrl)}`;
         }
         
         // 로그인 폼 숨기기
@@ -535,7 +535,7 @@
             
             // 현재 페이지를 기억하고 로그아웃 후 돌아오기
             const currentUrl = window.location.href;
-            window.location.href = `https://natus250601.viewdns.net/logout?redirect=${encodeURIComponent(currentUrl)}`;
+            window.location.href = `/logout?redirect=${encodeURIComponent(currentUrl)}`;
         }
         
         // 인증 상태 확인 및 UI 업데이트

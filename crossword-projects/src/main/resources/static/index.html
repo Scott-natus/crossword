@@ -317,7 +317,7 @@
         
         // 로그인 폼 표시 - 8080 서비스로 리다이렉트
         function showLoginForm() {
-            window.location.href = 'https://natus250601.viewdns.net/login';
+            window.location.href = '/login';
         }
         
         // 로그인 폼 숨기기
@@ -506,7 +506,7 @@
             localStorage.removeItem('user_email');
             
             // 8080 서비스의 로그아웃 API 호출 후 메인으로 이동
-            window.location.href = 'https://natus250601.viewdns.net/logout';
+            window.location.href = '/logout';
         }
         
         // 인증 상태 확인 및 UI 업데이트

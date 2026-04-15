@@ -47,7 +47,7 @@ if netstat -tlnp | grep 8081 > /dev/null; then
     echo "🌐 접속 URL: http://222.100.103.227:8081/K-CrossWord/"
 else
     echo "❌ 서비스 시작 실패"
-    echo "📋 로그 확인: tail -f /var/www/html/crossword-projects/logs/application.log"
+    echo "📋 로그 확인: tail -f /home/ubuntu/crossword/log/crossword-application.log"
 fi
 
 echo "🏁 시작 작업 완료"

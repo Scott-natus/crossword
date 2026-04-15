@@ -7,6 +7,7 @@ import com.example.crossword.service.IntersectionCalculationService;
 import com.example.crossword.service.TemplateValidationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -46,6 +47,9 @@ import jakarta.servlet.http.HttpServletRequest;
 @RequiredArgsConstructor
 @Slf4j
 public class WebController {
+
+    @Value("${app.public.base-url}")
+    private String publicBaseUrl;
 
     private final WordExtractionService wordExtractionService;
     private final IntersectionCalculationService intersectionCalculationService;
@@ -304,7 +308,7 @@ public class WebController {
                                             </div>
                                         </form>
                                         <div class="mt-3 text-center">
-                                            <a href="https://natus250601.viewdns.net/" class="btn btn-secondary">메인으로 돌아가기</a>
+                                            <a href="%s/" class="btn btn-secondary">메인으로 돌아가기</a>
                                         </div>
                                     </div>
                                 </div>
@@ -313,7 +317,7 @@ public class WebController {
                     </div>
                 </body>
                 </html>
-                """;
+                """.formatted(publicBaseUrl);
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.TEXT_HTML);
