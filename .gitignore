@@ -24,6 +24,13 @@
 bin/
 out/
 
+# Python (harness-factory)
+**/venv/
+**/__pycache__/
+*.py[cod]
+harness-factory/engine-0-scanner/cookies.json
+harness-factory/temp-workspace/
+
 # OS
 .DS_Store
 Thumbs.db

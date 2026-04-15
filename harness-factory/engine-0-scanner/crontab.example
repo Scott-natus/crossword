@@ -1,0 +1,7 @@
+# Engine-0 배치 — 매 3시간마다 (0분, 예: 00:00, 03:00, 06:00 …)
+# 적용: crontab -e  후 아래 한 줄 추가 (경로·사용자는 환경에 맞게 수정)
+#
+# SHELL=/bin/bash
+# PATH=/usr/local/bin:/usr/bin:/bin
+
+0 */3 * * * HARNESS_LOG_DIR=/home/ubuntu/harness-factory/logs HARNESS_ENRICH_LIMIT=30 /home/ubuntu/harness-factory/engine-0-scanner/daily_engine0_run.sh >> /home/ubuntu/harness-factory/logs/engine0-cron.log 2>&1
