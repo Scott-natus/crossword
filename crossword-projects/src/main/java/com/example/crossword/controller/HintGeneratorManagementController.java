@@ -9,6 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.crossword.repository.PzWordRepository;
+import com.example.crossword.repository.PzHintRepository;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +32,8 @@ public class HintGeneratorManagementController {
     
     private final HintGeneratorManagementService hintGeneratorService;
     private final WordManagementService wordManagementService;
+    private final PzWordRepository pzWordRepository;
+    private final PzHintRepository pzHintRepository;
     
     /**
      * 테스트 엔드포인트
@@ -266,6 +272,70 @@ public class HintGeneratorManagementController {
             response.put("success", false);
             response.put("message", "힌트 삭제 중 오류가 발생했습니다: " + e.getMessage());
             return ResponseEntity.ok(response);
+        }
+    }
+
+    /**
+     * 단어 정제 - 난이도 수정 및 힌트 일괄 업데이트
+     */
+    @PostMapping("/word/{wordId}/refine")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> refineWord(
+            @PathVariable Integer wordId,
+            @RequestBody Map<String, Object> body) {
+        try {
+            Optional<PzWord> wordOpt = pzWordRepository.findById(wordId);
+            if (wordOpt.isEmpty()) {
+                return ResponseEntity.ok(Map.of("success", false, "message", "단어를 찾을 수 없습니다."));
+            }
+
+            PzWord word = wordOpt.get();
+            if (body.get("difficulty") != null) {
+                word.setDifficulty(((Number) body.get("difficulty")).intValue());
+                pzWordRepository.save(word);
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> hints = (List<Map<String, Object>>) body.get("hints");
+            if (hints != null) {
+                for (Map<String, Object> h : hints) {
+                    String hintIdStr = h.get("id") != null ? h.get("id").toString() : "";
+                    String hintText = h.get("hint_text") != null ? h.get("hint_text").toString() : "";
+                    int diff = h.get("difficulty") != null ? ((Number) h.get("difficulty")).intValue() : 1;
+                    boolean isPrimary = h.get("is_primary") != null && (Boolean) h.get("is_primary");
+
+                    if (hintIdStr.startsWith("new_")) {
+                        PzHint newHint = new PzHint();
+                        newHint.setWord(word);
+                        newHint.setHintText(hintText);
+                        newHint.setHintType("TEXT");
+                        newHint.setDifficulty(diff);
+                        newHint.setIsPrimary(isPrimary);
+                        newHint.setLanguageCode("ko");
+                        newHint.setCreatedAt(java.time.LocalDateTime.now());
+                        newHint.setUpdatedAt(java.time.LocalDateTime.now());
+                        pzHintRepository.save(newHint);
+                    } else {
+                        try {
+                            int hintId = Integer.parseInt(hintIdStr);
+                            Optional<PzHint> hintOpt = pzHintRepository.findById(hintId);
+                            if (hintOpt.isPresent()) {
+                                PzHint existing = hintOpt.get();
+                                existing.setHintText(hintText);
+                                existing.setDifficulty(diff);
+                                existing.setIsPrimary(isPrimary);
+                                existing.setUpdatedAt(java.time.LocalDateTime.now());
+                                pzHintRepository.save(existing);
+                            }
+                        } catch (NumberFormatException ignore) {}
+                    }
+                }
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "단어 정제가 완료되었습니다."));
+        } catch (Exception e) {
+            log.error("단어 정제 오류: wordId={}", wordId, e);
+            return ResponseEntity.ok(Map.of("success", false, "message", "정제 중 오류: " + e.getMessage()));
         }
     }
 }

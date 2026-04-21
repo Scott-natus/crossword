@@ -138,6 +138,30 @@ public class WebController {
     }
 
     /**
+     * 게임 페이지 (puzzleId 쿼리 파라미터 지원 — 수동 퍼즐 전용)
+     */
+    @GetMapping("/game")
+    public ResponseEntity<String> gameWithPuzzleId(@RequestParam(required = false) Integer puzzleId) {
+        if (puzzleId != null) {
+            return manualGame();
+        }
+        return game();
+    }
+
+    @GetMapping("/manual-game")
+    public ResponseEntity<String> manualGame() {
+        try {
+            Resource resource = new ClassPathResource("static/manual-game.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+            return ResponseEntity.ok().headers(headers).body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
      * 실제 게임 페이지
      */
     @GetMapping("/game.html")
@@ -428,6 +452,40 @@ public class WebController {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.TEXT_HTML);
             
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping({"/admin/manual-puzzle"})
+    public ResponseEntity<String> adminManualPuzzle() {
+        try {
+            Resource resource = new ClassPathResource("static/admin/manual-puzzle/index.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping({"/admin/manual-puzzle/list"})
+    public ResponseEntity<String> adminManualPuzzleList() {
+        try {
+            Resource resource = new ClassPathResource("static/admin/manual-puzzle/list.html");
+            String content = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(content);

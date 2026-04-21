@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,6 +35,10 @@ public class ThemeDailyPuzzle {
     @Column(name = "puzzle_id", nullable = false)
     private Integer puzzleId;
     
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "puzzle_data", columnDefinition = "TEXT")
+    private String puzzleData;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
     

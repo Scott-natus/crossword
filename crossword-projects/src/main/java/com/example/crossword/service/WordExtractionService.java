@@ -35,6 +35,38 @@ public class WordExtractionService {
     private final PzGridTemplateRepository pzGridTemplateRepository;
 
     /**
+     * 수동 퍼즐용 단어 추출 (force 옵션 지원).
+     * force=false이면 기존 스냅샷이 있으면 그대로 반환, force=true이면 재추출.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> extractWords(Long templateId, boolean force) {
+        if (!force) {
+            PzGridTemplate tpl = pzGridTemplateRepository.findById(templateId).orElse(null);
+            if (tpl != null && tpl.getExtractedWordsSnapshot() != null
+                    && !tpl.getExtractedWordsSnapshot().isBlank()) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> cached = om.readValue(tpl.getExtractedWordsSnapshot(), Map.class);
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("success", true);
+                    result.put("extracted_words", cached);
+                    result.put("template", Map.of(
+                            "id", tpl.getId(),
+                            "template_name", tpl.getTemplateName(),
+                            "level_id", tpl.getLevelId()
+                    ));
+                    result.put("cached", true);
+                    return result;
+                } catch (Exception e) {
+                    log.warn("캐시된 스냅샷 파싱 실패, 재추출합니다.", e);
+                }
+            }
+        }
+        return extractWords(templateId);
+    }
+
+    /**
      * 템플릿에서 단어 추출
      * Laravel의 extractWords 메서드와 동일한 로직
      */
@@ -313,9 +345,12 @@ public class WordExtractionService {
         // 새로운 난이도 규칙 적용
         List<Integer> allowedDifficulties = getAllowedDifficulties(wordDifficulty);
         
-        // 랜덤 단어 추출 (DB에서 직접 랜덤 1개 선택)
         PzWord selectedWord = pzWordRepository.findByLengthAndDifficultyInAndIsActiveTrueRandom(length, allowedDifficulties);
-        
+
+        if (selectedWord == null) {
+            selectedWord = pzWordRepository.findByLengthAndIsActiveTrueRandom(length);
+        }
+
         if (selectedWord == null) {
             return Map.of(
                     "word", "추출 실패",
@@ -375,18 +410,25 @@ public class WordExtractionService {
             Integer syllablePos = getSyllablePosition(word, position);
             String requiredSyllable = getConfirmedSyllable(intersection, confirmedWords, allWordPositions);
             
-            // DB에서 직접 교차점 음절 조건으로 조회
             PzWord selectedWord;
             if (usedWords.isEmpty()) {
-                // 사용된 단어가 없으면 제외 조건 없는 쿼리 사용
                 selectedWord = pzWordRepository.findByLengthAndDifficultyWithSyllableNoExclude(
                         length, allowedDifficulties, syllablePos, requiredSyllable);
             } else {
-                // 사용된 단어가 있으면 제외 조건 있는 쿼리 사용
                 selectedWord = pzWordRepository.findByLengthAndDifficultyWithSyllable(
                         length, allowedDifficulties, usedWords, syllablePos, requiredSyllable);
             }
-            
+
+            if (selectedWord == null) {
+                if (usedWords.isEmpty()) {
+                    selectedWord = pzWordRepository.findByLengthWithSyllableNoExclude(
+                            length, syllablePos, requiredSyllable);
+                } else {
+                    selectedWord = pzWordRepository.findByLengthWithSyllable(
+                            length, usedWords, syllablePos, requiredSyllable);
+                }
+            }
+
             if (selectedWord == null) {
                 return Map.of(
                         "success", false,
@@ -418,19 +460,27 @@ public class WordExtractionService {
             String requiredSyllable1 = getConfirmedSyllable(intersection1, confirmedWords, allWordPositions);
             String requiredSyllable2 = getConfirmedSyllable(intersection2, confirmedWords, allWordPositions);
             
-            // DB에서 직접 두 교차점 음절 조건으로 조회
             PzWord selectedWord;
             if (usedWords.isEmpty()) {
-                // 사용된 단어가 없으면 제외 조건 없는 쿼리 사용
                 selectedWord = pzWordRepository.findByLengthAndDifficultyWithTwoSyllablesNoExclude(
                         length, allowedDifficulties, syllablePos1, requiredSyllable1, syllablePos2, requiredSyllable2);
             } else {
-                // 사용된 단어가 있으면 제외 조건 있는 쿼리 사용
                 selectedWord = pzWordRepository.findByLengthAndDifficultyWithTwoSyllables(
-                        length, allowedDifficulties, usedWords, 
+                        length, allowedDifficulties, usedWords,
                         syllablePos1, requiredSyllable1, syllablePos2, requiredSyllable2);
             }
-            
+
+            if (selectedWord == null) {
+                if (usedWords.isEmpty()) {
+                    selectedWord = pzWordRepository.findByLengthWithTwoSyllablesNoExclude(
+                            length, syllablePos1, requiredSyllable1, syllablePos2, requiredSyllable2);
+                } else {
+                    selectedWord = pzWordRepository.findByLengthWithTwoSyllables(
+                            length, usedWords,
+                            syllablePos1, requiredSyllable1, syllablePos2, requiredSyllable2);
+                }
+            }
+
             if (selectedWord == null) {
                 return Map.of(
                         "success", false,

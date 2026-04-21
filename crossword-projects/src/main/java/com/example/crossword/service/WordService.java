@@ -62,7 +62,7 @@ public class WordService {
      */
     public Optional<Word> getWordByName(String word) {
         log.debug("단어명으로 조회: {}", word);
-        return wordRepository.findByWordAndIsActiveTrue(word);
+        return wordRepository.findFirstByWordAndIsActiveTrue(word);
     }
     
     /**
@@ -320,7 +320,7 @@ public class WordService {
      */
     public boolean existsWord(String word) {
         log.debug("단어 존재 여부 확인: {}", word);
-        return wordRepository.findByWordAndIsActiveTrue(word).isPresent();
+        return wordRepository.findFirstByWordAndIsActiveTrue(word).isPresent();
     }
     
     /**

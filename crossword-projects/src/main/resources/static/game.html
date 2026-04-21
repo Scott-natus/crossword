@@ -679,7 +679,16 @@
             answeredWordsData.clear();
             hintsUsed = [];
             wrongAnswers = [];
-            gameStartTime = Date.now(); // 게임 시작 시간 설정
+            gameStartTime = Date.now();
+
+            // puzzleId 파라미터 감지 (수동 퍼즐 모드)
+            const urlParams = new URLSearchParams(window.location.search);
+            const puzzleId = urlParams.get('puzzleId');
+            if (puzzleId) {
+                console.log('수동 퍼즐 모드 - puzzleId:', puzzleId);
+                loadManualPuzzle(puzzleId);
+                return;
+            }
             
             // 전역 변수 사용 (인증 상태 확인에서 설정됨)
             const guestId = window.GUEST_ID;
@@ -698,15 +707,62 @@
             }
             
             if (userType === 'user') {
-                // 로그인 사용자로 게임 시작
-                loadTemplate(null); // 로그인 사용자는 guestId를 null로 전달
+                loadTemplate(null);
             } else if (userType === 'guest' && guestId) {
-                // 게스트 사용자로 게임 시작
                 loadTemplate(guestId);
             } else {
                 console.log('사용자 정보 없음, 메인으로 이동');
                 window.location.href = '/K-CrossWord/';
             }
+        }
+
+        /**
+         * 수동 퍼즐 데이터 로드 — puzzleId로 theme_daily_puzzles에서 pz_word_id 참조 데이터를 가져와
+         * 기존 renderPuzzleGrid 및 check-answer 흐름을 재사용한다.
+         * 실제 단어 텍스트는 서버에만 존재하며 클라이언트에는 전달되지 않는다.
+         */
+        function loadManualPuzzle(puzzleId) {
+            window.isManualPuzzle = true;
+            window.manualPuzzleId = puzzleId;
+
+            $.ajax({
+                url: '/K-CrossWord/admin/api/manual-puzzle/game-data/' + puzzleId,
+                method: 'GET',
+                success: function(data) {
+                    if (!data.success) {
+                        alert('퍼즐을 불러올 수 없습니다: ' + (data.message || ''));
+                        return;
+                    }
+                    console.log('수동 퍼즐 데이터 로드 완료', data);
+
+                    if (data.title) {
+                        $('.puzzle-title').text(data.title);
+                        document.title = data.title + ' - K-CrossWord';
+                    }
+
+                    const grid = data.grid || data.grid_pattern;
+                    const gridPattern = typeof grid === 'string' ? JSON.parse(grid) : grid;
+                    const words = data.words || [];
+
+                    templateData = {
+                        grid_pattern: gridPattern,
+                        words: words
+                    };
+
+                    renderPuzzleGrid(templateData);
+
+                    const totalWordsEl = document.getElementById('total-words');
+                    if (totalWordsEl) totalWordsEl.textContent = words.length;
+
+                    $('#word-input-section').show();
+                    $('#current-hint').text('번호를 클릭하여 단어를 선택하세요.');
+                },
+                error: function(xhr) {
+                    let msg = '퍼즐 데이터를 불러올 수 없습니다.';
+                    try { const e = JSON.parse(xhr.responseText); msg = e.message || msg; } catch(ex) {}
+                    alert(msg);
+                }
+            });
         }
 
         // 템플릿 로드
@@ -1088,6 +1144,11 @@
                 alert('정답을 입력해주세요.');
                 return;
             }
+
+            if (window.isManualPuzzle) {
+                checkManualPuzzleAnswer(currentWordId, answer);
+                return;
+            }
             
             const guestId = window.GUEST_ID;
             const requestData = {
@@ -1111,17 +1172,11 @@
                 }
                 
                 if (data.is_correct) {
-                        // 정답인 경우 - 모달 표시하지 않음 (조건 1)
-                        // 서버에서 받은 정답을 그리드에 표시
                         updateGridWithAnswer(data.correct_answer, null);
                         
-                        // 게임 상태 업데이트 (라라벨과 동일)
                         answeredWords.add(currentWordId);
                         answeredWordsData.set(currentWordId, data.correct_answer);
                         
-                        // 레벨 게이지는 퍼즐 완료 시에만 업데이트 (정답 개수와 무관)
-                        
-                        // 입력값만 초기화하고 입력 영역은 유지
                         $('#answer-input').val('');
                         $('#current-hint').text('번호를 클릭하여 단어를 선택하세요.');
                         currentWordId = null;
@@ -1130,7 +1185,6 @@
                         checkLevelCompletion();
                         
                 } else {
-                        // 오답인 경우 - 오답 기록
                         wrongAnswers.push({
                             wordId: currentWordId,
                             answer: answer,
@@ -1138,19 +1192,14 @@
                         });
                         
                         if (data.wrong_count_exceeded) {
-                            // 오답 5회 초과 시 기존 모달 표시
-                            // 서버에서 받은 정답 정보를 전역 변수에 저장
                             if (data.all_answers) {
                                 window.allAnswers = data.all_answers;
                             }
                             
-                            // 0.1초 후 오답 초과 모달 표시
                             setTimeout(function() {
                                 showWrongAnswerModal();
                             }, 100);
                         } else {
-                            // 일반 오답 시 모달 표시
-                            // 4회 실패인지 확인 (경고 메시지 포함 여부로 판단)
                             const isWarning = data.message && data.message.includes('경고');
                             showAnswerResultModal(false, data.message, isWarning);
                         }
@@ -1162,6 +1211,42 @@
                 }
             });
         });
+
+        function checkManualPuzzleAnswer(wordId, answer) {
+            $.ajax({
+                url: '/K-CrossWord/admin/api/manual-puzzle/check-answer',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ word_id: wordId, answer: answer }),
+                success: function(data) {
+                    if (data.is_correct) {
+                        updateGridWithAnswer(data.correct_answer, null);
+                        answeredWords.add(currentWordId);
+                        answeredWordsData.set(currentWordId, data.correct_answer);
+
+                        $('#answer-input').val('');
+                        $('#current-hint').text('번호를 클릭하여 단어를 선택하세요.');
+                        currentWordId = null;
+
+                        const totalWords = templateData && templateData.words ? templateData.words.length : 0;
+                        const correctEl = document.getElementById('correct-count');
+                        if (correctEl) correctEl.textContent = answeredWords.size;
+
+                        if (totalWords > 0 && answeredWords.size >= totalWords) {
+                            setTimeout(function() {
+                                alert('축하합니다! 모든 단어를 맞추셨습니다!');
+                            }, 300);
+                        }
+                    } else {
+                        wrongAnswers.push({ wordId: wordId, answer: answer, timestamp: new Date() });
+                        showAnswerResultModal(false, '오답입니다. 다시 시도해 보세요.');
+                    }
+                },
+                error: function() {
+                    alert('정답 확인 중 오류가 발생했습니다.');
+                }
+            });
+        }
 
         // 엔터키로 정답 제출
         $('#answer-input').keypress(function(e) {

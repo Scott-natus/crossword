@@ -202,11 +202,11 @@
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="/admin/db-sync" class="nav-link">
-                            <i class="fas fa-sync-alt"></i>
+                        <a href="/K-CrossWord/admin/manual-puzzle/list" class="nav-link">
+                            <i class="fas fa-puzzle-piece"></i>
                             <div>
-                                <strong>데이터베이스 동기화</strong>
-                                <div class="small text-muted">개발 서버에서 운영 서버로 데이터 동기화</div>
+                                <strong>수동 퍼즐 목록</strong>
+                                <div class="small text-muted">수동 생성된 퍼즐 관리 및 조회</div>
                             </div>
                         </a>
                     </div>
@@ -215,23 +215,34 @@
             <div class="col-md-4">
                 <div class="admin-nav">
                     <h5 class="mb-3">
-                        <i class="fas fa-chart-bar me-2"></i>시스템 정보
+                        <i class="fas fa-puzzle-piece me-2"></i>수동 퍼즐
                     </h5>
-                    <div class="mb-3">
+                    <div class="nav-item">
+                        <a href="/K-CrossWord/admin/manual-puzzle/list" class="nav-link">
+                            <i class="fas fa-list"></i>
+                            <div>
+                                <strong>수동 퍼즐 목록</strong>
+                                <div class="small text-muted">생성된 수동 퍼즐 관리</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/K-CrossWord/admin/manual-puzzle" class="nav-link">
+                            <i class="fas fa-plus-circle"></i>
+                            <div>
+                                <strong>새 퍼즐 생성</strong>
+                                <div class="small text-muted">수동으로 퍼즐 생성</div>
+                            </div>
+                        </a>
+                    </div>
+                    <hr class="my-2">
+                    <div class="mb-2">
                         <strong>서버 상태:</strong>
                         <span class="badge bg-success ms-2">정상</span>
                     </div>
-                    <div class="mb-3">
-                        <strong>데이터베이스:</strong>
-                        <span class="badge bg-success ms-2">연결됨</span>
-                    </div>
-                    <div class="mb-3">
-                        <strong>AI 서비스:</strong>
-                        <span class="badge bg-success ms-2">활성</span>
-                    </div>
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <strong>마지막 업데이트:</strong>
-                        <div class="small text-muted" id="lastUpdate">-</div>
+                        <span class="small text-muted" id="lastUpdate">-</span>
                     </div>
                 </div>
             </div>

@@ -61,7 +61,7 @@ public class PzWordService {
      */
     public Optional<PzWord> getPzWordByWord(String word) {
         log.debug("단어 텍스트로 조회: {}", word);
-        return pzWordRepository.findByWordAndIsActiveTrue(word);
+        return pzWordRepository.findFirstByWordAndIsActiveTrue(word);
     }
     
     // ==================== 관리자 기능 추가 ====================

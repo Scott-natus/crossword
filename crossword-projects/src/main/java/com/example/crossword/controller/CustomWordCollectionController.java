@@ -61,10 +61,10 @@ public class CustomWordCollectionController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            log.info("커스텀 프롬프트 테스트 - 카테고리: {}", category);
+            log.info("커스텀 프롬프트 테스트 - 카테고리: {}, URL: {}", category, geminiApiUrl);
             
-            // Gemini API 호출 (프롬프트 그대로 사용)
             List<String> generatedWords = callGeminiAPI(promptTemplate, "테스트");
+            log.info("테스트 완료 - 생성된 단어 수: {}", generatedWords.size());
             
             response.put("success", true);
             response.put("category", category);
@@ -74,7 +74,7 @@ public class CustomWordCollectionController {
             response.put("message", "테스트 완료 - " + generatedWords.size() + "개 단어 생성");
             
         } catch (Exception e) {
-            log.error("커스텀 프롬프트 테스트 중 오류", e);
+            log.error("커스텀 프롬프트 테스트 중 오류: {}", e.getMessage(), e);
             response.put("success", false);
             response.put("message", "테스트 중 오류 발생: " + e.getMessage());
         }
@@ -170,9 +170,9 @@ public class CustomWordCollectionController {
         if (textNode.isTextual()) {
             String[] lines = textNode.asText().split("\\n");
             for (String line : lines) {
-                String word = line.trim();
-                if (isValidWord(word, combination)) {
-                    words.add(word);
+                String cleaned = cleanWord(line);
+                if (cleaned != null && !cleaned.isEmpty() && isValidWord(cleaned, combination)) {
+                    words.add(cleaned);
                 }
             }
         }
@@ -181,18 +181,31 @@ public class CustomWordCollectionController {
     }
     
     /**
+     * Gemini 응답 라인에서 번호·기호를 제거하고 한글 단어만 추출
+     */
+    private String cleanWord(String line) {
+        if (line == null) return null;
+        String s = line.trim();
+        // "1. 단어", "1) 단어", "- 단어", "* 단어" 등의 접두사 제거
+        s = s.replaceAll("^[\\d]+[.)\\-:\\s]+", "");
+        s = s.replaceAll("^[-*•·\\s]+", "");
+        // 괄호 이후 설명 제거: "단어 (설명)" → "단어"
+        s = s.replaceAll("[\\s]*[\\(（].*$", "");
+        // 남은 공백/특수문자 제거 후 한글만 추출
+        s = s.replaceAll("[^가-힣]", "");
+        return s.trim();
+    }
+
+    /**
      * 단어 유효성 검증
      */
     private boolean isValidWord(String word, String combination) {
-        // 2-6글자 범위
-        if (word.length() < 2 || word.length() > 6) {
+        if (word.length() < 2 || word.length() > 10) {
             return false;
         }
-        // 한글만 포함
-        if (!word.matches("^[가-힣]*$")) {
+        if (!word.matches("^[가-힣]+$")) {
             return false;
         }
-        // 테스트/실행 모드에서는 첫 글자 검증 생략
         return true;
     }
     

@@ -10,6 +10,7 @@
 #   HARNESS_LOG_DIR       로그 디렉터리 (기본: harness-factory/logs)
 #   HARNESS_MAX_SHORTS    scanner.py --max (기본 100)
 #   HARNESS_MAX_REELS     reels_scanner.py --max (기본 50)
+#   HARNESS_REELS_EXPLORE 1이면 탐색(돋보기) 피드 /explore/ (인기·추천에 가까운 큐레이션, 기본 1). 0이면 해시태그(#reels) 모드
 #   HARNESS_ENRICH        1이면 enrich_gemini 실행 (기본 1)
 #   HARNESS_ENRICH_LIMIT  enrich_gemini --limit (기본 30)
 #   HARNESS_DOTENV_PATH   crossword/.env 경로
@@ -33,6 +34,7 @@ REPORT_FILE="${LOG_DIR}/engine0-report-${STAMP}.txt"
 
 MAX_SHORTS="${HARNESS_MAX_SHORTS:-100}"
 MAX_REELS="${HARNESS_MAX_REELS:-50}"
+HARNESS_REELS_EXPLORE="${HARNESS_REELS_EXPLORE:-1}"
 ENRICH="${HARNESS_ENRICH:-1}"
 ENRICH_LIMIT="${HARNESS_ENRICH_LIMIT:-30}"
 
@@ -51,8 +53,12 @@ ENRICH_LIMIT="${HARNESS_ENRICH_LIMIT:-30}"
   fi
 
   echo ""
-  echo "[2/4] Instagram reels_scanner (max=${MAX_REELS})"
-  if "$VENV_PY" reels_scanner.py --max "$MAX_REELS"; then
+  echo "[2/4] Instagram reels_scanner (max=${MAX_REELS}, explore=${HARNESS_REELS_EXPLORE})"
+  REELS_ARGS=(--max "$MAX_REELS")
+  if [[ "$HARNESS_REELS_EXPLORE" == "1" ]]; then
+    REELS_ARGS+=(--explore)
+  fi
+  if "$VENV_PY" reels_scanner.py "${REELS_ARGS[@]}"; then
     echo "[2/4] OK"
   else
     echo "[2/4] 실패 (계속 진행)"

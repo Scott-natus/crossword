@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="screen-orientation" content="portrait">
+    <title>K-CrossWord</title>
+    <link rel="icon" type="image/x-icon" href="/K-CrossWord/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        @media screen and (orientation: landscape) and (max-width: 768px) {
+            body::before {
+                content: "가로모드는 지원하지 않습니다. 세로모드로 회전해주세요.";
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.9); color: white;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 24px; text-align: center; z-index: 9999; padding: 20px; box-sizing: border-box;
+            }
+        }
+
+        .card { border: none; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); }
+        .card-header { background-color: #fff; border-bottom: 1px solid #dee2e6; }
+
+        .puzzle-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 1.5rem; border-radius: 0.375rem 0.375rem 0 0;
+            margin: 0; display: flex; align-items: center; justify-content: center;
+            gap: 0.75rem; min-height: 80px;
+        }
+        .puzzle-icon { font-size: 2rem; color: white; }
+        .puzzle-title { font-size: 1.5rem; font-weight: bold; margin: 0; }
+        .badge { font-size: 0.875rem; }
+
+        .puzzle-cell {
+            width: 40px; height: 40px; border: 1px solid #333;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 16px; cursor: pointer; position: relative; background: white;
+        }
+        .puzzle-cell.bg-dark { background-color: #333 !important; color: white; }
+        .puzzle-cell.filled { background-color: #e9ecef; }
+
+        .wordle-card {
+            position: relative; width: 100%; height: 100%;
+            transform-style: preserve-3d; transition: transform 0.6s ease-in-out; cursor: pointer;
+        }
+        .wordle-card.flip { transform: rotateY(180deg); }
+        .wordle-card-front, .wordle-card-back {
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+            border-radius: 4px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 20px;
+        }
+        .wordle-card-front { background-color: #fff; color: transparent; border: 2px solid #d3d6da; }
+        .wordle-card-back {
+            background-color: #6aaa64; color: white; transform: rotateY(180deg);
+            font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        .wordle-card.delay-1 { transition-delay: 0.1s; }
+        .wordle-card.delay-2 { transition-delay: 0.2s; }
+        .wordle-card.delay-3 { transition-delay: 0.3s; }
+        .wordle-card.delay-4 { transition-delay: 0.4s; }
+        .wordle-card.delay-5 { transition-delay: 0.5s; }
+
+        .puzzle-cell.correct { background-color: #d4edda; color: #155724; }
+        .puzzle-cell.wrong { background-color: #f8d7da; color: #721c24; }
+        .word-number {
+            background: #ff6b6b; color: white; border-radius: 50%;
+            width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .grid-container { background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+        .grid-cell-number { position: relative; transition: all 0.2s ease; }
+        .grid-cell-number:hover { transform: scale(1.05); z-index: 10; }
+        .puzzle-cell.answered { background-color: #6c757d; color: white; }
+
+        @media (max-width: 768px) {
+            .puzzle-cell { width: 35px; height: 35px; font-size: 14px; }
+            .word-number { width: 16px; height: 16px; font-size: 8px; }
+            .puzzle-header { padding: 1rem; min-height: 60px; }
+            .puzzle-title { font-size: 1.2rem; }
+        }
+
+        @media screen and (max-width: 768px) {
+            #wrongAnswerModal .modal-dialog { margin: 0; max-height: 40vh; overflow-y: auto; }
+            #wrongAnswerModal .modal-content { border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+            #wrongAnswerModal .modal-body { padding: 1rem; max-height: 25vh; overflow-y: auto; }
+            #wrongAnswerModal .modal-footer { padding: 0.75rem 1rem; border-top: 1px solid #dee2e6; background-color: #f8f9fa; }
+            #wrongAnswerModal .btn { min-height: 44px; font-size: 16px; }
+        }
+
+        .game-progress {
+            font-size: 0.9rem; color: #6c757d; padding: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="puzzle-header">
+                        <i class="fas fa-puzzle-piece puzzle-icon"></i>
+                        <h3 class="puzzle-title" id="puzzle-title-display">K-CrossWord</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="game-progress">
+                                <span id="level-name">단어발견 1</span>&nbsp;&nbsp;
+                                <span id="correct-count">0</span>/<span id="total-words">0</span>
+                            </span>
+                        </div>
+                        <div id="puzzle-grid" class="text-center"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div id="word-input-section">
+                            <div class="mb-3">
+                                <div id="current-hint" class="alert alert-info">번호를 클릭하여 단어를 선택하세요.</div>
+                                <div id="additional-hints" class="mt-3" style="display: none;">
+                                    <div id="hints-list"></div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <input type="text" id="answer-input" class="form-control" placeholder="정답을 입력하세요" autocomplete="off">
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" id="check-answer-btn" class="btn btn-primary">확인</button>
+                                <button type="button" id="show-hint-btn" class="btn btn-secondary">힌트보기</button>
+                                <button type="button" id="show-answer-btn" class="btn btn-warning" style="display: none;">정답보기</button>
+                                <button type="button" id="refine-word-btn" class="btn btn-info" style="display: none;">단어정제</button>
+                            </div>
+                        </div>
+                        <div id="game-info"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 퍼즐 완료 모달 -->
+    <div class="modal fade" id="puzzleCompleteModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>퍼즐 완료!</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="completion-stats mb-4" style="background:#f8f9fa; border-radius:0.5rem; padding:1.5rem;">
+                        <p class="mb-2"><i class="fas fa-clock me-2"></i><strong>완료 시간:</strong> <span id="completion-time" class="text-primary">0분 0초</span></p>
+                        <p class="mb-2"><i class="fas fa-lightbulb me-2"></i><strong>사용한 힌트:</strong> <span id="hints-used-count" class="text-warning">0개</span></p>
+                        <p class="mb-0"><i class="fas fa-check me-2"></i><strong>정답률:</strong> <span id="correct-rate" class="text-success">100%</span></p>
+                    </div>
+                    <div class="sns-share-buttons">
+                        <h6 class="mb-3">결과를 공유하세요!</h6>
+                        <div class="d-flex flex-wrap justify-content-center gap-2">
+                            <button class="btn share-btn" onclick="shareToInstagram()" style="background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; border: none; min-width:150px; padding:0.75rem 1.5rem; border-radius:0.5rem;">
+                                <i class="fab fa-instagram me-2"></i>Instagram
+                            </button>
+                            <button class="btn btn-primary share-btn" onclick="shareToFacebook()" style="min-width:150px; padding:0.75rem 1.5rem; border-radius:0.5rem;">
+                                <i class="fab fa-facebook me-2"></i>Facebook
+                            </button>
+                            <button class="btn btn-info share-btn" onclick="shareToTwitter()" style="min-width:150px; padding:0.75rem 1.5rem; border-radius:0.5rem;">
+                                <i class="fab fa-twitter me-2"></i>Twitter
+                            </button>
+                            <button class="btn share-btn" onclick="shareToKakao()" style="background-color:#FEE500; color:#000; border:none; min-width:150px; padding:0.75rem 1.5rem; border-radius:0.5rem;">
+                                <i class="fas fa-comment me-2"></i>카카오톡
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary" onclick="$('#puzzleCompleteModal').modal('hide');">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 정답/오답 결과 모달 -->
+    <div class="modal fade" id="answerResultModal" tabindex="-1" data-bs-backdrop="false" data-bs-keyboard="false" style="display: none;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div id="answer-result-icon" class="mb-3"></div>
+                    <h5 id="answer-result-message" class="mb-0"></h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 단어정제 모달 -->
+    <div class="modal fade" id="wordRefinementModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>단어정제</h5>
+                    <button type="button" class="btn-close" id="word-refinement-modal-close-btn"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label"><strong>단어</strong></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="refinementWord" readonly>
+                                <select class="form-select" id="refinementDifficulty">
+                                    <option value="1">쉬움</option><option value="2">보통</option>
+                                    <option value="3">어려움</option><option value="4">매우어려움</option>
+                                    <option value="5">극도어려움</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3"><label class="form-label"><strong>카테고리</strong></label><input type="text" class="form-control" id="refinementCategory" readonly></div>
+                        <div class="col-md-3"><label class="form-label"><strong>생성일</strong></label><input type="text" class="form-control" id="refinementCreatedAt" readonly></div>
+                        <div class="col-md-3"><label class="form-label"><strong>상태</strong></label><input type="text" class="form-control" id="refinementStatus" readonly></div>
+                    </div>
+                    <div class="row"><div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6><strong>힌트 관리</strong></h6>
+                            <div class="d-flex gap-2">
+                                <button type="button" id="generateNewHintsBtn" class="btn btn-success btn-sm"><i class="fas fa-plus me-1"></i>힌트 추가</button>
+                                <button type="button" id="deactivateWordBtn" class="btn btn-danger btn-sm"><i class="fas fa-ban me-1"></i>비활성</button>
+                            </div>
+                        </div>
+                        <div id="hintsContainer"></div>
+                    </div></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" id="confirmRefinementBtn" class="btn btn-warning"><i class="fas fa-check me-1"></i>정제 확정</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    (function() {
+        const MANUAL_API = '/K-CrossWord/admin/api/manual-puzzle';
+
+        let currentWordId = null;
+        let currentHintId = null;
+        let baseHintId = null;
+        let templateData = null;
+        let currentPuzzle = null;
+        let isGameActive = true;
+        let answeredWords = new Set();
+        let answeredWordsData = new Map();
+        let hintsUsed = [];
+        let wrongAnswers = [];
+        let gameStartTime = null;
+        let manualPuzzleId = null;
+
+        function getStorageKey() {
+            return 'manual_puzzle_state_' + manualPuzzleId;
+        }
+
+        function saveGameState() {
+            if (!manualPuzzleId) return;
+            const state = {
+                answeredWords: Array.from(answeredWords),
+                answeredWordsData: Object.fromEntries(answeredWordsData),
+                hintsUsed: hintsUsed,
+                wrongAnswers: wrongAnswers,
+                gameStartTime: gameStartTime
+            };
+            try {
+                localStorage.setItem(getStorageKey(), JSON.stringify(state));
+            } catch(e) { console.warn('게임 상태 저장 실패:', e); }
+        }
+
+        function loadGameState() {
+            if (!manualPuzzleId) return null;
+            try {
+                const raw = localStorage.getItem(getStorageKey());
+                if (!raw) return null;
+                return JSON.parse(raw);
+            } catch(e) { return null; }
+        }
+
+        function clearGameState() {
+            if (!manualPuzzleId) return;
+            localStorage.removeItem(getStorageKey());
+        }
+
+        $(document).ready(function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            manualPuzzleId = urlParams.get('puzzleId');
+            if (!manualPuzzleId) {
+                alert('puzzleId가 필요합니다.');
+                return;
+            }
+            gameStartTime = Date.now();
+            loadManualPuzzle(manualPuzzleId);
+        });
+
+        function loadManualPuzzle(puzzleId) {
+            $.ajax({
+                url: MANUAL_API + '/game-data/' + puzzleId,
+                method: 'GET',
+                success: function(data) {
+                    if (!data.success) {
+                        alert('퍼즐을 불러올 수 없습니다: ' + (data.message || ''));
+                        return;
+                    }
+
+                    if (data.title) {
+                        $('#puzzle-title-display').text(data.title);
+                        document.title = data.title + ' - K-CrossWord';
+                    }
+
+                    const grid = data.grid || data.grid_pattern;
+                    const gridPattern = typeof grid === 'string' ? JSON.parse(grid) : grid;
+                    const words = data.words || [];
+
+                    templateData = { grid_pattern: gridPattern, words: words };
+                    currentPuzzle = templateData;
+
+                    $('#total-words').text(words.length);
+                    renderPuzzleGrid(templateData);
+
+                    const saved = loadGameState();
+                    if (saved) {
+                        gameStartTime = saved.gameStartTime || Date.now();
+                        hintsUsed = saved.hintsUsed || [];
+                        wrongAnswers = saved.wrongAnswers || [];
+                        if (saved.answeredWords && saved.answeredWords.length > 0) {
+                            saved.answeredWords.forEach(id => answeredWords.add(String(id)));
+                            if (saved.answeredWordsData) {
+                                Object.entries(saved.answeredWordsData).forEach(([k,v]) => answeredWordsData.set(String(k), v));
+                            }
+                            restoreAnsweredCells();
+                            $('#correct-count').text(answeredWords.size);
+                        }
+                    }
+
+                    $('#word-input-section').show();
+                    $('#current-hint').text('번호를 클릭하여 단어를 선택하세요.');
+                },
+                error: function(xhr) {
+                    let msg = '퍼즐 데이터를 불러올 수 없습니다.';
+                    try { const e = JSON.parse(xhr.responseText); msg = e.message || msg; } catch(ex) {}
+                    alert(msg);
+                }
+            });
+        }
+
+        function restoreAnsweredCells() {
+            if (!answeredWords || answeredWords.size === 0) return;
+            answeredWords.forEach(function(wordId) {
+                const correctWord = answeredWordsData.get(wordId);
+                if (correctWord) {
+                    let wordInfo = null;
+                    for (let word of templateData.words) {
+                        if (String(word.pz_word_id || word.word_id) == wordId) { wordInfo = word; break; }
+                    }
+                    if (wordInfo) updateGridWithAnswer(correctWord, wordInfo);
+                }
+            });
+        }
+
+        function renderPuzzleGrid(template) {
+            currentPuzzle = template;
+            const grid = $('#puzzle-grid');
+            grid.empty();
+
+            const gridData = template.grid_pattern;
+            const words = template.words;
+            const gridSize = gridData.length;
+            const cellSize = calculateCellSize(gridSize);
+
+            let html = '<div class="grid-container" style="display: inline-block; border: 2px solid #333; max-width: 90vw; max-height: 90vh; margin: 0 auto;">';
+            for (let y = 0; y < gridData.length; y++) {
+                html += '<div class="grid-row" style="display: flex;">';
+                for (let x = 0; x < gridData[y].length; x++) {
+                    const cellValue = gridData[y][x];
+                    const wordInfo = getWordInfoAtPosition(x, y, words);
+                    const hasWords = getWordsAtPosition(x, y, words).length > 0;
+                    let cellClass = 'puzzle-cell';
+                    let cellContent = '';
+                    let clickEvent = '';
+
+                    if (cellValue === 2) {
+                        cellClass += ' bg-dark text-white';
+                        const wi = getWordInfoAtPosition(x, y, words);
+                        if (wi) {
+                            const badgeSize = Math.max(8, Math.min(20, cellSize * 0.35));
+                            const fontSize = Math.max(6, Math.min(12, cellSize * 0.25));
+                            if (wi.isIntersection) {
+                                cellContent = `<div style="position:relative;width:100%;height:100%;">
+                                    <span class="word-number" style="position:absolute;top:2px;left:2px;width:${badgeSize}px;height:${badgeSize}px;font-size:${fontSize}px;background:#ff6b6b;border-radius:2px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;">${wi.horizontalWord.word_id}</span>
+                                    <span class="word-number" style="position:absolute;bottom:2px;right:2px;width:${badgeSize}px;height:${badgeSize}px;font-size:${fontSize}px;background:#4ecdc4;border-radius:2px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;">${wi.verticalWord.word_id}</span>
+                                </div>`;
+                            } else {
+                                cellContent = `<span class="word-number" style="position:absolute;top:2px;left:2px;width:${badgeSize}px;height:${badgeSize}px;font-size:${fontSize}px;background:#ff6b6b;border-radius:2px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;">${wi.word_id}</span>`;
+                            }
+                        }
+                        if (hasWords) {
+                            clickEvent = ` onclick="handleCellClick(${y}, ${x})" style="cursor:pointer;"`;
+                        }
+                    } else {
+                        cellClass += ' bg-light';
+                        cellContent = '□';
+                    }
+
+                    const fSize = Math.max(10, Math.min(18, cellSize * 0.7));
+                    const dataWordId = wordInfo ? String(wordInfo.pz_word_id || wordInfo.word_id) : '';
+                    const dataAttr = dataWordId ? ` data-word-id="${dataWordId}"` : '';
+                    html += `<div class="${cellClass}" style="width:${cellSize}px;height:${cellSize}px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:${fSize}px;font-weight:bold;box-sizing:border-box;"${clickEvent}${dataAttr}>${cellContent}</div>`;
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            grid.html(html);
+        }
+
+        function calculateCellSize(gridSize) {
+            const isMobile = window.innerWidth <= 768;
+            const isPortrait = window.innerHeight > window.innerWidth;
+            let widthRatio = gridSize <= 5 ? 0.7 : gridSize <= 7 ? 0.8 : 0.9;
+            let availableWidth, availableHeight;
+            if (isMobile && isPortrait) { availableWidth = window.innerWidth * widthRatio; availableHeight = window.innerHeight * 0.9; }
+            else if (isMobile) { availableWidth = window.innerWidth * widthRatio; availableHeight = window.innerHeight * 0.8; }
+            else { availableWidth = Math.min(window.innerWidth * widthRatio, 800); availableHeight = Math.min(window.innerHeight * 0.8, 800); }
+            const totalBorder = 4 + (gridSize - 1) * 2;
+            const maxW = (availableWidth - totalBorder) / gridSize;
+            const maxH = (availableHeight - totalBorder) / gridSize;
+            const minS = isMobile ? 20 : 25, maxS = isMobile ? 80 : 100;
+            return Math.max(minS, Math.min(maxS, Math.min(maxW, maxH)));
+        }
+
+        function getWordInfoAtPosition(x, y, words) {
+            let hw = null, vw = null;
+            for (const w of words) {
+                const p = w.position;
+                if (p.direction === 'horizontal' && y === p.start_y && x === p.start_x) hw = w;
+                else if (p.direction === 'vertical' && x === p.start_x && y === p.start_y) vw = w;
+            }
+            if (hw && vw) return { ...hw, isIntersection: true, horizontalWord: hw, verticalWord: vw };
+            return hw || vw;
+        }
+
+        function getWordsAtPosition(x, y, words) {
+            const found = [];
+            for (const w of words) {
+                const p = w.position;
+                if (p.direction === 'horizontal' && y === p.start_y && x >= p.start_x && x <= p.end_x) {
+                    found.push({ word_id: w.word_id, pz_word_id: w.pz_word_id, hint: w.hint, direction: p.direction });
+                } else if (p.direction === 'vertical' && x === p.start_x && y >= p.start_y && y <= p.end_y) {
+                    found.push({ word_id: w.word_id, pz_word_id: w.pz_word_id, hint: w.hint, direction: p.direction });
+                }
+            }
+            return found;
+        }
+
+        window.handleCellClick = function(row, col) {
+            const words = templateData.words;
+            const foundWords = getWordsAtPosition(col, row, words);
+            if (foundWords.length === 0) return;
+
+            let selectedWord = foundWords[0];
+            if (foundWords.length > 1) {
+                const wi = getWordInfoAtPosition(col, row, words);
+                if (wi) selectedWord = wi;
+            }
+
+            currentWordId = String(selectedWord.pz_word_id || selectedWord.word_id);
+            currentHintId = null;
+            baseHintId = null;
+
+            $('#hints-list').empty();
+            $('#additional-hints').hide();
+            $('#show-hint-btn').prop('disabled', false).text('힌트보기');
+
+            loadPrimaryHint(currentWordId);
+            $('#answer-input').val('').focus();
+            $('#word-input-section').show();
+        };
+
+        function loadPrimaryHint(wordId) {
+            $.ajax({
+                url: MANUAL_API + '/hints',
+                method: 'GET',
+                data: { word_id: wordId },
+                success: function(data) {
+                    if (data.hints && data.hints.length > 0) {
+                        const primary = data.hints[0];
+                        $('#current-hint').html('<strong>힌트:</strong> ' + primary.hint_text);
+                        baseHintId = primary.id;
+                    } else {
+                        const matched = templateData.words.find(w => String(w.pz_word_id || w.word_id) === String(wordId));
+                        if (matched && matched.hint) {
+                            $('#current-hint').html('<strong>힌트:</strong> ' + matched.hint);
+                        } else {
+                            $('#current-hint').html('<strong>힌트:</strong> 힌트가 없습니다.');
+                        }
+                        baseHintId = null;
+                    }
+                },
+                error: function() {
+                    const matched = templateData.words.find(w => String(w.pz_word_id || w.word_id) === String(wordId));
+                    if (matched && matched.hint) {
+                        $('#current-hint').html('<strong>힌트:</strong> ' + matched.hint);
+                    } else {
+                        $('#current-hint').html('<strong>힌트:</strong> 힌트가 없습니다.');
+                    }
+                    baseHintId = null;
+                }
+            });
+        }
+
+        $('#check-answer-btn').click(function() {
+            if (!currentWordId) return;
+            const answer = $('#answer-input').val().trim();
+            if (!answer) { alert('정답을 입력해주세요.'); return; }
+
+            $.ajax({
+                url: MANUAL_API + '/check-answer',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ word_id: currentWordId, answer: answer }),
+                success: function(data) {
+                    if (data.is_correct) {
+                        updateGridWithAnswer(data.correct_answer, null);
+                        const wid = String(currentWordId);
+                        answeredWords.add(wid);
+                        answeredWordsData.set(wid, data.correct_answer);
+                        saveGameState();
+
+                        $('#answer-input').val('');
+                        $('#current-hint').text('번호를 클릭하여 단어를 선택하세요.');
+                        $('#correct-count').text(answeredWords.size);
+                        currentWordId = null;
+
+                        checkCompletion();
+                    } else {
+                        wrongAnswers.push({ wordId: currentWordId, answer: answer, timestamp: new Date().toISOString() });
+                        saveGameState();
+                        showAnswerResultModal(false, '오답입니다. 다시 시도해 보세요.');
+                    }
+                },
+                error: function() { alert('정답 확인 중 오류가 발생했습니다.'); }
+            });
+        });
+
+        $('#answer-input').keypress(function(e) {
+            if (e.which === 13) { e.preventDefault(); $('#check-answer-btn').click(); }
+        });
+
+        $('#show-hint-btn').click(function() {
+            if (!currentWordId) return;
+            const btn = $(this);
+            btn.prop('disabled', true).text('힌트 사용됨');
+
+            $.ajax({
+                url: MANUAL_API + '/hints',
+                method: 'GET',
+                data: { word_id: currentWordId, base_hint_id: baseHintId, is_additional_hint: true },
+                success: function(data) {
+                    if (data.hints && data.hints.length > 0) {
+                        const hint = data.hints[0];
+                        const hintsList = $('#hints-list');
+                        hintsList.empty();
+                        hintsList.append('<div class="alert alert-info"><strong>추가힌트 :</strong> ' + hint.hint_text + '</div>');
+                        currentHintId = hint.id;
+                        baseHintId = hint.id;
+                        hintsUsed.push({ wordId: currentWordId, hintId: hint.id, timestamp: new Date().toISOString() });
+                        saveGameState();
+                        $('#additional-hints').show();
+                    } else {
+                        alert('더 이상 사용할 수 있는 힌트가 없습니다.');
+                        btn.prop('disabled', false).text('힌트보기');
+                    }
+                },
+                error: function() {
+                    alert('힌트를 불러올 수 없습니다.');
+                    btn.prop('disabled', false).text('힌트보기');
+                }
+            });
+        });
+
+        $('#show-answer-btn').click(function() {
+            if (!currentWordId) { alert('단어를 먼저 선택해주세요.'); return; }
+            $.ajax({
+                url: MANUAL_API + '/check-answer',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ word_id: currentWordId, answer: '__SHOW_ANSWER__' }),
+                error: function() { alert('정답을 불러올 수 없습니다.'); }
+            });
+        });
+
+        $('#refine-word-btn').click(function() {
+            if (!currentWordId) { alert('단어를 먼저 선택해주세요.'); return; }
+            alert('단어정제 기능은 준비 중입니다.');
+        });
+
+        function updateGridWithAnswer(correctWord, wordInfo) {
+            if (!wordInfo) {
+                if (!currentWordId) return;
+                for (let w of templateData.words) {
+                    if (String(w.pz_word_id || w.word_id) == currentWordId) { wordInfo = w; break; }
+                }
+            }
+            if (!wordInfo) return;
+
+            const position = wordInfo.position || wordInfo;
+            const direction = position.direction;
+            const startX = position.start_x;
+            const startY = position.start_y;
+
+            const gridSize = templateData.grid_pattern.length;
+            const cellSize = calculateCellSize(gridSize);
+            const badgeSize = Math.max(10, Math.min(24, cellSize * 0.4));
+            const badgeFontSize = Math.max(8, Math.min(14, cellSize * 0.3));
+
+            for (let i = 0; i < correctWord.length; i++) {
+                let x = direction === 'horizontal' ? startX + i : startX;
+                let y = direction === 'horizontal' ? startY : startY + i;
+
+                const cell = $(`.grid-row:eq(${y}) .puzzle-cell:eq(${x})`);
+                if (cell.length > 0) {
+                    const isStart = i === 0;
+                    let cardHtml = `<div class="wordle-card delay-${i+1}">
+                        <div class="wordle-card-front"></div>
+                        <div class="wordle-card-back">${correctWord[i]}</div>
+                    </div>`;
+                    if (isStart) {
+                        cardHtml += `<span class="word-number" style="position:absolute;top:2px;left:2px;z-index:5;opacity:0.3;width:${badgeSize}px;height:${badgeSize}px;font-size:${badgeFontSize}px;display:flex;align-items:center;justify-content:center;">${wordInfo.word_id}</span>`;
+                    }
+                    cell.html(cardHtml);
+                    cell.addClass('answered');
+                    cell.css('position', 'relative');
+                    setTimeout(() => { cell.find('.wordle-card').addClass('flip'); }, 100 + (i * 100));
+                }
+            }
+        }
+
+        function checkCompletion() {
+            if (!templateData || !templateData.words) return;
+            const total = templateData.words.length;
+            if (answeredWords.size >= total && total > 0) {
+                clearGameState();
+                showPuzzleCompleteModal();
+            }
+        }
+
+        function showPuzzleCompleteModal() {
+            isGameActive = false;
+            const playTime = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0;
+            const min = Math.floor(playTime / 60), sec = playTime % 60;
+            $('#completion-time').text(min + '분 ' + sec + '초');
+            $('#hints-used-count').text(hintsUsed.length + '개');
+            const total = currentPuzzle ? currentPuzzle.words.length : 0;
+            const rate = total > 0 ? Math.round((answeredWords.size / total) * 100) : 100;
+            $('#correct-rate').text(rate + '%');
+            $('#puzzleCompleteModal').modal('show');
+        }
+
+        function showAnswerResultModal(isCorrect, message, isWarning) {
+            if (isCorrect) return;
+            const modal = $('#answerResultModal');
+            const iconDiv = $('#answer-result-icon');
+            const messageDiv = $('#answer-result-message');
+            if (isWarning) {
+                iconDiv.html('<i class="fas fa-exclamation-triangle fa-3x text-warning"></i>');
+                messageDiv.text(message).removeClass().addClass('mb-0 text-warning');
+            } else {
+                iconDiv.html('<i class="fas fa-times-circle fa-3x text-danger"></i>');
+                messageDiv.text(message).removeClass().addClass('mb-0 text-danger');
+            }
+            modal.removeAttr('aria-hidden');
+            modal.modal('show');
+            const dur = isWarning ? 3000 : 1500;
+            setTimeout(function() { modal.find('*').blur(); modal.modal('hide'); setTimeout(() => modal.attr('aria-hidden', 'true'), 300); }, dur);
+        }
+
+        window.shareToInstagram = function() {
+            prepareAndDownloadShareCard('instagram');
+        };
+        window.shareToFacebook = function() {
+            const url = encodeURIComponent(window.location.href);
+            window.open('https://www.facebook.com/sharer/sharer.php?u=' + url, '_blank');
+        };
+        window.shareToTwitter = function() {
+            const text = encodeURIComponent('K-CrossWord 퍼즐을 완료했습니다!');
+            const url = encodeURIComponent(window.location.href);
+            window.open('https://twitter.com/intent/tweet?text=' + text + '&url=' + url, '_blank');
+        };
+        window.shareToKakao = function() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('링크가 클립보드에 복사되었습니다. 카카오톡에서 붙여넣기 하세요!');
+            });
+        };
+
+        function prepareAndDownloadShareCard(platform) {
+            const shareCard = $('<div>').attr('id', 'temp-share-card').css({
+                position: 'fixed', left: '-9999px', top: '0', width: '600px', padding: '40px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white', textAlign: 'center', borderRadius: '20px', fontFamily: 'sans-serif'
+            });
+            const title = $('#puzzle-title-display').text() || 'K-CrossWord';
+            shareCard.append('<h1>K-CrossWord</h1>');
+            shareCard.append('<h3>' + title + ' 완료!</h3>');
+            const gridClone = $('#puzzle-grid').clone();
+            gridClone.find('.puzzle-cell').each(function() {
+                if ($(this).hasClass('bg-dark')) {
+                    const num = $(this).find('.word-number').clone();
+                    $(this).empty().append(num).css('color', 'transparent');
+                }
+            });
+            gridClone.css({ display: 'inline-block', margin: '20px auto', pointerEvents: 'none', transform: 'scale(0.8)' });
+            shareCard.append(gridClone);
+            const time = $('#completion-time').text();
+            const accuracy = $('#correct-rate').text();
+            shareCard.append('<div style="font-size:24px;margin-top:20px;">시간: ' + time + ' | 정답률: ' + accuracy + '</div>');
+            shareCard.append('<div style="margin-top:20px;font-size:16px;opacity:0.8;">' + window.location.origin + '</div>');
+            $('body').append(shareCard);
+            html2canvas(document.getElementById('temp-share-card')).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'k-crossword-' + platform + '-result.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                shareCard.remove();
+            });
+        }
+    })();
+    </script>
+</body>
+</html>

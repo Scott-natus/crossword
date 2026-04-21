@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>퍼즐 수동생성 - 크로스워드 관리</title>
+    <link href="/K-CrossWord/admin/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/K-CrossWord/admin/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 13px;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 14px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+            margin: 10px auto;
+            padding: 16px 20px;
+            max-width: 1400px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid #667eea;
+        }
+        .header h1 { color: #2c3e50; font-weight: 700; margin-bottom: 2px; font-size: 1.5em; }
+        .header p { color: #7f8c8d; font-size: 0.95em; margin-bottom: 0; }
+        .section-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border: 2px solid #e9ecef;
+        }
+        .section-card h4 { color: #2c3e50; margin-bottom: 8px; font-size: 1.1em; }
+        .grid-editor { display: inline-block; border: 2px solid #2c3e50; border-radius: 8px; overflow: hidden; margin: 6px 0; }
+        .grid-cell {
+            width: 36px; height: 36px;
+            border: 1px solid #bdc3c7;
+            display: inline-block;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+            user-select: none;
+            font-size: 11px;
+        }
+        .grid-cell:hover { opacity: 0.8; }
+        .grid-cell.highlighted { border: 2px solid red !important; box-shadow: 0 0 6px rgba(255,0,0,0.3); z-index: 5; }
+        .grid-cell.highlighted-focus { border: 2px solid #ff6b6b !important; background-color: #ffebee !important; box-shadow: 0 0 6px rgba(255,107,107,0.3); z-index: 5; }
+        .word-position-item {
+            padding: 4px 8px; margin: 3px 0;
+            background: white; border-radius: 6px;
+            border: 1px solid #dee2e6;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .word-position-item:hover { border-color: #007bff; box-shadow: 0 1px 3px rgba(0,123,255,0.1); }
+        .word-position-item.selected { border-color: #28a745 !important; background-color: #f8fff9; }
+        .word-number-select { transition: all 0.2s ease; }
+        .word-number-select:focus { border-color: #007bff; box-shadow: 0 0 0 0.15rem rgba(0,123,255,0.25); }
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none; color: white; padding: 6px 18px;
+            border-radius: 20px; font-weight: 600; transition: all 0.3s ease;
+            font-size: 13px;
+        }
+        .btn-gradient:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(102, 126, 234, 0.3); color: white; }
+        .extracted-word-card {
+            background: white; border-radius: 8px;
+            padding: 8px 10px; margin: 4px 0;
+            border-left: 4px solid #667eea;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .extracted-word-card.horizontal { border-left-color: #4caf50; }
+        .extracted-word-card.vertical { border-left-color: #ff9800; }
+        .prompt-template {
+            font-family: 'Courier New', monospace;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 0.6rem;
+            font-size: 12px;
+        }
+        .result-area {
+            background-color: #f8f9fa; border: 1px solid #dee2e6;
+            border-radius: 0.375rem; padding: 0.6rem; min-height: 120px;
+        }
+        .word-badge {
+            display: inline-block; background-color: #e9ecef;
+            border: 1px solid #ced4da; border-radius: 0.25rem;
+            padding: 0.15rem 0.4rem; margin: 0.1rem; font-size: 0.8rem;
+        }
+        .loading { display: none; }
+        .loading.show { display: block; }
+        .saved-template-info {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border-radius: 10px;
+            padding: 12px 16px; margin-bottom: 12px;
+        }
+        .nav-shortcuts { margin-bottom: 8px; }
+        .nav-shortcuts a { margin-right: 6px; margin-bottom: 4px; font-size: 12px; }
+        .step-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border-radius: 50%;
+            background: #667eea; color: white;
+            font-weight: bold; font-size: 12px; margin-right: 6px;
+        }
+        .form-label { margin-bottom: 2px; font-size: 12px; }
+        .form-text { font-size: 11px; }
+        .form-control-sm, .form-select-sm { font-size: 12px; padding: 0.2rem 0.5rem; }
+        .card-header { padding: 4px 10px; }
+        .card-body { padding: 6px 10px; }
+        .card-header h6 { font-size: 13px; }
+        .mb-3 { margin-bottom: 0.6rem !important; }
+        .mb-2 { margin-bottom: 0.4rem !important; }
+        .mt-3 { margin-top: 0.6rem !important; }
+        .py-2 { padding-top: 0.3rem !important; padding-bottom: 0.3rem !important; }
+        .alert { padding: 0.4rem 0.8rem; font-size: 12px; margin-bottom: 0.5rem; }
+        .modal-body { padding: 12px 16px; }
+        .modal-header { padding: 8px 16px; }
+        .hint-textarea {
+            font-size: 12px;
+            resize: vertical;
+            min-height: 36px;
+        }
+        .hint-group label { font-weight: 600; font-size: 11px; }
+        .hint-group .badge { font-size: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="header">
+                <h1><i class="fas fa-puzzle-piece me-2"></i>퍼즐 수동생성</h1>
+                <p>그리드 템플릿을 직접 만들고, 단어를 배치한 뒤, 게임으로 발행합니다.</p>
+            </div>
+
+            <div class="nav-shortcuts">
+                <a href="/K-CrossWord/admin/" class="btn btn-outline-secondary btn-sm"><i class="fas fa-home"></i> 관리자 홈</a>
+                <a href="/K-CrossWord/admin/grid-templates" class="btn btn-outline-secondary btn-sm"><i class="fas fa-th"></i> 템플릿 관리</a>
+                <a href="/K-CrossWord/admin/words" class="btn btn-outline-secondary btn-sm"><i class="fas fa-font"></i> 단어 관리</a>
+            </div>
+
+            <!-- STEP 1 -->
+            <div class="section-card" id="step1Section">
+                <h4><span class="step-badge">1</span><i class="fas fa-th me-1"></i>그리드 템플릿 생성</h4>
+
+                <div class="row mb-2">
+                    <div class="col-md-5">
+                        <label for="puzzleTitle" class="form-label fw-bold">퍼즐 주제</label>
+                        <input type="text" class="form-control form-control-sm" id="puzzleTitle" placeholder="예: K-POP 아이돌 퀴즈" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="levelSelect" class="form-label fw-bold">레벨</label>
+                        <select class="form-select form-select-sm" id="levelSelect">
+                            <option value="">레벨 선택</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="gridSizeInput" class="form-label fw-bold">그리드</label>
+                        <input type="number" class="form-control form-control-sm" id="gridSizeInput" min="3" max="20" value="7">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-gradient btn-sm w-100" id="btnSaveTemplate" disabled>
+                            <i class="fas fa-save me-1"></i><span id="saveButtonText">템플릿 저장</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="levelConditionsInfo" class="alert alert-info" style="display:none;">
+                    <div class="row">
+                        <div class="col-3"><strong>단어:</strong> <span id="reqWordCount">-</span></div>
+                        <div class="col-3"><strong>교차:</strong> <span id="reqIntersection">-</span></div>
+                        <div class="col-3"><strong>단어난이도:</strong> <span id="reqWordDiff">-</span></div>
+                        <div class="col-3"><strong>힌트난이도:</strong> <span id="reqHintDiff">-</span></div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2" id="btnClearGrid"><i class="fas fa-undo"></i> 초기화</button>
+                                <button class="btn btn-sm btn-outline-success py-0 px-2" id="btnSortNumbers"><i class="fas fa-sort-numeric-up"></i> 정렬</button>
+                            </div>
+                            <div>
+                                <span class="badge bg-dark" style="font-size:10px;">■ 단어</span>
+                                <span class="badge bg-light text-dark ms-1" style="font-size:10px;">□ 빈칸</span>
+                            </div>
+                        </div>
+                        <div id="gridEditor" class="border p-2 bg-white rounded" style="display: inline-block;"></div>
+                        <div id="conditionCheck" class="alert mt-1" style="display: none;">
+                            <div id="conditionDetails"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header py-1"><h6 class="mb-0 text-success" style="font-size:12px;"><i class="fas fa-arrows-alt-h"></i> 가로</h6></div>
+                                    <div class="card-body p-1">
+                                        <div id="horizontalWordList" style="max-height: 280px; overflow-y: auto;">
+                                            <p class="text-muted text-center small">가로 단어 없음</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header py-1"><h6 class="mb-0 text-warning" style="font-size:12px;"><i class="fas fa-arrows-alt-v"></i> 세로</h6></div>
+                                    <div class="card-body p-1">
+                                        <div id="verticalWordList" style="max-height: 280px; overflow-y: auto;">
+                                            <p class="text-muted text-center small">세로 단어 없음</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 저장된 템플릿 정보 -->
+            <div id="savedTemplateInfo" class="saved-template-info" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0"><i class="fas fa-check-circle me-1"></i>템플릿 저장 완료
+                        — ID: <strong id="savedTemplateId">-</strong>
+                        | 이름: <strong id="savedTemplateName">-</strong>
+                        | 주제: <strong id="savedTemplateTitle">-</strong></h6>
+                    </div>
+                    <a id="gameLink" href="#" target="_blank" rel="noopener" class="btn btn-light btn-sm py-0">
+                        <i class="fas fa-gamepad"></i> 게임
+                    </a>
+                </div>
+            </div>
+
+            <!-- STEP 2 -->
+            <div class="section-card" id="step2Section">
+                <h4><span class="step-badge">2</span><i class="fas fa-pen me-1"></i>단어 수동 배치</h4>
+
+                <div id="manualSlotList">
+                    <div class="alert alert-secondary text-center">
+                        <i class="fas fa-info-circle me-1"></i> 먼저 STEP 1에서 템플릿을 저장하면 슬롯 목록이 표시됩니다.
+                    </div>
+                </div>
+
+                <div class="mt-2 d-flex gap-2 align-items-center">
+                    <button class="btn btn-success btn-sm" id="btnPublishGame" disabled>
+                        <i class="fas fa-gamepad me-1"></i> 게임 발행
+                    </button>
+                    <span id="publishStatus" class="text-muted small"></span>
+                </div>
+            </div>
+
+            <!-- 단어 검색/생성 모달 -->
+            <div class="modal fade" id="wordSearchModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                            <h6 class="modal-title mb-0"><i class="fas fa-search"></i> 단어 검색 / 직접 생성</h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- 슬롯 정보 -->
+                            <div class="row mb-2 g-2">
+                                <div class="col-4">
+                                    <label class="form-label fw-bold">슬롯</label>
+                                    <input type="text" class="form-control form-control-sm" id="searchSlotInfo" readonly>
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label fw-bold">필요 길이</label>
+                                    <input type="number" class="form-control form-control-sm" id="searchSlotLength" readonly>
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label fw-bold">방향</label>
+                                    <input type="text" class="form-control form-control-sm" id="searchDirection" readonly>
+                                </div>
+                            </div>
+
+                            <!-- 탭: DB검색 / 직접입력 -->
+                            <ul class="nav nav-tabs nav-fill mb-2" style="font-size:12px;">
+                                <li class="nav-item">
+                                    <a class="nav-link active" data-bs-toggle="tab" href="#tabDbSearch">DB 검색</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#tabDirectInput">직접 입력 + AI 힌트</a>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <!-- 탭1: DB 검색 -->
+                                <div class="tab-pane fade show active" id="tabDbSearch">
+                                    <div class="row mb-1 g-2">
+                                        <div class="col-5">
+                                            <input type="text" class="form-control form-control-sm" id="wordSearchInput" placeholder="검색어 (빈칸 = 랜덤)">
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check form-switch mt-1">
+                                                <input class="form-check-input" type="checkbox" id="wordSearchLengthLock" checked>
+                                                <label class="form-check-label" for="wordSearchLengthLock" style="font-size:11px;">길이 맞춤</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-3">
+                                            <button class="btn btn-primary btn-sm w-100" id="btnDoSearch"><i class="fas fa-search me-1"></i>검색</button>
+                                        </div>
+                                    </div>
+                                    <div id="wordSearchLoading" class="text-center py-1" style="display:none;">
+                                        <span class="spinner-border spinner-border-sm"></span> 검색 중...
+                                    </div>
+                                    <div id="wordSearchResults" style="max-height:250px; overflow-y:auto;">
+                                        <p class="text-muted text-center py-2 small">검색 버튼을 클릭하세요</p>
+                                    </div>
+                                </div>
+
+                                <!-- 탭2: 직접 입력 + AI 힌트 -->
+                                <div class="tab-pane fade" id="tabDirectInput">
+                                    <div class="row mb-2 g-2">
+                                        <div class="col-7">
+                                            <label class="form-label fw-bold">단어 입력</label>
+                                            <input type="text" class="form-control form-control-sm" id="directWordInput" placeholder="한글 단어 직접 입력">
+                                        </div>
+                                        <div class="col-5 d-flex align-items-end">
+                                            <button class="btn btn-info btn-sm w-100" id="btnAiHint">
+                                                <i class="fas fa-robot me-1"></i>AI 힌트 생성
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="aiHintLoading" class="text-center py-1" style="display:none;">
+                                        <span class="spinner-border spinner-border-sm text-info"></span> AI 힌트 생성 중...
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-12 hint-group">
+                                            <label><span class="badge bg-success me-1">쉬움</span> 힌트</label>
+                                            <textarea class="form-control form-control-sm hint-textarea" id="hintEasy" rows="1" placeholder="쉬운 힌트"></textarea>
+                                        </div>
+                                        <div class="col-12 hint-group">
+                                            <label><span class="badge bg-warning text-dark me-1">보통</span> 힌트</label>
+                                            <textarea class="form-control form-control-sm hint-textarea" id="hintNormal" rows="1" placeholder="보통 힌트"></textarea>
+                                        </div>
+                                        <div class="col-12 hint-group">
+                                            <label><span class="badge bg-danger me-1">어려움</span> 힌트</label>
+                                            <textarea class="form-control form-control-sm hint-textarea" id="hintHard" rows="1" placeholder="어려운 힌트"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button class="btn btn-success btn-sm" id="btnSaveDirectWord">
+                                            <i class="fas fa-save me-1"></i>저장 및 배치
+                                        </button>
+                                    </div>
+                                    <div id="directSaveResult" class="mt-1"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 단어 정제 모달 -->
+            <div class="modal fade" id="slotRefineModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white;">
+                            <h6 class="modal-title mb-0"><i class="fas fa-edit"></i> 단어 정제 - <span id="refineWord"></span></h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="refinePzWordId">
+                            <input type="hidden" id="refineSlotIdx">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">단어 난이도</label>
+                                <select class="form-select form-select-sm" id="refineDifficulty" style="width:150px;">
+                                    <option value="1">1 - 쉬움</option>
+                                    <option value="2">2 - 보통</option>
+                                    <option value="3">3 - 어려움</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label fw-bold mb-0">힌트 목록</label>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="addRefineHintRow()"><i class="fas fa-plus me-1"></i>힌트 추가</button>
+                                </div>
+                                <div id="refineHintsContainer"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+                            <button type="button" class="btn btn-warning btn-sm" onclick="saveSlotRefine()"><i class="fas fa-save me-1"></i>저장</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="/K-CrossWord/admin/js/bootstrap.bundle.min.js"></script>
+    <script src="/K-CrossWord/admin/js/jquery-3.6.0.min.js"></script>
+    <script>
+    // ========== State ==========
+    let currentGrid = [];
+    let gridSize = 7;
+    let levelConditions = null;
+    let savedTemplateId = null;
+    let extractedWordsData = null;
+    let refineTargetIndex = null;
+    let manualSlotData = {};
+
+    // 번호 매핑: 원래 word.id -> 사용자 지정 번호
+    let wordNumberMap = {};
+
+    // ========== Init ==========
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeGrid(gridSize);
+        loadLevels();
+
+        document.getElementById('gridSizeInput').addEventListener('change', e => initializeGrid(parseInt(e.target.value)));
+        document.getElementById('levelSelect').addEventListener('change', () => {
+            const v = document.getElementById('levelSelect').value;
+            v ? fetchLevelConditions(v) : hideLevelInfo();
+        });
+        document.getElementById('btnClearGrid').addEventListener('click', clearGrid);
+        document.getElementById('btnSortNumbers').addEventListener('click', sortWordListsByNumber);
+        document.getElementById('btnSaveTemplate').addEventListener('click', saveTemplate);
+        document.getElementById('btnDoSearch').addEventListener('click', doWordSearch);
+        document.getElementById('wordSearchInput').addEventListener('keypress', e => { if (e.key === 'Enter') doWordSearch(); });
+        document.getElementById('btnAiHint').addEventListener('click', generateAiHints);
+        document.getElementById('btnSaveDirectWord').addEventListener('click', saveDirectWord);
+        document.getElementById('btnPublishGame').addEventListener('click', publishGame);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const editTemplateId = urlParams.get('templateId');
+        if (editTemplateId) {
+            loadExistingTemplate(editTemplateId);
+        }
+    });
+
+    function loadExistingTemplate(templateId) {
+        fetch('/K-CrossWord/admin/api/manual-puzzle/template/' + templateId)
+            .then(r => r.json())
+            .then(result => {
+                if (!result.success || !result.data) { alert('템플릿을 불러올 수 없습니다.'); return; }
+                const tpl = result.data;
+
+                savedTemplateId = tpl.id;
+                document.getElementById('savedTemplateId').textContent = tpl.id;
+                document.getElementById('savedTemplateName').textContent = tpl.templateName || '';
+                document.getElementById('savedTemplateTitle').textContent = tpl.templateName || '';
+                document.getElementById('savedTemplateInfo').style.display = 'block';
+                document.getElementById('puzzleTitle').value = tpl.templateName || '';
+
+                // 1) 그리드 복원
+                if (tpl.gridPattern) {
+                    try {
+                        const grid = typeof tpl.gridPattern === 'string' ? JSON.parse(tpl.gridPattern) : tpl.gridPattern;
+                        gridSize = grid.length;
+                        document.getElementById('gridSizeInput').value = gridSize;
+                        currentGrid = grid;
+                        renderGrid();
+                    } catch(e) { console.error('그리드 파싱 오류', e); }
+                }
+
+                // 2) wordNumberMap 복원: 저장된 wordPositions(사용자 지정 번호)와
+                //    현재 analyzeGrid()(순차 번호)를 좌표 비교하여 매핑
+                const currentPositions = analyzeGrid();
+                if (tpl.wordPositions) {
+                    try {
+                        const savedPositions = typeof tpl.wordPositions === 'string'
+                            ? JSON.parse(tpl.wordPositions) : tpl.wordPositions;
+                        savedPositions.forEach(sp => {
+                            const match = currentPositions.find(cp =>
+                                cp.start_x === sp.start_x && cp.start_y === sp.start_y &&
+                                cp.end_x === sp.end_x && cp.end_y === sp.end_y &&
+                                cp.direction === sp.direction
+                            );
+                            if (match && sp.id !== match.id) {
+                                wordNumberMap[match.id] = sp.id;
+                            }
+                        });
+                    } catch(e) { console.error('wordPositions 파싱 오류', e); }
+                }
+
+                // 3) wordNumberMap이 설정된 상태에서 STEP 1 분석/드롭다운 갱신
+                updateAnalysis();
+
+                // 4) 레벨 복원 (loadLevels ajax 완료 대기)
+                if (tpl.levelId) {
+                    setTimeout(() => {
+                        document.getElementById('levelSelect').value = tpl.levelId;
+                        fetchLevelConditions(tpl.levelId);
+                    }, 500);
+                }
+
+                // 5) STEP 2 슬롯 렌더 + 단어/힌트 복원
+                if (tpl.extractedWordsSnapshot) {
+                    try {
+                        const snapshot = typeof tpl.extractedWordsSnapshot === 'string'
+                            ? JSON.parse(tpl.extractedWordsSnapshot) : tpl.extractedWordsSnapshot;
+                        const wordOrder = snapshot.word_order || [];
+                        if (wordOrder.length > 0) {
+                            extractedWordsData = snapshot;
+                            restoreWordsFromSnapshot(wordOrder, currentPositions);
+                        }
+                    } catch(e) { console.error('스냅샷 파싱 오류', e); }
+                }
+            })
+            .catch(err => alert('템플릿 로드 오류: ' + err.message));
+    }
+
+    function restoreWordsFromSnapshot(wordOrder, positions) {
+        // wordNumberMap은 이미 loadExistingTemplate에서 설정 완료
+        // renderManualSlots는 manualSlotData를 초기화하므로 먼저 호출
+        renderManualSlots();
+
+        // 각 단어를 좌표 매칭으로 올바른 슬롯에 배치
+        wordOrder.forEach(item => {
+            const pos = item.position;
+            if (!pos || !item.extracted_word) return;
+            const matchIdx = positions.findIndex(p =>
+                p.start_x === pos.start_x && p.start_y === pos.start_y &&
+                p.end_x === pos.end_x && p.end_y === pos.end_y &&
+                p.direction === pos.direction
+            );
+            if (matchIdx >= 0) {
+                setSlotData(matchIdx, item.extracted_word, item.hint || '', item.matched_pz_word_id || null);
+            }
+        });
+    }
+
+    // ========== Grid ==========
+    function initializeGrid(size) {
+        gridSize = size;
+        currentGrid = Array.from({length: size}, () => Array(size).fill(1));
+        renderGrid();
+        updateAnalysis();
+    }
+
+    function renderGrid() {
+        const editor = document.getElementById('gridEditor');
+        editor.innerHTML = '';
+        for (let i = 0; i < gridSize; i++) {
+            const row = document.createElement('div');
+            row.className = 'd-flex';
+            for (let j = 0; j < gridSize; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell border d-flex align-items-center justify-content-center';
+                cell.style.width = '36px';
+                cell.style.height = '36px';
+                cell.style.backgroundColor = currentGrid[i][j] === 2 ? '#2c3e50' : '#fff';
+                cell.style.color = currentGrid[i][j] === 2 ? '#fff' : '#333';
+                cell.textContent = currentGrid[i][j] === 2 ? '■' : '';
+                cell.addEventListener('click', () => toggleCell(i, j));
+                cell.addEventListener('mouseenter', (e) => { if (e.buttons === 1) toggleCell(i, j); });
+                row.appendChild(cell);
+            }
+            editor.appendChild(row);
+        }
+    }
+
+    function toggleCell(r, c) {
+        currentGrid[r][c] = currentGrid[r][c] === 2 ? 1 : 2;
+        renderGrid();
+        updateAnalysis();
+    }
+
+    function clearGrid() {
+        savedTemplateId = null;
+        manualSlotData = {};
+        wordNumberMap = {};
+        document.getElementById('savedTemplateInfo').style.display = 'none';
+        document.getElementById('btnPublishGame').disabled = true;
+        document.getElementById('manualSlotList').innerHTML = '<div class="alert alert-secondary text-center"><i class="fas fa-info-circle me-1"></i> 먼저 STEP 1에서 템플릿을 저장하면 슬롯 목록이 표시됩니다.</div>';
+        for (let i = 0; i < gridSize; i++)
+            for (let j = 0; j < gridSize; j++)
+                currentGrid[i][j] = 1;
+        renderGrid();
+        updateAnalysis();
+    }
+
+    // ========== Grid Analysis ==========
+    function analyzeGrid() {
+        const positions = [];
+        let id = 1;
+        for (let i = 0; i < gridSize; i++) {
+            let start = -1;
+            for (let j = 0; j <= gridSize; j++) {
+                if (j < gridSize && currentGrid[i][j] === 2 && start === -1) start = j;
+                else if ((j === gridSize || currentGrid[i][j] !== 2) && start !== -1) {
+                    if (j - start >= 2)
+                        positions.push({ id: id++, start_x: start, start_y: i, end_x: j-1, end_y: i, direction: 'horizontal', length: j - start });
+                    start = -1;
+                }
+            }
+        }
+        for (let j = 0; j < gridSize; j++) {
+            let start = -1;
+            for (let i = 0; i <= gridSize; i++) {
+                if (i < gridSize && currentGrid[i][j] === 2 && start === -1) start = i;
+                else if ((i === gridSize || currentGrid[i][j] !== 2) && start !== -1) {
+                    if (i - start >= 2)
+                        positions.push({ id: id++, start_x: j, start_y: start, end_x: j, end_y: i-1, direction: 'vertical', length: i - start });
+                    start = -1;
+                }
+            }
+        }
+        return positions;
+    }
+
+    function countIntersections(positions) {
+        let cnt = 0;
+        for (let i = 0; i < positions.length; i++) {
+            for (let j = i+1; j < positions.length; j++) {
+                const a = positions[i], b = positions[j];
+                if (a.direction === b.direction) continue;
+                const h = a.direction === 'horizontal' ? a : b;
+                const v = a.direction === 'vertical' ? a : b;
+                if (h.start_y >= v.start_y && h.start_y <= v.end_y && v.start_x >= h.start_x && v.start_x <= h.end_x)
+                    cnt++;
+            }
+        }
+        return cnt;
+    }
+
+    function updateAnalysis() {
+        const positions = analyzeGrid();
+        updateWordPositionsList(positions);
+        checkConditions(positions);
+    }
+
+    /**
+     * 현재 wordNumberMap 을 기반으로 positions에 사용자 지정 번호를 적용한 배열 반환.
+     */
+    function getNumberedPositions() {
+        const positions = analyzeGrid();
+        return positions.map(w => {
+            const copy = {...w};
+            if (wordNumberMap[w.id]) copy.id = wordNumberMap[w.id];
+            return copy;
+        });
+    }
+
+    function updateWordPositionsList(positions) {
+        const hBox = document.getElementById('horizontalWordList');
+        const vBox = document.getElementById('verticalWordList');
+        const hWords = positions.filter(w => w.direction === 'horizontal');
+        const vWords = positions.filter(w => w.direction === 'vertical');
+
+        function buildHtml(words, dir) {
+            if (!words.length) return `<p class="text-muted text-center small">${dir} 단어 없음</p>`;
+            return words.map(w => `
+                <div class="word-position-item" data-word-id="${w.id}" data-direction="${w.direction}"
+                     onmouseenter="highlightWord(${w.start_x},${w.start_y},${w.end_x},${w.end_y})"
+                     onmouseleave="removeHighlights()">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">(${w.start_x},${w.start_y})→(${w.end_x},${w.end_y})</small>
+                            <strong class="ms-1">${dir} ${w.length}칸</strong>
+                        </div>
+                        <select class="form-select form-select-sm word-number-select" data-word-id="${w.id}" style="width:60px; padding:1px 4px; font-size:11px;">
+                            <option value="">-</option>
+                            ${positions.map(p => `<option value="${p.id}" ${p.id === w.id ? 'selected' : ''}>${p.id}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>`).join('');
+        }
+        hBox.innerHTML = buildHtml(hWords, '가로');
+        vBox.innerHTML = buildHtml(vWords, '세로');
+
+        document.querySelectorAll('.word-number-select').forEach(s => {
+            if (wordNumberMap[s.dataset.wordId]) {
+                s.value = wordNumberMap[s.dataset.wordId];
+            }
+            s.addEventListener('change', function() {
+                const num = this.value;
+                if (num && isDuplicateNumber(num, this.dataset.wordId)) {
+                    alert('이미 사용된 번호입니다.');
+                    this.value = '';
+                    delete wordNumberMap[this.dataset.wordId];
+                    return;
+                }
+                if (num) {
+                    wordNumberMap[this.dataset.wordId] = parseInt(num);
+                } else {
+                    delete wordNumberMap[this.dataset.wordId];
+                }
+                checkConditions(analyzeGrid());
+                setTimeout(sortWordListsByNumber, 50);
+            });
+        });
+    }
+
+    function isDuplicateNumber(num, currentId) {
+        return Array.from(document.querySelectorAll('.word-number-select'))
+            .some(s => s.dataset.wordId !== currentId && s.value === num);
+    }
+
+    function highlightWord(sx, sy, ex, ey) {
+        removeHighlights();
+        const cells = document.querySelectorAll('.grid-cell');
+        for (let y = sy; y <= ey; y++)
+            for (let x = sx; x <= ex; x++) {
+                const idx = y * gridSize + x;
+                if (cells[idx]) cells[idx].classList.add('highlighted-focus');
+            }
+    }
+
+    function removeHighlights() {
+        document.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('highlighted', 'highlighted-focus'));
+    }
+
+    function sortWordListsByNumber() {
+        ['horizontalWordList', 'verticalWordList'].forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (!container || container.children.length <= 1) return;
+            const items = Array.from(container.querySelectorAll('.word-position-item'));
+            items.sort((a, b) => {
+                const na = parseInt(a.querySelector('.word-number-select')?.value) || 999;
+                const nb = parseInt(b.querySelector('.word-number-select')?.value) || 999;
+                return na - nb;
+            });
+            items.forEach(item => container.appendChild(item));
+        });
+    }
+
+    // ========== Conditions ==========
+    function checkConditions(positions) {
+        if (!positions) positions = analyzeGrid();
+        const wc = positions.length;
+        const ic = countIntersections(positions);
+        const saveBtn = document.getElementById('btnSaveTemplate');
+        const check = document.getElementById('conditionCheck');
+        const details = document.getElementById('conditionDetails');
+
+        if (!levelConditions) {
+            check.style.display = 'none';
+            saveBtn.disabled = true;
+            return;
+        }
+
+        const wcOk = wc === levelConditions.wordCount;
+        const icOk = ic >= levelConditions.intersectionCount;
+        details.innerHTML = `${wcOk ? '✅' : '⚠️'} 단어: ${wc}개 (기준 ${levelConditions.wordCount}개)<br>${icOk ? '✅' : '⚠️'} 교차: ${ic}개 (최소 ${levelConditions.intersectionCount}개)`;
+        check.className = `alert mt-1 ${wc >= 2 ? 'alert-info' : 'alert-danger'}`;
+        check.style.display = 'block';
+        saveBtn.disabled = wc < 2;
+    }
+
+    // ========== Level ==========
+    function loadLevels() {
+        $.ajax({
+            url: '/K-CrossWord/admin/api/level-management/levels-ajax',
+            data: { start: 0, length: 100, orderColumn: 'level', orderDir: 'asc' },
+            success: function(r) {
+                const sel = $('#levelSelect').empty().append('<option value="">레벨 선택</option>');
+                if (r.data) r.data.forEach(l => sel.append(`<option value="${l.id}">레벨 ${l.level}</option>`));
+            },
+            error: function() {
+                const sel = $('#levelSelect').empty().append('<option value="">레벨 선택</option>');
+                for (let i = 1; i <= 30; i++) sel.append(`<option value="${i}">레벨 ${i}</option>`);
+            }
+        });
+    }
+
+    function fetchLevelConditions(levelId) {
+        fetch('/K-CrossWord/admin/api/level-management/level/' + levelId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    levelConditions = data.data;
+                    document.getElementById('reqWordCount').textContent = levelConditions.wordCount;
+                    document.getElementById('reqIntersection').textContent = levelConditions.intersectionCount;
+                    document.getElementById('reqWordDiff').textContent = levelConditions.wordDifficulty;
+                    document.getElementById('reqHintDiff').textContent = levelConditions.hintDifficulty;
+                    document.getElementById('levelConditionsInfo').style.display = 'block';
+                    checkConditions();
+                }
+            })
+            .catch(() => alert('레벨 정보를 가져올 수 없습니다.'));
+    }
+
+    function hideLevelInfo() {
+        levelConditions = null;
+        document.getElementById('levelConditionsInfo').style.display = 'none';
+        checkConditions();
+    }
+
+    /**
+     * 모든 번호 드롭다운의 현재 값을 wordNumberMap 에 동기화.
+     * change 이벤트 누락에도 안전하게 최신 상태를 보장한다.
+     */
+    function captureWordNumbers() {
+        wordNumberMap = {};
+        document.querySelectorAll('.word-number-select').forEach(s => {
+            if (s.value) {
+                wordNumberMap[s.dataset.wordId] = parseInt(s.value);
+            }
+        });
+    }
+
+    // ========== Save Template ==========
+    function saveTemplate() {
+        const title = document.getElementById('puzzleTitle').value.trim();
+        if (!title) { alert('퍼즐 주제를 입력해주세요.'); document.getElementById('puzzleTitle').focus(); return; }
+        if (!levelConditions || levelConditions.id == null) {
+            alert('레벨을 선택해주세요.');
+            document.getElementById('levelSelect').focus();
+            return;
+        }
+
+        // 저장 직전에 모든 드롭다운 값을 확실히 캡처
+        captureWordNumbers();
+
+        const positions = analyzeGrid();
+        const intersections = countIntersections(positions);
+
+        const finalPositions = positions.map(w => {
+            const copy = {...w};
+            if (wordNumberMap[w.id]) copy.id = wordNumberMap[w.id];
+            return copy;
+        });
+
+        const data = {
+            levelId: levelConditions.id,
+            templateName: title,
+            gridWidth: gridSize,
+            gridHeight: gridSize,
+            wordCount: positions.length,
+            intersectionCount: intersections,
+            difficultyRating: levelConditions ? (levelConditions.wordDifficulty || 1) : 1,
+            description: title,
+            category: 'manual-puzzle',
+            gridPattern: JSON.stringify(currentGrid),
+            wordPositions: JSON.stringify(finalPositions)
+        };
+
+        $.ajax({
+            url: '/K-CrossWord/admin/api/manual-puzzle/template',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: function(r) {
+                if (r.success) {
+                    savedTemplateId = r.data.id;
+                    document.getElementById('savedTemplateId').textContent = r.data.id;
+                    document.getElementById('savedTemplateName').textContent = r.data.templateName;
+                    document.getElementById('savedTemplateTitle').textContent = title;
+                    document.getElementById('gameLink').href = '/K-CrossWord/manual-game?puzzleId=' + encodeURIComponent(r.data.id);
+                    document.getElementById('savedTemplateInfo').style.display = 'block';
+                    renderManualSlots();
+                    document.getElementById('step2Section').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('저장 실패: ' + (r.error || r.message || '알 수 없는 오류'));
+                }
+            },
+            error: function(xhr) {
+                let msg = '저장 중 오류가 발생했습니다.';
+                try { const e = JSON.parse(xhr.responseText); msg = e.error || e.message || msg; } catch(ex) {}
+                alert(msg);
+            }
+        });
+    }
+
+    // ========== Manual Slot Rendering ==========
+    /**
+     * STEP2 슬롯 목록을 렌더링.
+     * STEP1 드롭다운의 현재 상태(wordNumberMap)를 그대로 반영한다.
+     */
+    function renderManualSlots() {
+        // 렌더 직전에 STEP1 드롭다운 현재값 재캡처 (안전장치)
+        captureWordNumbers();
+
+        const positions = analyzeGrid();
+        manualSlotData = {};
+        const container = document.getElementById('manualSlotList');
+
+        if (positions.length === 0) {
+            container.innerHTML = '<div class="alert alert-warning text-center">그리드에 단어 슬롯이 없습니다.</div>';
+            document.getElementById('btnPublishGame').disabled = true;
+            return;
+        }
+
+        // wordNumberMap 에서 사용자 지정 번호 적용; 없으면 원래 id 사용
+        const numberedPositions = positions.map((pos, idx) => {
+            const mapped = wordNumberMap[pos.id];
+            const displayNum = (mapped !== undefined && mapped !== null) ? mapped : pos.id;
+            return { ...pos, displayNum, idx };
+        });
+        numberedPositions.sort((a, b) => a.displayNum - b.displayNum);
+
+        container.innerHTML = numberedPositions.map(pos => {
+            const dir = pos.direction === 'horizontal' ? '가로' : '세로';
+            const dirColor = pos.direction === 'horizontal' ? '#4caf50' : '#ff9800';
+            return `
+                <div class="d-flex align-items-center p-1 mb-1 border rounded" id="slot-${pos.idx}" style="border-left:4px solid ${dirColor} !important; font-size:12px;">
+                    <div style="min-width:32px;" class="text-center">
+                        <span class="badge bg-secondary" style="font-size:11px;">${pos.displayNum}</span>
+                    </div>
+                    <div style="min-width:90px;">
+                        <small class="text-muted">${dir} ${pos.length}칸</small>
+                        <small class="text-muted d-block">(${pos.start_x},${pos.start_y})→(${pos.end_x},${pos.end_y})</small>
+                    </div>
+                    <div class="flex-grow-1 mx-1">
+                        <span id="slot-word-${pos.idx}" class="fw-bold text-muted">미배치</span>
+                        <span id="slot-hint-${pos.idx}" class="small text-muted ms-1"></span>
+                    </div>
+                    <button class="btn btn-sm btn-primary py-0 px-2" onclick="openSlotSearch(${pos.idx})" style="font-size:11px;">
+                        <i class="fas fa-search me-1"></i>검색
+                    </button>
+                    <button class="btn btn-sm btn-warning ms-1 py-0 px-2" onclick="openSlotRefine(${pos.idx})" style="display:none; font-size:11px;" id="slot-refine-${pos.idx}">
+                        <i class="fas fa-edit me-1"></i>정제
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger ms-1 py-0 px-1" onclick="clearSlot(${pos.idx})" style="display:none; font-size:11px;" id="slot-clear-${pos.idx}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+        }).join('');
+
+        updatePublishButton();
+    }
+
+    function updatePublishButton() {
+        const positions = analyzeGrid();
+        const filled = Object.keys(manualSlotData).length;
+        const total = positions.length;
+        document.getElementById('publishStatus').textContent = `${filled} / ${total} 슬롯 배치됨`;
+        document.getElementById('btnPublishGame').disabled = (filled === 0);
+    }
+
+    function setSlotData(idx, word, hint, pzWordId) {
+        const positions = analyzeGrid();
+        manualSlotData[idx] = { word, hint, pz_word_id: pzWordId || null, position: positions[idx] };
+
+        const wordEl = document.getElementById('slot-word-' + idx);
+        const hintEl = document.getElementById('slot-hint-' + idx);
+        const clearBtn = document.getElementById('slot-clear-' + idx);
+        const slotEl = document.getElementById('slot-' + idx);
+
+        if (wordEl) { wordEl.textContent = word; wordEl.classList.remove('text-muted'); wordEl.classList.add('text-dark'); }
+        if (hintEl) hintEl.textContent = hint ? `| ${hint}` : '';
+        if (clearBtn) clearBtn.style.display = 'inline-block';
+        if (slotEl) slotEl.style.backgroundColor = '#f0fff0';
+        const refineBtn = document.getElementById('slot-refine-' + idx);
+        if (refineBtn) refineBtn.style.display = 'inline-block';
+
+        updatePublishButton();
+    }
+
+    function clearSlot(idx) {
+        delete manualSlotData[idx];
+
+        const wordEl = document.getElementById('slot-word-' + idx);
+        const hintEl = document.getElementById('slot-hint-' + idx);
+        const clearBtn = document.getElementById('slot-clear-' + idx);
+        const slotEl = document.getElementById('slot-' + idx);
+        const refineBtn = document.getElementById('slot-refine-' + idx);
+
+        if (wordEl) { wordEl.textContent = '미배치'; wordEl.classList.remove('text-dark'); wordEl.classList.add('text-muted'); }
+        if (hintEl) hintEl.textContent = '';
+        if (clearBtn) clearBtn.style.display = 'none';
+        if (refineBtn) refineBtn.style.display = 'none';
+        if (slotEl) slotEl.style.backgroundColor = '';
+
+        updatePublishButton();
+    }
+
+    // ========== Slot Refine (단어정제) ==========
+    function openSlotRefine(idx) {
+        const data = manualSlotData[idx];
+        if (!data || !data.pz_word_id) {
+            alert('배치된 단어가 없거나 pz_word_id가 없습니다.');
+            return;
+        }
+        const pzWordId = data.pz_word_id;
+        fetch('/K-CrossWord/admin/api/hint-generator/word/' + pzWordId + '/hints')
+            .then(r => r.json())
+            .then(result => {
+                if (!result.success) { alert('단어 정보를 불러올 수 없습니다.'); return; }
+                const word = result.word || {};
+                const hints = result.hints || [];
+
+                document.getElementById('refineWord').textContent = word.word || data.word;
+                document.getElementById('refinePzWordId').value = pzWordId;
+                document.getElementById('refineSlotIdx').value = idx;
+                document.getElementById('refineDifficulty').value = word.difficulty || 1;
+
+                const container = document.getElementById('refineHintsContainer');
+                container.innerHTML = '';
+                if (hints.length === 0) {
+                    container.innerHTML = '<p class="text-muted small">등록된 힌트가 없습니다.</p>';
+                } else {
+                    hints.forEach((h, i) => {
+                        container.innerHTML += `
+                            <div class="mb-2 p-2 border rounded refine-hint-row" data-hint-id="${h.id}">
+                                <div class="d-flex gap-2 align-items-center">
+                                    <input type="text" class="form-control form-control-sm refine-hint-text" value="${escapeHtml(h.hint_text || '')}" style="flex:3;">
+                                    <select class="form-select form-select-sm refine-hint-diff" style="flex:1;">
+                                        <option value="1" ${h.difficulty==1?'selected':''}>쉬움</option>
+                                        <option value="2" ${h.difficulty==2?'selected':''}>보통</option>
+                                        <option value="3" ${h.difficulty==3?'selected':''}>어려움</option>
+                                    </select>
+                                    <div class="form-check" style="flex:0 0 auto;">
+                                        <input class="form-check-input refine-hint-primary" type="checkbox" ${h.is_primary?'checked':''}>
+                                        <label class="form-check-label small">기본</label>
+                                    </div>
+                                </div>
+                            </div>`;
+                    });
+                }
+                new bootstrap.Modal(document.getElementById('slotRefineModal')).show();
+            })
+            .catch(err => alert('힌트 조회 오류: ' + err.message));
+    }
+
+    function addRefineHintRow() {
+        const container = document.getElementById('refineHintsContainer');
+        const id = 'new_' + Date.now();
+        container.innerHTML += `
+            <div class="mb-2 p-2 border rounded refine-hint-row" data-hint-id="${id}">
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="text" class="form-control form-control-sm refine-hint-text" placeholder="힌트 입력" style="flex:3;">
+                    <select class="form-select form-select-sm refine-hint-diff" style="flex:1;">
+                        <option value="1">쉬움</option><option value="2" selected>보통</option><option value="3">어려움</option>
+                    </select>
+                    <div class="form-check" style="flex:0 0 auto;">
+                        <input class="form-check-input refine-hint-primary" type="checkbox">
+                        <label class="form-check-label small">기본</label>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="this.closest('.refine-hint-row').remove()"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`;
+    }
+
+    function saveSlotRefine() {
+        const pzWordId = document.getElementById('refinePzWordId').value;
+        const slotIdx = document.getElementById('refineSlotIdx').value;
+        const difficulty = document.getElementById('refineDifficulty').value;
+        const hints = [];
+        document.querySelectorAll('#refineHintsContainer .refine-hint-row').forEach(row => {
+            const text = row.querySelector('.refine-hint-text').value.trim();
+            if (!text) return;
+            hints.push({
+                id: row.dataset.hintId,
+                hint_text: text,
+                difficulty: parseInt(row.querySelector('.refine-hint-diff').value),
+                is_primary: row.querySelector('.refine-hint-primary').checked
+            });
+        });
+
+        fetch('/K-CrossWord/admin/api/hint-generator/word/' + pzWordId + '/refine', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wordId: parseInt(pzWordId), difficulty: parseInt(difficulty), hints: hints })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('단어 정제가 완료되었습니다.');
+                if (manualSlotData[slotIdx] && hints.length > 0) {
+                    const primary = hints.find(h => h.is_primary) || hints[0];
+                    manualSlotData[slotIdx].hint = primary.hint_text;
+                    const hintEl = document.getElementById('slot-hint-' + slotIdx);
+                    if (hintEl) hintEl.textContent = '| ' + primary.hint_text;
+                }
+                bootstrap.Modal.getInstance(document.getElementById('slotRefineModal')).hide();
+            } else {
+                alert('정제 실패: ' + (data.message || ''));
+            }
+        })
+        .catch(err => alert('정제 오류: ' + err.message));
+    }
+
+    // ========== Slot Search Modal ==========
+    let currentSearchSlotIdx = null;
+
+    function openSlotSearch(idx) {
+        currentSearchSlotIdx = idx;
+        const positions = analyzeGrid();
+        const pos = positions[idx];
+        const dir = pos.direction === 'horizontal' ? '가로' : '세로';
+        const displayNum = wordNumberMap[pos.id] || pos.id;
+
+        document.getElementById('searchSlotInfo').value = `#${displayNum}  (${pos.start_x},${pos.start_y})→(${pos.end_x},${pos.end_y})`;
+        document.getElementById('searchSlotLength').value = pos.length;
+        document.getElementById('searchDirection').value = dir;
+        document.getElementById('wordSearchInput').value = '';
+        document.getElementById('wordSearchLengthLock').checked = true;
+        document.getElementById('directWordInput').value = manualSlotData[idx]?.word || '';
+        document.getElementById('hintEasy').value = '';
+        document.getElementById('hintNormal').value = '';
+        document.getElementById('hintHard').value = '';
+        document.getElementById('directSaveResult').innerHTML = '';
+        document.getElementById('wordSearchResults').innerHTML = '<p class="text-muted text-center py-2 small">검색 버튼을 클릭하세요</p>';
+
+        // 첫 번째 탭 활성화
+        const tabEl = document.querySelector('#tabDbSearch');
+        if (tabEl) {
+            const tab = new bootstrap.Tab(document.querySelector('a[href="#tabDbSearch"]'));
+            tab.show();
+        }
+
+        new bootstrap.Modal(document.getElementById('wordSearchModal')).show();
+        setTimeout(() => doWordSearch(), 200);
+    }
+
+    function doWordSearch() {
+        const keyword = document.getElementById('wordSearchInput').value.trim();
+        const lockLength = document.getElementById('wordSearchLengthLock').checked;
+        const slotLength = parseInt(document.getElementById('searchSlotLength').value, 10);
+        const length = lockLength ? slotLength : null;
+
+        document.getElementById('wordSearchLoading').style.display = 'block';
+        document.getElementById('wordSearchResults').innerHTML = '';
+
+        const params = new URLSearchParams();
+        if (length) params.set('length', length);
+        if (keyword) params.set('keyword', keyword);
+        params.set('limit', '30');
+
+        fetch('/K-CrossWord/admin/api/manual-puzzle/search-words?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('wordSearchLoading').style.display = 'none';
+                if (!data.success || !data.words || data.words.length === 0) {
+                    document.getElementById('wordSearchResults').innerHTML = '<p class="text-muted text-center py-2">검색 결과가 없습니다.</p>';
+                    return;
+                }
+                renderSearchResults(data.words, slotLength);
+            })
+            .catch(err => {
+                document.getElementById('wordSearchLoading').style.display = 'none';
+                document.getElementById('wordSearchResults').innerHTML = `<p class="text-danger text-center">오류: ${escapeHtml(err.message)}</p>`;
+            });
+    }
+
+    function renderSearchResults(words, slotLength) {
+        const container = document.getElementById('wordSearchResults');
+        container.innerHTML = words.map(w => {
+            const lengthMatch = w.length === slotLength;
+            const matchBadge = lengthMatch ? '<span class="badge bg-success ms-1" style="font-size:10px;">OK</span>' : `<span class="badge bg-warning text-dark ms-1" style="font-size:10px;">${w.length}자</span>`;
+            return `
+                <div class="d-flex align-items-center p-1 mb-1 border rounded ${lengthMatch ? '' : 'opacity-75'}" style="cursor:pointer; font-size:12px;"
+                     onclick="pickSearchResult(${w.pz_word_id}, '${escapeHtml(w.word)}', '${escapeHtml(w.hint || '')}', ${w.length})">
+                    <div class="flex-grow-1">
+                        <strong>${escapeHtml(w.word)}</strong> ${matchBadge}
+                    </div>
+                    <div class="text-muted small text-end" style="max-width:45%;">${w.hint ? escapeHtml(w.hint) : ''}</div>
+                </div>`;
+        }).join('');
+    }
+
+    function pickSearchResult(pzWordId, word, hint, length) {
+        const slotLength = parseInt(document.getElementById('searchSlotLength').value, 10);
+        if (length !== slotLength) {
+            if (!confirm(`슬롯 길이(${slotLength}칸)와 단어 길이(${length}자)가 다릅니다. 선택하시겠습니까?`)) return;
+        }
+
+        setSlotData(currentSearchSlotIdx, word, hint, pzWordId);
+
+        const modalEl = document.getElementById('wordSearchModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+
+    // ========== AI Hint Generation ==========
+    function generateAiHints() {
+        const word = document.getElementById('directWordInput').value.trim();
+        if (!word) { alert('단어를 입력하세요.'); document.getElementById('directWordInput').focus(); return; }
+
+        document.getElementById('aiHintLoading').style.display = 'block';
+        document.getElementById('hintEasy').value = '';
+        document.getElementById('hintNormal').value = '';
+        document.getElementById('hintHard').value = '';
+
+        const title = document.getElementById('puzzleTitle').value.trim() || '일반';
+
+        fetch('/K-CrossWord/admin/api/manual-puzzle/generate-ai-hints', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ word: word, category: title })
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('aiHintLoading').style.display = 'none';
+            if (data.success && data.hints) {
+                const hints = data.hints;
+                if (hints['1'] && hints['1'].hint) document.getElementById('hintEasy').value = hints['1'].hint;
+                if (hints['2'] && hints['2'].hint) document.getElementById('hintNormal').value = hints['2'].hint;
+                if (hints['3'] && hints['3'].hint) document.getElementById('hintHard').value = hints['3'].hint;
+            } else {
+                alert('AI 힌트 생성 실패: ' + (data.message || data.error || '알 수 없는 오류'));
+            }
+        })
+        .catch(err => {
+            document.getElementById('aiHintLoading').style.display = 'none';
+            alert('AI 힌트 생성 오류: ' + err.message);
+        });
+    }
+
+    // ========== Save Direct Word (pz_words + pz_hints) ==========
+    function saveDirectWord() {
+        const word = document.getElementById('directWordInput').value.trim();
+        const slotLength = parseInt(document.getElementById('searchSlotLength').value, 10);
+
+        if (!word) { alert('단어를 입력하세요.'); return; }
+        if (!/^[가-힣]+$/.test(word)) { alert('한글 단어만 입력 가능합니다.'); return; }
+        if (word.length !== slotLength) {
+            if (!confirm(`슬롯 길이(${slotLength}칸)와 입력 길이(${word.length}자)가 다릅니다. 그래도 저장하시겠습니까?`)) return;
+        }
+
+        const hintEasy = document.getElementById('hintEasy').value.trim();
+        const hintNormal = document.getElementById('hintNormal').value.trim();
+        const hintHard = document.getElementById('hintHard').value.trim();
+
+        if (!hintEasy && !hintNormal && !hintHard) {
+            if (!confirm('힌트가 모두 비어있습니다. 힌트 없이 저장하시겠습니까?')) return;
+        }
+
+        const resultDiv = document.getElementById('directSaveResult');
+        resultDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 저장 중...';
+
+        fetch('/K-CrossWord/admin/api/manual-puzzle/save-manual-word', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                word: word,
+                template_id: savedTemplateId,
+                hints: { easy: hintEasy, normal: hintNormal, hard: hintHard }
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                resultDiv.innerHTML = `<div class="alert alert-success py-1">저장 완료! pz_word_id: ${data.pz_word_id}, cat2: ${data.cat2}</div>`;
+
+                const primaryHint = hintEasy || hintNormal || hintHard || '';
+                setSlotData(currentSearchSlotIdx, word, primaryHint, data.pz_word_id);
+
+                setTimeout(() => {
+                    const modalEl = document.getElementById('wordSearchModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }, 800);
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger py-1">저장 실패: ${escapeHtml(data.message)}</div>`;
+            }
+        })
+        .catch(err => {
+            resultDiv.innerHTML = `<div class="alert alert-danger py-1">오류: ${escapeHtml(err.message)}</div>`;
+        });
+    }
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // ========== Publish Game ==========
+    function publishGame() {
+        if (!savedTemplateId) { alert('먼저 템플릿을 저장해주세요.'); return; }
+        const filled = Object.keys(manualSlotData);
+        if (filled.length === 0) { alert('최소 1개 이상 단어를 배치해주세요.'); return; }
+
+        captureWordNumbers();
+        const title = document.getElementById('puzzleTitle').value.trim() || '수동 퍼즐';
+        const positions = analyzeGrid();
+        const total = positions.length;
+        const unfilled = total - filled.length;
+
+        let msg = `"${title}" 퍼즐을 게임으로 발행하시겠습니까?\n배치: ${filled.length}/${total} 슬롯`;
+        if (unfilled > 0) msg += `\n\n⚠️ ${unfilled}개 슬롯이 비어있습니다.`;
+        if (!confirm(msg)) return;
+
+        const filledWithNum = filled.map(idx => {
+            const d = manualSlotData[idx];
+            const pos = positions[idx];
+            const mapped = wordNumberMap[pos.id];
+            const displayNum = (mapped !== undefined && mapped !== null) ? mapped : pos.id;
+            return { idx, displayNum, d };
+        });
+        filledWithNum.sort((a, b) => a.displayNum - b.displayNum);
+
+        const wordOrder = filledWithNum.map(item => {
+            return {
+                extracted_word: item.d.word,
+                hint: item.d.hint || '힌트 없음',
+                position: item.d.position,
+                matched_pz_word_id: item.d.pz_word_id,
+                display_num: item.displayNum
+            };
+        });
+
+        const snapshotData = { word_order: wordOrder, grid_info: { pattern: currentGrid } };
+        extractedWordsData = snapshotData;
+
+        fetch('/K-CrossWord/admin/api/manual-puzzle/template/' + savedTemplateId + '/extracted-words-snapshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ extracted_words: snapshotData })
+        })
+        .then(r => r.json())
+        .then(() => {
+            return fetch('/K-CrossWord/admin/api/manual-puzzle/publish-game', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ template_id: savedTemplateId, title: title })
+            });
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('게임이 발행되었습니다!\npuzzleId: ' + data.puzzle_id);
+                document.getElementById('gameLink').href = '/K-CrossWord/manual-game?puzzleId=' + data.puzzle_id;
+                document.getElementById('savedTemplateInfo').style.display = 'block';
+                document.getElementById('savedTemplateInfo').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                alert('게임 발행 실패: ' + (data.message || '알 수 없는 오류'));
+            }
+        })
+        .catch(err => alert('게임 발행 오류: ' + err.message));
+    }
+
+    </script>
+</body>
+</html>

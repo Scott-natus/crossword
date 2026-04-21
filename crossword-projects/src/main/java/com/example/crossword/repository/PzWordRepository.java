@@ -42,9 +42,9 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
     List<PzWord> findByLengthRangeAndIsActiveTrue(@Param("minLength") Integer minLength, @Param("maxLength") Integer maxLength);
     
     /**
-     * 단어로 조회
+     * 단어로 조회 (중복 시 첫 번째 반환)
      */
-    Optional<PzWord> findByWordAndIsActiveTrue(String word);
+    Optional<PzWord> findFirstByWordAndIsActiveTrue(String word);
     
     /**
      * 단어와 카테고리로 조회 (중복 체크용)
@@ -375,5 +375,33 @@ public interface PzWordRepository extends JpaRepository<PzWord, Integer> {
      */
     @Query(value = "SELECT * FROM pz_words WHERE length = :length AND difficulty IN :difficulties AND is_active = true AND SUBSTRING(word, :position1, 1) = :syllable1 AND SUBSTRING(word, :position2, 1) = :syllable2 ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     PzWord findByLengthAndDifficultyWithTwoSyllablesNoExclude(@Param("length") Integer length, @Param("difficulties") List<Integer> difficulties, @Param("position1") Integer position1, @Param("syllable1") String syllable1, @Param("position2") Integer position2, @Param("syllable2") String syllable2);
+
+    // ===== 수동 퍼즐 단어 검색 =====
+
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND is_active = true AND LOWER(word) LIKE LOWER(:keyword) ORDER BY word LIMIT :lim", nativeQuery = true)
+    List<PzWord> findByLengthAndKeyword(@Param("length") Integer length, @Param("keyword") String keyword, @Param("lim") int lim);
+
+    @Query(value = "SELECT * FROM pz_words WHERE is_active = true AND LOWER(word) LIKE LOWER(:keyword) ORDER BY word LIMIT :lim", nativeQuery = true)
+    List<PzWord> findByKeyword(@Param("keyword") String keyword, @Param("lim") int lim);
+
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND is_active = true ORDER BY RANDOM() LIMIT :lim", nativeQuery = true)
+    List<PzWord> findByLengthForSearch(@Param("length") Integer length, @Param("lim") int lim);
+
+    // ===== 난이도 제약 없는 fallback 쿼리 =====
+
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND is_active = true ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthAndIsActiveTrueRandom(@Param("length") Integer length);
+
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND is_active = true AND SUBSTRING(word, :position, 1) = :syllable ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthWithSyllableNoExclude(@Param("length") Integer length, @Param("position") Integer position, @Param("syllable") String syllable);
+
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND is_active = true AND word NOT IN :usedWords AND SUBSTRING(word, :position, 1) = :syllable ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthWithSyllable(@Param("length") Integer length, @Param("usedWords") List<String> usedWords, @Param("position") Integer position, @Param("syllable") String syllable);
+
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND is_active = true AND SUBSTRING(word, :position1, 1) = :syllable1 AND SUBSTRING(word, :position2, 1) = :syllable2 ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthWithTwoSyllablesNoExclude(@Param("length") Integer length, @Param("position1") Integer position1, @Param("syllable1") String syllable1, @Param("position2") Integer position2, @Param("syllable2") String syllable2);
+
+    @Query(value = "SELECT * FROM pz_words WHERE length = :length AND is_active = true AND word NOT IN :usedWords AND SUBSTRING(word, :position1, 1) = :syllable1 AND SUBSTRING(word, :position2, 1) = :syllable2 ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    PzWord findByLengthWithTwoSyllables(@Param("length") Integer length, @Param("usedWords") List<String> usedWords, @Param("position1") Integer position1, @Param("syllable1") String syllable1, @Param("position2") Integer position2, @Param("syllable2") String syllable2);
 
 }

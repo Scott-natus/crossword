@@ -101,7 +101,7 @@ public interface WordRepository extends JpaRepository<Word, Integer> {
     /**
      * 단어명으로 정확히 일치하는 단어 조회
      */
-    Optional<Word> findByWordAndIsActiveTrue(String word);
+    Optional<Word> findFirstByWordAndIsActiveTrue(String word);
     
     /**
      * 단어명에 특정 문자열이 포함된 단어 조회

@@ -12,9 +12,10 @@ from playwright_stealth import Stealth
 
 # --- 기본값 ---
 DEFAULT_SEARCH_QUERY = "best shorts"
-# URL sp는 검색과 조합 시 레이아웃이 바뀌어 쇼츠 링크가 사라지는 경우가 있음(예: CAMSAhAB).
-# 인기도·쇼츠·기간은 기본적으로 UI 필터로 적용하고, 필요 시 브라우저에서 복사한 sp만 YOUTUBE_SEARCH_SP 로 지정.
-DEFAULT_SEARCH_SP = ""
+# --no-ui-filters(배치 기본)일 때 검색 URL에 붙는 sp.
+# (직렬화된 필터: 쇼츠·기간 등 — UI 없이도 동일 조건에 가깝게 맞춤)
+# 비우려면 YOUTUBE_SEARCH_SP="" 또는 --sp ""
+DEFAULT_SEARCH_SP = "CAMSBAgCEAk%253D"
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -342,7 +343,7 @@ def main() -> None:
     parser.add_argument(
         "--sp",
         default=os.environ.get("YOUTUBE_SEARCH_SP", DEFAULT_SEARCH_SP),
-        help="URL에 붙일 sp (선택). 빈 값 권장 — UI 필터 실패 시에만 사용",
+        help="URL에 붙일 sp (--no-ui-filters 시 필수에 가깝). 기본: 브라우저 필터 직렬값. 끄려면 빈 문자열.",
     )
     parser.add_argument(
         "--use-cookies",

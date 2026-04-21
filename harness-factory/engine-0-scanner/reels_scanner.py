@@ -1,7 +1,8 @@
 """
 Instagram Reels URL 수집 (Engine-0 확장)
 
-- 해시태그 탐색(/explore/tags/{tag}/) 또는 직접 시작 URL(--url)에서 /reel/{shortcode}/ 링크를 스크롤 수집.
+- **탐색(돋보기) 피드** (`--explore`): 앱에서 돋보기로 들어갈 때와 같이 /explore/ 큐레이션·인기도에 가까운 순서로 노출되는 경우가 많음 (URL로 정렬을 고정하진 않음).
+- **해시태그** (/explore/tags/{tag}/) 또는 **직접 URL** (--url)에서 /reel/{shortcode}/ 링크를 스크롤 수집.
 - 인스타는 비로그인·데이터센터 IP에서 차단되거나 로그인 유도가 잦음 → instagram_cookies.json 권장.
 """
 
@@ -20,6 +21,8 @@ from playwright_stealth import Stealth
 
 DEFAULT_TAG = "reels"
 DEFAULT_MAX = 100
+# 웹: 검색(돋보기) 탭과 동일 계열 — 추천·인기 큐레이션 피드 (해시태그 최신순과 다름)
+EXPLORE_URL = "https://www.instagram.com/explore/"
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -105,12 +108,14 @@ async def scrape_instagram_reels(
     start_url: str,
     max_target: int,
     cookies_path: str | None,
+    entry_kind: str = "custom",
 ) -> None:
     async with async_playwright() as p:
         print("\n" + "=" * 50)
         print("[*] Engine-0: Instagram Reels URL 수집")
         print("=" * 50)
         print(f"    시작 URL: {start_url}")
+        print(f"    진입 방식: {entry_kind}")
         print(f"    쿠키 파일: {cookies_path or '(없음)'}")
 
         browser = await p.chromium.launch(
@@ -210,6 +215,7 @@ async def scrape_instagram_reels(
                 json.dump(
                     {
                         "mode": "instagram_reels",
+                        "entry_kind": entry_kind,
                         "entry_url": start_url,
                         "count": len(results),
                         "items": results,
@@ -231,12 +237,17 @@ def main() -> None:
     g.add_argument(
         "--tag",
         default=os.environ.get("INSTAGRAM_TAG", DEFAULT_TAG),
-        help="해시태그( # 없이 ). explore/tags/{tag}/ 로 이동",
+        help="해시태그( # 없이 ). explore/tags/{tag}/ 로 이동 (--explore·--url 과 배타)",
+    )
+    g.add_argument(
+        "--explore",
+        action="store_true",
+        help=f"탐색(돋보기) 피드 {EXPLORE_URL} 로 이동 (인기·추천 큐레이션에 가까운 노출)",
     )
     g.add_argument(
         "--url",
         default=None,
-        help="시작 URL 직접 지정 (태그보다 우선)",
+        help="시작 URL 직접 지정 (최우선)",
     )
     parser.add_argument(
         "--max",
@@ -256,10 +267,18 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    use_explore = bool(
+        args.explore or _env_bool("INSTAGRAM_USE_EXPLORE", False)
+    )
     if args.url:
         start_url = args.url
+        entry_kind = "custom"
+    elif use_explore:
+        start_url = EXPLORE_URL
+        entry_kind = "explore"
     else:
         start_url = build_tag_explore_url(args.tag)
+        entry_kind = "tag"
 
     cookies_path = None if args.no_cookies else (args.cookies or None)
 
@@ -268,6 +287,7 @@ def main() -> None:
             start_url=start_url,
             max_target=args.max,
             cookies_path=cookies_path,
+            entry_kind=entry_kind,
         )
     )
 

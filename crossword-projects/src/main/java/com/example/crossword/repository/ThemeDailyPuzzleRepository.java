@@ -57,6 +57,11 @@ public interface ThemeDailyPuzzleRepository extends JpaRepository<ThemeDailyPuzz
     void deactivateByThemeAndDate(@Param("theme") String theme, @Param("puzzleDate") LocalDate puzzleDate);
     
     /**
+     * puzzleId로 활성 퍼즐 조회 (수동 퍼즐 게임 접근용)
+     */
+    Optional<ThemeDailyPuzzle> findByPuzzleIdAndIsActive(Integer puzzleId, Boolean isActive);
+
+    /**
      * 모든 테마의 특정 날짜 퍼즐 조회
      */
     List<ThemeDailyPuzzle> findByPuzzleDateAndIsActive(LocalDate puzzleDate, Boolean isActive);
@@ -68,4 +73,16 @@ public interface ThemeDailyPuzzleRepository extends JpaRepository<ThemeDailyPuzz
     @Transactional
     @Query("UPDATE ThemeDailyPuzzle t SET t.isActive = false WHERE t.puzzleDate = :puzzleDate")
     void deactivateByDate(@Param("puzzleDate") LocalDate puzzleDate);
+
+    /**
+     * 수동 퍼즐 목록 조회 (theme이 'MANUAL-'로 시작하는 것들)
+     */
+    @Query("SELECT t FROM ThemeDailyPuzzle t WHERE t.theme LIKE 'MANUAL-%' ORDER BY t.createdAt DESC")
+    List<ThemeDailyPuzzle> findAllManualPuzzles();
+
+    /**
+     * 활성 수동 퍼즐 목록 조회
+     */
+    @Query("SELECT t FROM ThemeDailyPuzzle t WHERE t.theme LIKE 'MANUAL-%' AND t.isActive = true ORDER BY t.createdAt DESC")
+    List<ThemeDailyPuzzle> findActiveManualPuzzles();
 }

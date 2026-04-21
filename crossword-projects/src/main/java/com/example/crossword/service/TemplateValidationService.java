@@ -50,9 +50,9 @@ public class TemplateValidationService {
                 return result;
             }
             
-            // 2. 레벨 정보 조회 및 검증
-            Integer levelId = (Integer) templateData.get("level_id");
-            PzLevel level = pzLevelRepository.findById(levelId.longValue()).orElse(null);
+            // 2. 레벨 정보 조회 및 검증 (level_id는 puzzle_levels PK이거나, 수동 화면 호환을 위해 level 번호일 수 있음)
+            Integer levelId = coerceToInteger(templateData.get("level_id"));
+            PzLevel level = resolveLevel(levelId);
             if (level == null) {
                 errors.add("레벨을 찾을 수 없습니다.");
                 result.put("valid", false);
@@ -60,7 +60,13 @@ public class TemplateValidationService {
                 result.put("warnings", warnings);
                 return result;
             }
-            
+            templateData.put("level_id", Math.toIntExact(level.getId()));
+
+            String category = templateData.get("category") != null
+                    ? templateData.get("category").toString()
+                    : null;
+            boolean manualPuzzle = "manual-puzzle".equalsIgnoreCase(category);
+
             // 3. 그리드 패턴 검증
             @SuppressWarnings("unchecked")
             List<List<Integer>> gridPattern = parseGridPattern((String) templateData.get("grid_pattern"));
@@ -72,11 +78,15 @@ public class TemplateValidationService {
                 errors.addAll(gridErrors);
             }
             
-            // 4. 레벨 조건 검증
-            validateLevelConditions(templateData, level, errors);
-            
-            // 5. 중복 템플릿 검증
-            validateDuplicateTemplate(templateData, levelId, errors);
+            // 4. 레벨 조건 검증 (수동 퍼즐은 자유 그리드이므로 레벨 고정 단어 수·교차점 규칙을 적용하지 않음)
+            if (!manualPuzzle) {
+                validateLevelConditions(templateData, level, errors);
+            }
+
+            // 5. 중복 템플릿 검증 (수동 퍼즐은 동일 패턴 재저장·실험이 잦아 중복 검사 생략)
+            if (!manualPuzzle) {
+                validateDuplicateTemplate(templateData, Math.toIntExact(level.getId()), errors);
+            }
             
             // 6. 경고사항 체크
             checkWarnings(templateData, level, warnings);
@@ -122,8 +132,8 @@ public class TemplateValidationService {
             }
             
             // 2. 레벨 정보 조회 및 검증
-            Integer levelId = (Integer) templateData.get("level_id");
-            PzLevel level = pzLevelRepository.findById(levelId.longValue()).orElse(null);
+            Integer levelId = coerceToInteger(templateData.get("level_id"));
+            PzLevel level = resolveLevel(levelId);
             if (level == null) {
                 errors.add("레벨을 찾을 수 없습니다.");
                 result.put("valid", false);
@@ -131,7 +141,13 @@ public class TemplateValidationService {
                 result.put("warnings", warnings);
                 return result;
             }
-            
+            templateData.put("level_id", Math.toIntExact(level.getId()));
+
+            String category = templateData.get("category") != null
+                    ? templateData.get("category").toString()
+                    : null;
+            boolean manualPuzzle = "manual-puzzle".equalsIgnoreCase(category);
+
             // 3. 그리드 패턴 검증
             @SuppressWarnings("unchecked")
             List<List<Integer>> gridPattern = parseGridPattern((String) templateData.get("grid_pattern"));
@@ -144,7 +160,9 @@ public class TemplateValidationService {
             }
             
             // 4. 레벨 조건 검증
-            validateLevelConditions(templateData, level, errors);
+            if (!manualPuzzle) {
+                validateLevelConditions(templateData, level, errors);
+            }
             
             // 5. 경고사항 체크
             checkWarnings(templateData, level, warnings);
@@ -180,8 +198,8 @@ public class TemplateValidationService {
         if (templateData.get("grid_size") == null) {
             errors.add("그리드 크기는 필수입니다.");
         } else {
-            Integer gridSize = (Integer) templateData.get("grid_size");
-            if (gridSize < 3 || gridSize > 20) {
+            Integer gridSize = coerceToInteger(templateData.get("grid_size"));
+            if (gridSize == null || gridSize < 3 || gridSize > 20) {
                 errors.add("그리드 크기는 3x3부터 20x20까지 가능합니다.");
             }
         }
@@ -197,8 +215,8 @@ public class TemplateValidationService {
         if (templateData.get("word_count") == null) {
             errors.add("단어 수는 필수입니다.");
         } else {
-            Integer wordCount = (Integer) templateData.get("word_count");
-            if (wordCount < 1) {
+            Integer wordCount = coerceToInteger(templateData.get("word_count"));
+            if (wordCount == null || wordCount < 1) {
                 errors.add("단어 수는 1개 이상이어야 합니다.");
             }
         }
@@ -206,8 +224,8 @@ public class TemplateValidationService {
         if (templateData.get("intersection_count") == null) {
             errors.add("교차점 수는 필수입니다.");
         } else {
-            Integer intersectionCount = (Integer) templateData.get("intersection_count");
-            if (intersectionCount < 0) {
+            Integer intersectionCount = coerceToInteger(templateData.get("intersection_count"));
+            if (intersectionCount == null || intersectionCount < 0) {
                 errors.add("교차점 수는 0개 이상이어야 합니다.");
             }
         }
@@ -218,9 +236,12 @@ public class TemplateValidationService {
      * Laravel의 조건 검증 로직과 동일
      */
     private void validateLevelConditions(Map<String, Object> templateData, PzLevel level, List<String> errors) {
-        Integer wordCount = (Integer) templateData.get("word_count");
-        Integer intersectionCount = (Integer) templateData.get("intersection_count");
-        
+        Integer wordCount = coerceToInteger(templateData.get("word_count"));
+        Integer intersectionCount = coerceToInteger(templateData.get("intersection_count"));
+        if (wordCount == null || intersectionCount == null) {
+            return;
+        }
+
         // 단어 개수 검증
         if (!wordCount.equals(level.getWordCount())) {
             errors.add(String.format("단어 개수가 일치하지 않습니다. 레벨 %d은 %d개 단어가 필요합니다.", 
@@ -297,22 +318,22 @@ public class TemplateValidationService {
      * 경고사항 체크
      */
     private void checkWarnings(Map<String, Object> templateData, PzLevel level, List<String> warnings) {
-        Integer intersectionCount = (Integer) templateData.get("intersection_count");
+        Integer intersectionCount = coerceToInteger(templateData.get("intersection_count"));
         
         // 교차점이 없는 경우 경고
-        if (intersectionCount == 0) {
+        if (intersectionCount != null && intersectionCount == 0) {
             warnings.add("교차점이 없는 템플릿입니다. 교차점이 있는 패턴을 권장합니다.");
         }
         
         // 그리드 크기가 큰 경우 경고
-        Integer gridSize = (Integer) templateData.get("grid_size");
-        if (gridSize > 15) {
+        Integer gridSize = coerceToInteger(templateData.get("grid_size"));
+        if (gridSize != null && gridSize > 15) {
             warnings.add("그리드 크기가 큽니다. 성능에 영향을 줄 수 있습니다.");
         }
         
         // 단어 수가 많은 경우 경고
-        Integer wordCount = (Integer) templateData.get("word_count");
-        if (wordCount > 20) {
+        Integer wordCount = coerceToInteger(templateData.get("word_count"));
+        if (wordCount != null && wordCount > 20) {
             warnings.add("단어 수가 많습니다. 게임 난이도가 높아질 수 있습니다.");
         }
     }
@@ -449,6 +470,37 @@ public class TemplateValidationService {
             case 5 -> "난이도 4,5";
             default -> "모든 난이도";
         };
+    }
+
+    private Integer coerceToInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer i) {
+            return i;
+        }
+        if (value instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * puzzle_levels PK 또는 level 컬럼(레벨 번호)으로 레벨을 찾는다.
+     */
+    private PzLevel resolveLevel(Integer levelIdOrLevelNumber) {
+        if (levelIdOrLevelNumber == null) {
+            return null;
+        }
+        Optional<PzLevel> byPk = pzLevelRepository.findById(levelIdOrLevelNumber.longValue());
+        if (byPk.isPresent()) {
+            return byPk.get();
+        }
+        return pzLevelRepository.findByLevel(levelIdOrLevelNumber).orElse(null);
     }
 }
 

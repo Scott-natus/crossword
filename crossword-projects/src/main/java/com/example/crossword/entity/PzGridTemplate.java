@@ -59,7 +59,11 @@ public class PzGridTemplate {
     
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
-    
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "extracted_words_snapshot", columnDefinition = "TEXT")
+    private String extractedWordsSnapshot;
+
     @Column(name = "is_active")
     private Boolean isActive = true;
     
