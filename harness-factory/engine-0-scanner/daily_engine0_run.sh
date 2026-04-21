@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
-# Engine-0 일일 파이프라인: YouTube 스캔 → Reels 스캔 → PostgreSQL 적재 → (선택) Gemini 보강 → 요약 리포트
+# Engine-0/1.5 일일 파이프라인:
+# YouTube 스캔 → Reels 스캔 → PostgreSQL 적재 → (선택) Gemini 보강
+# → (선택) Engine-1.5 시나리오 생성 → 요약 리포트
 #
 # 사용:
 #   chmod +x daily_engine0_run.sh
@@ -13,6 +15,8 @@
 #   HARNESS_REELS_EXPLORE 1이면 탐색(돋보기) 피드 /explore/ (인기·추천에 가까운 큐레이션, 기본 1). 0이면 해시태그(#reels) 모드
 #   HARNESS_ENRICH        1이면 enrich_gemini 실행 (기본 1)
 #   HARNESS_ENRICH_LIMIT  enrich_gemini --limit (기본 30)
+#   HARNESS_ENGINE15      1이면 Engine-1.5 generate_scenarios 실행 (기본 1)
+#   HARNESS_ENGINE15_LIMIT Engine-1.5 생성 건수 상한 (기본 30)
 #   HARNESS_DOTENV_PATH   crossword/.env 경로
 #
 
@@ -37,6 +41,9 @@ MAX_REELS="${HARNESS_MAX_REELS:-50}"
 HARNESS_REELS_EXPLORE="${HARNESS_REELS_EXPLORE:-1}"
 ENRICH="${HARNESS_ENRICH:-1}"
 ENRICH_LIMIT="${HARNESS_ENRICH_LIMIT:-30}"
+ENGINE15="${HARNESS_ENGINE15:-1}"
+ENGINE15_LIMIT="${HARNESS_ENGINE15_LIMIT:-30}"
+ENGINE15_SCRIPT="${SCRIPT_DIR}/../engine-1.5-scenarist/generate_scenarios.py"
 
 {
   echo "========================================"
@@ -45,43 +52,59 @@ ENRICH_LIMIT="${HARNESS_ENRICH_LIMIT:-30}"
   echo "========================================"
 
   echo ""
-  echo "[1/4] YouTube scanner (max=${MAX_SHORTS})"
+  echo "[1/5] YouTube scanner (max=${MAX_SHORTS})"
   if "$VENV_PY" scanner.py --max "$MAX_SHORTS" --no-ui-filters; then
-    echo "[1/4] OK"
+    echo "[1/5] OK"
   else
-    echo "[1/4] 실패 (계속 진행)"
+    echo "[1/5] 실패 (계속 진행)"
   fi
 
   echo ""
-  echo "[2/4] Instagram reels_scanner (max=${MAX_REELS}, explore=${HARNESS_REELS_EXPLORE})"
+  echo "[2/5] Instagram reels_scanner (max=${MAX_REELS}, explore=${HARNESS_REELS_EXPLORE})"
   REELS_ARGS=(--max "$MAX_REELS")
   if [[ "$HARNESS_REELS_EXPLORE" == "1" ]]; then
     REELS_ARGS+=(--explore)
   fi
   if "$VENV_PY" reels_scanner.py "${REELS_ARGS[@]}"; then
-    echo "[2/4] OK"
+    echo "[2/5] OK"
   else
-    echo "[2/4] 실패 (계속 진행)"
+    echo "[2/5] 실패 (계속 진행)"
   fi
 
   echo ""
-  echo "[3/4] ingest_to_postgres --auto"
+  echo "[3/5] ingest_to_postgres --auto"
   if "$VENV_PY" ingest_to_postgres.py --auto; then
-    echo "[3/4] OK"
+    echo "[3/5] OK"
   else
-    echo "[3/4] 실패"
+    echo "[3/5] 실패"
   fi
 
   echo ""
   if [[ "$ENRICH" == "1" ]]; then
-    echo "[4/4] enrich_gemini (limit=${ENRICH_LIMIT})"
+    echo "[4/5] enrich_gemini (limit=${ENRICH_LIMIT})"
     if "$VENV_PY" enrich_gemini.py --limit "$ENRICH_LIMIT"; then
-      echo "[4/4] OK"
+      echo "[4/5] OK"
     else
-      echo "[4/4] 실패"
+      echo "[4/5] 실패"
     fi
   else
-    echo "[4/4] enrich_gemini 생략 (HARNESS_ENRICH!=1)"
+    echo "[4/5] enrich_gemini 생략 (HARNESS_ENRICH!=1)"
+  fi
+
+  echo ""
+  if [[ "$ENGINE15" == "1" ]]; then
+    if [[ -f "$ENGINE15_SCRIPT" ]]; then
+      echo "[5/5] engine-1.5 generate_scenarios (limit=${ENGINE15_LIMIT})"
+      if "$VENV_PY" "$ENGINE15_SCRIPT" --limit "$ENGINE15_LIMIT"; then
+        echo "[5/5] OK"
+      else
+        echo "[5/5] 실패"
+      fi
+    else
+      echo "[5/5] engine-1.5 스크립트 없음: $ENGINE15_SCRIPT (생략)"
+    fi
+  else
+    echo "[5/5] engine-1.5 생략 (HARNESS_ENGINE15!=1)"
   fi
 
   echo ""

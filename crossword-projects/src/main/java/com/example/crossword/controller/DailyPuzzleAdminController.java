@@ -15,7 +15,7 @@ import java.util.Map;
  * 관리자용 퍼즐 생성 및 관리 API
  */
 @RestController
-@RequestMapping("/K-CrossWord/admin/daily-puzzles")
+@RequestMapping("/admin/api/daily-puzzles")
 @RequiredArgsConstructor
 @Slf4j
 public class DailyPuzzleAdminController {

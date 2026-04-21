@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Engine15 Scenario",
+  "type": "object",
+  "required": [
+    "scenario_id",
+    "source_trend_id",
+    "theme",
+    "total_duration_sec",
+    "scene_count",
+    "scenes",
+    "quality_flags",
+    "generation_meta"
+  ],
+  "properties": {
+    "scenario_id": { "type": "string" },
+    "source_trend_id": { "type": "integer" },
+    "theme": { "type": "string" },
+    "total_duration_sec": { "type": "number", "minimum": 1 },
+    "scene_count": { "type": "integer", "minimum": 1 },
+    "narrative_arc": { "type": "string" },
+    "target_audience": { "type": "string" },
+    "cta_variant": { "type": "string" },
+    "scenes": {
+      "type": "array",
+      "minItems": 1
+    },
+    "quality_flags": {
+      "type": "object",
+      "required": ["hook_score", "puzzle_integration_naturalness", "copyright_risk", "banned_phrase_hit"]
+    },
+    "generation_meta": {
+      "type": "object",
+      "required": ["gemini_model", "prompt_version", "generated_at"]
+    }
+  }
+}

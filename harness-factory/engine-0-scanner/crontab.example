@@ -8,4 +8,4 @@
 # PATH=/usr/local/bin:/usr/bin:/bin
 
 CRON_TZ=Asia/Seoul
-0 */3 * * * HARNESS_LOG_DIR=/home/ubuntu/crossword/harness-factory/logs HARNESS_ENRICH_LIMIT=30 /home/ubuntu/crossword/harness-factory/engine-0-scanner/daily_engine0_run.sh >> /home/ubuntu/crossword/harness-factory/logs/engine0-cron.log 2>&1
+0 */3 * * * HARNESS_LOG_DIR=/home/ubuntu/crossword/harness-factory/logs HARNESS_ENRICH_LIMIT=30 HARNESS_ENGINE15=1 HARNESS_ENGINE15_LIMIT=30 /home/ubuntu/crossword/harness-factory/engine-0-scanner/daily_engine0_run.sh >> /home/ubuntu/crossword/harness-factory/logs/engine0-cron.log 2>&1

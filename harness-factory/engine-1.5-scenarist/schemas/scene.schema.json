@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Engine15 Scene",
+  "type": "object",
+  "required": [
+    "scene_id",
+    "role",
+    "start_sec",
+    "end_sec",
+    "duration_sec",
+    "visual",
+    "audio",
+    "caption"
+  ],
+  "properties": {
+    "scene_id": { "type": "string" },
+    "role": { "type": "string", "enum": ["hook", "body", "puzzle_tease", "cta"] },
+    "start_sec": { "type": "number", "minimum": 0 },
+    "end_sec": { "type": "number", "minimum": 0 },
+    "duration_sec": { "type": "number", "minimum": 0.1 },
+    "visual": { "type": "object" },
+    "audio": { "type": "object" },
+    "caption": { "type": "object" },
+    "puzzle_binding": { "type": ["object", "null"] }
+  }
+}

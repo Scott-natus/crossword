@@ -7,6 +7,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,8 +26,8 @@ import java.util.Optional;
  * 매일 갱신 퍼즐 스케줄러 서비스
  * 매일 자정에 새로운 퍼즐을 생성하고 기존 퍼즐을 비활성화
  * <p>
- * 로직은 java-projects(8080) {@code DailyPuzzleSchedulerService}와 동일하게 유지한다.
- * 스케줄 실행은 본 서비스(8081)에서만 담당한다.
+ * 스케줄 실행은 본 서비스(8081)에서 담당하되,
+ * 실제 퍼즐 생성은 java-projects(8080)의 완전한 생성 엔진을 HTTP로 호출한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -32,10 +37,11 @@ public class DailyPuzzleSchedulerService {
     private final ThemeDailyPuzzleRepository themeDailyPuzzleRepository;
     private final DailyPuzzleService dailyPuzzleService;
     
-    // 지원하는 테마 목록
     private static final List<String> SUPPORTED_THEMES = Arrays.asList(
         "K-POP", "K-DRAMA", "K-MOVIE", "K-CULTURE", "Korean"
     );
+
+    private static final String BOARD_API_BASE = "http://localhost:8080";
     
     /**
      * 매일 자정에 실행되는 퍼즐 갱신 스케줄러
@@ -43,66 +49,110 @@ public class DailyPuzzleSchedulerService {
      * 항상 최소 3일치 퍼즐이 생성되어 있도록 보장
      */
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
-    @Transactional
     public void generateDailyPuzzles() {
         try {
-            log.info("매일 갱신 퍼즐 생성 시작: {}", LocalDateTime.now());
+            log.info("=== [스케줄러] 매일 갱신 퍼즐 생성 시작: {} ===", LocalDateTime.now());
             
             LocalDate today = LocalDate.now();
+            int created = 0;
+            int skipped = 0;
+            int failed = 0;
             
-            // 모든 테마에 대해 오늘부터 3일 후까지 확인 및 생성
             for (String theme : SUPPORTED_THEMES) {
-                try {
-                    // 오늘부터 3일 후까지 확인 (총 3일치)
-                    for (int i = 0; i <= 2; i++) {
-                        LocalDate targetDate = today.plusDays(i);
-                        
-                        // 이미 생성되어 있는지 확인 (isActive 무관)
+                for (int i = 0; i <= 2; i++) {
+                    LocalDate targetDate = today.plusDays(i);
+                    try {
                         Optional<ThemeDailyPuzzle> existing = themeDailyPuzzleRepository
                             .findByThemeAndPuzzleDate(theme, targetDate);
                         
-                        if (!existing.isPresent() || !existing.get().getIsActive()) {
-                            // 생성되지 않았거나 비활성화된 경우 생성
-                            log.info("퍼즐 생성 필요: {} - {} (없음 또는 비활성화)", theme, targetDate);
-                            generateThemePuzzle(theme, targetDate);
-                        } else {
-                            // 이미 활성화된 퍼즐이 있으면 스킵
-                            log.debug("퍼즐 이미 존재: {} - {} (스킵)", theme, targetDate);
+                        if (existing.isPresent() && existing.get().getIsActive()) {
+                            log.debug("[스케줄러] 퍼즐 이미 존재: {} - {} (스킵)", theme, targetDate);
+                            skipped++;
+                            continue;
                         }
+                        
+                        log.info("[스케줄러] 퍼즐 생성 필요: {} - {}", theme, targetDate);
+                        boolean success = generateThemePuzzleViaBoard(theme, targetDate);
+                        if (success) {
+                            created++;
+                        } else {
+                            failed++;
+                        }
+                    } catch (Exception e) {
+                        log.error("[스케줄러] 퍼즐 생성 실패: {} - {} - {}", theme, targetDate, e.getMessage());
+                        failed++;
                     }
-                    
-                    log.info("테마별 퍼즐 생성 완료: {} (3일치 확인)", theme);
-                } catch (Exception e) {
-                    log.error("테마별 퍼즐 생성 실패: {} - {}", theme, e.getMessage(), e);
                 }
             }
             
-            log.info("매일 갱신 퍼즐 생성 완료: {}개 테마 (각 3일치 확인)", SUPPORTED_THEMES.size());
+            log.info("=== [스케줄러] 퍼즐 생성 완료: 생성 {}, 스킵 {}, 실패 {} (총 {}개 테마 × 3일) ===",
+                    created, skipped, failed, SUPPORTED_THEMES.size());
             
         } catch (Exception e) {
-            log.error("매일 갱신 퍼즐 생성 중 오류 발생: {}", e.getMessage(), e);
+            log.error("[스케줄러] 매일 갱신 퍼즐 생성 중 오류 발생: {}", e.getMessage(), e);
         }
     }
     
+    /**
+     * java-projects(8080)의 재생성 API를 호출하여 퍼즐을 생성한다.
+     * 재생성 버튼과 동일한 경로를 사용하므로 동일한 결과를 보장한다.
+     */
+    private boolean generateThemePuzzleViaBoard(String theme, LocalDate date) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String url = BOARD_API_BASE + "/admin/api/theme-puzzles/" + theme + "/regenerate?date=" + date;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>("{}", headers);
+
+            log.info("[스케줄러] java-projects(8080) 재생성 API 호출: {}", url);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("[스케줄러] 퍼즐 생성 성공: {} - {} (HTTP {})", theme, date, response.getStatusCode());
+                return true;
+            } else {
+                log.warn("[스케줄러] 퍼즐 생성 응답 비정상: {} - {} (HTTP {})", theme, date, response.getStatusCode());
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("[스케줄러] java-projects API 호출 실패: {} - {} - {}", theme, date, e.getMessage());
+            log.info("[스케줄러] 로컬 폴백 시도: {} - {}", theme, date);
+            try {
+                generateThemePuzzleLocal(theme, date);
+                return true;
+            } catch (Exception fallbackEx) {
+                log.error("[스케줄러] 로컬 폴백도 실패: {} - {} - {}", theme, date, fallbackEx.getMessage());
+                return false;
+            }
+        }
+    }
+
+    /**
+     * 특정 테마의 퍼즐 생성 (로컬 폴백용)
+     */
+    @Transactional
+    public void generateThemePuzzleLocal(String theme, LocalDate date) {
+        try {
+            log.info("테마별 퍼즐 로컬 생성 시작: {} - {}", theme, date);
+            themeDailyPuzzleRepository.deactivateByThemeAndDate(theme, date);
+            dailyPuzzleService.generateTodayPuzzle(theme, date);
+            log.info("테마별 퍼즐 로컬 생성 완료: {} - {}", theme, date);
+        } catch (Exception e) {
+            log.error("테마별 퍼즐 로컬 생성 실패: {} - {} - {}", theme, date, e.getMessage());
+            throw new RuntimeException("테마별 퍼즐 생성에 실패했습니다.", e);
+        }
+    }
+
     /**
      * 특정 테마의 오늘 퍼즐 생성
      */
     @Transactional
     public void generateThemePuzzle(String theme, LocalDate date) {
-        try {
-            log.info("테마별 퍼즐 생성 시작: {} - {}", theme, date);
-            
-            // 기존 퍼즐 비활성화
-            themeDailyPuzzleRepository.deactivateByThemeAndDate(theme, date);
-            
-            // 새 퍼즐 생성
-            dailyPuzzleService.generateTodayPuzzle(theme, date);
-            
-            log.info("테마별 퍼즐 생성 완료: {} - {}", theme, date);
-            
-        } catch (Exception e) {
-            log.error("테마별 퍼즐 생성 중 오류 발생: {} - {} - {}", theme, date, e.getMessage());
-            throw new RuntimeException("테마별 퍼즐 생성에 실패했습니다.", e);
+        boolean success = generateThemePuzzleViaBoard(theme, date);
+        if (!success) {
+            throw new RuntimeException("테마별 퍼즐 생성에 실패했습니다: " + theme + " - " + date);
         }
     }
     
